@@ -1,0 +1,27 @@
+# TypeScript compiled files
+/dist
+*.tsbuildinfo
+
+# Dependency directories
+node_modules/
+
+# Environment variable files
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional nodemon log
+nodemon.log
+
+# System Files
+.DS_Store
+Thumbs.db
