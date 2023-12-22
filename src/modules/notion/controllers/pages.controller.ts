@@ -12,7 +12,7 @@ export class PagesController {
         ) { }
 
     @Get(":pageId")
-    public async getPage(@Param('pageId') pageId: string): Promise<GetPageResponse> {
+    public async getPage(@Param('pageId') pageId: string): Promise<any> {
         return await this.notion.pages.retrieve({
             page_id: pageId,
         });
