@@ -2,4 +2,4 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 echo 'Running pre-commit hook'
-npm run format:check
+npm run lint:check
