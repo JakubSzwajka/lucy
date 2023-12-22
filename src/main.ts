@@ -12,6 +12,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
   .setTitle('Notion proxy api')
   .setDescription('The notion proxy API description')
+  .addServer('https://notion-proxy-zeta.vercel.app/api-json')
   .setVersion('1.0')
   .addBearerAuth(
     {
