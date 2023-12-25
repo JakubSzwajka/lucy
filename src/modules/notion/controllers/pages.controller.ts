@@ -37,7 +37,6 @@ export class PagesController {
   @Patch(":pageId")
   @ApiBody({ type: UpdatePageParametersDTO })
   public async updatePage(@Param("pageId") pageId: string, @Body() body: UpdatePageParameters) {
-    console.log(body);
     try {
         return await this.notion.pages.update({
           ...body,

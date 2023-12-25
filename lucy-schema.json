@@ -173,47 +173,60 @@
             "UpdatePageParametersDTO": {
                 "type": "object",
                 "properties": {
-                    "archived": {
-                        "type": "boolean"
-                    },
-                    "properties": {
-                        "type": "object",
-                        "properties": {
-                            "Schema": {
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "properties": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "rich_text": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["text"]
+                              },
+                              "text": {
                                 "type": "object",
                                 "properties": {
-                                    "rich_text": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "properties": {
-                                                "type": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "text"
-                                                    ]
-                                                },
-                                                "text": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "content": {
-                                                            "type": "string"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                  "content": {
+                                    "type": "string"
+                                  }
                                 }
+                              }
                             }
+                          }
+                        },
+                        "multi_select": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": ["text", "multi_select"]
                         }
+                      }
                     }
+                  }
                 },
                 "required": [
-                    "archived",
-                    "properties"
+                  "archived",
+                  "properties"
                 ]
-            }
+              }
+              
         }
+        
     }
 }
