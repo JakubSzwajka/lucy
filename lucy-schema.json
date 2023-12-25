@@ -1,0 +1,219 @@
+{
+    "openapi": "3.0.0",
+    "paths": {
+        "/": {
+            "get": {
+                "operationId": "AppController_getHello",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/v1/database/{databaseId}": {
+            "get": {
+                "operationId": "NotionController_getDatabase",
+                "parameters": [
+                    {
+                        "name": "databaseId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "JWT-auth": []
+                    }
+                ]
+            }
+        },
+        "/v1/database/{databaseId}/items": {
+            "get": {
+                "operationId": "NotionController_getDatabaseItems",
+                "parameters": [
+                    {
+                        "name": "databaseId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "JWT-auth": []
+                    }
+                ]
+            }
+        },
+        "/v1/pages/{pageId}": {
+            "get": {
+                "operationId": "PagesController_getPage",
+                "parameters": [
+                    {
+                        "name": "pageId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "JWT-auth": []
+                    }
+                ]
+            },
+            "patch": {
+                "operationId": "PagesController_updatePage",
+                "parameters": [
+                    {
+                        "name": "pageId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdatePageParametersDTO"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "JWT-auth": []
+                    }
+                ]
+            }
+        },
+        "/v1/pages/{pageId}/markdown": {
+            "get": {
+                "operationId": "PagesController_getPageMarkdown",
+                "parameters": [
+                    {
+                        "name": "pageId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "JWT-auth": []
+                    }
+                ]
+            }
+        }
+    },
+    "info": {
+        "title": "Notion proxy api",
+        "description": "The notion proxy API description",
+        "version": "1.0",
+        "contact": {}
+    },
+    "tags": [],
+    "servers": [
+        {
+            "url": "https://kubaszwajka.com"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "JWT-auth": {
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "type": "http",
+                "name": "JWT",
+                "description": "Enter JWT token",
+                "in": "header"
+            }
+        },
+        "schemas": {
+            "UpdatePageParametersDTO": {
+                "type": "object",
+                "properties": {
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "properties": {
+                        "type": "object",
+                        "properties": {
+                            "Schema": {
+                                "type": "object",
+                                "properties": {
+                                    "rich_text": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "text"
+                                                    ]
+                                                },
+                                                "text": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "content": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "required": [
+                    "archived",
+                    "properties"
+                ]
+            }
+        }
+    }
+}
