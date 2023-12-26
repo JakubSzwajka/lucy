@@ -58,7 +58,8 @@ export class ProjectsController {
             })
             return {
                 id: taskId,
-                page: taskPage.properties["Task name"].title.map(title => title.plain_text).join(""),
+                page: taskPage,
+                // page: taskPage.properties["Task name"].title.map(title => title.plain_text).join(""),
                 markdown: new PageBlock(task.results).toMarkdown()
             }
         }))

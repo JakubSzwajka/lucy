@@ -193,7 +193,48 @@
                     }
                 ]
             }
-        }
+        },
+        "/v1/projects": {
+            "get": {
+              "operationId": "ProjectsController_getProjects",
+              "parameters": [],
+              "responses": {
+                "200": {
+                  "description": ""
+                }
+              },
+              "security": [
+                {
+                  "JWT-auth": []
+                }
+              ]
+            }
+          },
+          "/v1/projects/{projectId}": {
+            "get": {
+              "operationId": "ProjectsController_getProject",
+              "parameters": [
+                {
+                  "name": "projectId",
+                  "required": true,
+                  "in": "path",
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "responses": {
+                "200": {
+                  "description": ""
+                }
+              },
+              "security": [
+                {
+                  "JWT-auth": []
+                }
+              ]
+            }
+          }
     },
     "info": {
         "title": "Notion proxy api",
