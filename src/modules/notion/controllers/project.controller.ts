@@ -2,6 +2,7 @@ import { Controller, Get, Param } from "@nestjs/common";
 import { ApiBearerAuth } from "@nestjs/swagger";
 import { NotionService } from "../services/notionClient";
 import { PageBlock } from "../services/blockInterpreter";
+import { env } from "../../../env";
 
 
 type ProjectPage = {
@@ -34,7 +35,7 @@ export class ProjectsController {
   public async getProjects() {
     try {
       return await this.notion.databases.query({
-        database_id: process.env.PROJECTS_DATABASE_ID as string,
+        database_id: env.PROJECTS_DATABASE_ID as string,
       });
     } catch (e) {
       console.error(e);
