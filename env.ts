@@ -13,12 +13,16 @@ const api = z.object({
     .default('development'),
   PORT: z.string().default('3000'),
   OPENAI_API_KEY: z.string(),
+  SLACK_BOT_TOKEN: z.string(),
+  SLACK_APP_LEVEL_TOKEN: z.string(),
 });
 
 const processEnv = {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+  SLACK_APP_LEVEL_TOKEN: process.env.SLACK_APP_LEVEL_TOKEN,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;
