@@ -1,6 +1,6 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
-import { env } from 'env';
+import { env } from 'src/env';
 import { LucySystemMessage } from './prompt';
 
 export const call = async (message: string): Promise<string> => {
