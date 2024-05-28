@@ -15,6 +15,7 @@ const api = z.object({
   OPENAI_API_KEY: z.string(),
   SLACK_BOT_TOKEN: z.string(),
   SLACK_APP_LEVEL_TOKEN: z.string(),
+  AUTH_TOKEN: z.string(),
 });
 
 const processEnv = {
@@ -23,6 +24,7 @@ const processEnv = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
   SLACK_APP_LEVEL_TOKEN: process.env.SLACK_APP_LEVEL_TOKEN,
+  AUTH_TOKEN: process.env.AUTH_TOKEN,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;
