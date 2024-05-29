@@ -1,13 +1,15 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { call } from './ai/llm';
+import { LucyService } from './lucy/lucy.service';
 
 @Controller()
 export class AppController {
+  constructor(private readonly lucy: LucyService) {}
+
   @Post('/talk')
   async talk(@Body() body: { message: string }): Promise<{
     message: string;
   }> {
-    const response = await call(body.message);
+    const response = await this.lucy.talk(body.message);
     return {
       message: response,
     };

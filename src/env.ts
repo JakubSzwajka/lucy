@@ -8,14 +8,17 @@ import { config } from 'dotenv';
 config();
 
 const api = z.object({
-  NODE_ENV: z
-    .enum(['development', 'production', 'test'])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'production']).default('development'),
   PORT: z.string().default('3000'),
   OPENAI_API_KEY: z.string(),
   SLACK_BOT_TOKEN: z.string(),
   SLACK_APP_LEVEL_TOKEN: z.string(),
   AUTH_TOKEN: z.string(),
+  DB_HOST: z.string(),
+  DB_USER: z.string(),
+  DB_PASSWORD: z.string(),
+  DB_NAME: z.string(),
+  DB_PORT: z.string(),
 });
 
 const processEnv = {
@@ -25,6 +28,11 @@ const processEnv = {
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
   SLACK_APP_LEVEL_TOKEN: process.env.SLACK_APP_LEVEL_TOKEN,
   AUTH_TOKEN: process.env.AUTH_TOKEN,
+  DB_HOST: process.env.DB_HOST,
+  DB_USER: process.env.DB_USER,
+  DB_PASSWORD: process.env.DB_PASSWORD,
+  DB_NAME: process.env.DB_NAME,
+  DB_PORT: process.env.DB_PORT,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;
