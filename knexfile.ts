@@ -31,3 +31,5 @@ const config: { [key: string]: Knex.Config } = {
 };
 
 export default config;
+
+console.log('Hello, world!');
