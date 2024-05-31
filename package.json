@@ -20,7 +20,6 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "npx typeorm-ts-node-commonjs",
     "migrate": "npx typeorm-ts-node-commonjs migration:run -d ./src/db.ts",
-    "migrate:create": "npx typeorm-ts-node-commonjs migration:create",
     "migrate:generate": "npx typeorm-ts-node-commonjs migration:generate -d ./src/db.ts"
   },
   "dependencies": {

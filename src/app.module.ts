@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { LucyModule } from './lucy/lucy.module';
 import { SlackModule } from './slack/slackModule';
@@ -7,6 +7,7 @@ import { AuthGuard } from './app.guard';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from './db';
 import { env } from './env';
+import { HTTPLoggingMiddleware } from './infra/http.logger';
 
 @Module({
   imports: [
@@ -22,4 +23,11 @@ import { env } from './env';
     },
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HTTPLoggingMiddleware).forRoutes({
+      path: '*',
+      method: RequestMethod.ALL,
+    });
+  }
+}
