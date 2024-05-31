@@ -2,20 +2,25 @@ import { DataSource } from 'typeorm';
 import { env } from './env';
 
 enum DbType {
+  postgres = 'postgres',
   mysql = 'mysql',
   sqlite = 'sqlite',
 }
 
 export const config = {
   development: {
-    type: DbType.sqlite,
-    database: 'db.sqlite',
+    type: DbType.postgres,
+    host: 'localhost',
+    port: 5432,
+    username: 'postgres',
+    password: 'postgres',
+    database: 'lucy',
     migrationsTableName: 'migrations',
     migrations: ['dist/src/migrations/*.js'],
     entities: [__dirname + '/**/*.entity.ts'],
   },
   production: {
-    type: DbType.mysql,
+    type: DbType.postgres,
     host: env.DB_HOST,
     port: parseInt(env.DB_PORT, 10),
     username: env.DB_USER,
@@ -27,5 +32,4 @@ export const config = {
   },
 };
 
-console.log('config', config[env.NODE_ENV]);
 export default new DataSource(config[env.NODE_ENV]);
