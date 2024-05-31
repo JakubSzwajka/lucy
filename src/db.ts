@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, DataSourceOptions } from 'typeorm';
 import { env } from './env';
 
 enum DbType {
@@ -7,7 +7,7 @@ enum DbType {
   sqlite = 'sqlite',
 }
 
-export const config = {
+export const config: { [keyof: string]: DataSourceOptions } = {
   development: {
     type: DbType.postgres,
     host: 'localhost',
@@ -29,6 +29,9 @@ export const config = {
     migrationsTableName: 'migrations',
     migrations: ['dist/src/migrations/*.js'],
     entities: [__dirname + '/**/*.entity.ts'],
+    ssl: {
+      ca: env.DB_CA_CERT,
+    },
   },
 };
 
