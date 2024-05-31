@@ -19,10 +19,7 @@ export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({
-    type: 'text',
-    default: MessageSource.SLACK,
-  })
+  @Column()
   source: string;
 
   @Column()
