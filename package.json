@@ -34,6 +34,7 @@
     "knex": "^3.1.0",
     "mysql2": "^3.9.9",
     "objection": "^3.1.4",
+    "pg": "^8.11.5",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
     "sequelize": "^6.37.3",
