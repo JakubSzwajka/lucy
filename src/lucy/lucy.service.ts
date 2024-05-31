@@ -1,23 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { call } from 'src/ai';
-import { Message } from './brain.service';
 import { v4 } from 'uuid';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Message, MessageSource } from './entities/message.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class LucyService {
-  async talk(message: string): Promise<string> {
-    const assistantResponse = await call(message);
-    const conversationId = v4();
+  constructor(
+    @InjectRepository(Message)
+    private readonly messageRepository: Repository<Message>,
+  ) {}
+
+  async talk(query: string): Promise<string> {
+    const response = await call(query);
     try {
-      const result = await Message.query().insert({
-        conversation_id: conversationId,
-        human: message,
-        assistant: assistantResponse,
-      });
+      const result = this.messageRepository.create(
+        new Message({
+          conversationId: v4(),
+          human: query,
+          agent: response,
+          source: MessageSource.SLACK,
+        }),
+      );
       console.log('Message saved', result);
     } catch (error) {
       console.error('Error saving message', error);
     }
-    return assistantResponse;
+    return response;
   }
 }
