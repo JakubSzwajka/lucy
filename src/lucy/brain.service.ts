@@ -1,14 +1,13 @@
-import Knex from 'knex';
-import { Model } from 'objection';
-import { env } from 'src/env';
-import config from '../knexfile';
+// import Knex from 'knex';
+// import { Model } from 'objection';
+// import { env } from 'src/env';
 
-const knex = Knex(config[env.NODE_ENV]);
+// const knex = Knex(config[env.NODE_ENV]);
 
-Model.knex(knex);
+// Model.knex(knex);
 
-export class Message extends Model {
-  static get tableName() {
-    return 'messages';
-  }
-}
+// export class Message extends Model {
+//   static get tableName() {
+//     return 'messages';
+//   }
+// }
