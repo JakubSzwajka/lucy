@@ -1,41 +1,41 @@
-name: prod-release
+# name: prod-release
 
-env:
-  node-version: 18.19.0 # should be in line with .nvmrc
+# env:
+#   node-version: 18.19.0 # should be in line with .nvmrc
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-jobs:
-  run-migrations:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.node-version }}
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build
-        run: npm run build
-      - name: Run migrations
-        run: npm run migrate
-        env:
-          DB_HOST: ${{ vars.DB_HOST }}
-          DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PORT: ${{ vars.DB_PORT }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_CA_CERT: ${{ secrets.DB_CA_CERT }}
-          NODE_ENV: ${{ vars.NODE_ENV }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
-          SLACK_APP_LEVEL_TOKEN: ${{ secrets.SLACK_BOT_LEVEL_TOKEN }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+# on:
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - main
+# jobs:
+#   run-migrations:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+#         with:
+#           fetch-depth: 0
+#       - name: Setup node
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: ${{ env.node-version }}
+#           cache: 'npm'
+#       - name: Install dependencies
+#         run: npm ci
+#       - name: Build
+#         run: npm run build
+#       - name: Run migrations
+#         run: npm run migrate
+#         env:
+#           DB_HOST: ${{ vars.DB_HOST }}
+#           DB_NAME: ${{ vars.DB_NAME }}
+#           DB_USER: ${{ vars.DB_USER }}
+#           DB_PORT: ${{ vars.DB_PORT }}
+#           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+#           DB_CA_CERT: ${{ secrets.DB_CA_CERT }}
+#           NODE_ENV: ${{ vars.NODE_ENV }}
+#           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+#           AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+#           SLACK_APP_LEVEL_TOKEN: ${{ secrets.SLACK_BOT_LEVEL_TOKEN }}
+#           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
