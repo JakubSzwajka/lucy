@@ -3,7 +3,7 @@ import { call } from 'src/ai';
 import { v4 } from 'uuid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message, MessageSource } from './entities/message.entity';
-import { Repository } from 'typeorm';
+import { Repository, Raw } from 'typeorm';
 
 @Injectable()
 export class LucyService {
@@ -12,8 +12,20 @@ export class LucyService {
     private readonly messageRepository: Repository<Message>,
   ) {}
 
+  private readonly MINUTES_OF_CONVERSATION_HISTORY = 10;
+
   async talk(query: string): Promise<string> {
-    const response = await call(query);
+    const history = await this.messageRepository.find({
+      // last 10 minutes
+      where: {
+        createdAt: Raw((alias) => `${alias} > :date`, {
+          date: new Date(
+            Date.now() - 1000 * 60 * this.MINUTES_OF_CONVERSATION_HISTORY,
+          ),
+        }),
+      },
+    });
+    const response = await call(query, history);
     try {
       const message = this.messageRepository.create(
         new Message({
@@ -24,7 +36,6 @@ export class LucyService {
         }),
       );
       await this.messageRepository.save(message);
-      console.log('Message saved', message);
     } catch (error) {
       console.error('Error saving message', error);
     }
