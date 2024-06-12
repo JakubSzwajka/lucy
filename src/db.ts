@@ -17,7 +17,7 @@ export const config: { [keyof: string]: DataSourceOptions } = {
     database: 'lucy',
     migrationsTableName: 'migrations',
     migrations: ['dist/src/migrations/*.js'],
-    entities: [__dirname + '/**/*.entity.ts'],
+    entities: [__dirname + '/../**/*.entity.{js,ts}'],
   },
   production: {
     type: DbType.postgres,

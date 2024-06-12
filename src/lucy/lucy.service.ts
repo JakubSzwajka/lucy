@@ -15,7 +15,7 @@ export class LucyService {
   async talk(query: string): Promise<string> {
     const response = await call(query);
     try {
-      const result = this.messageRepository.create(
+      const message = this.messageRepository.create(
         new Message({
           conversationId: v4(),
           human: query,
@@ -23,7 +23,8 @@ export class LucyService {
           source: MessageSource.SLACK,
         }),
       );
-      console.log('Message saved', result);
+      await this.messageRepository.save(message);
+      console.log('Message saved', message);
     } catch (error) {
       console.error('Error saving message', error);
     }
