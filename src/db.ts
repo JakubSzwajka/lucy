@@ -28,7 +28,7 @@ export const config: { [keyof: string]: DataSourceOptions } = {
     database: env.DB_NAME,
     migrationsTableName: 'migrations',
     migrations: ['dist/src/migrations/*.js'],
-    entities: [__dirname + '/**/*.entity.ts'],
+    entities: [__dirname + '/../**/*.entity.{js,ts}'],
     ssl: {
       ca: env.DB_CA_CERT,
     },
