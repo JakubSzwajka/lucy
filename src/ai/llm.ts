@@ -15,6 +15,7 @@ export const call = async (
   const chat = new ChatOpenAI({
     apiKey: env.OPENAI_API_KEY,
     model: 'gpt-3.5-turbo',
+    tags: ['lucy', env.NODE_ENV],
   });
 
   const conversation = conversationHistory
