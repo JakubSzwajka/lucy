@@ -35,6 +35,4 @@ export const config: { [keyof: string]: DataSourceOptions } = {
   },
 };
 
-console.log('Using config', config[env.NODE_ENV]);
-
 export default new DataSource(config[env.NODE_ENV]);
