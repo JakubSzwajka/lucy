@@ -27,13 +27,14 @@
     "migrate:generate": "npx typeorm-ts-node-commonjs migration:generate -d ./src/db.ts"
   },
   "dependencies": {
+    "@doist/todoist-api-typescript": "^3.0.3",
     "@langchain/core": "^0.2.2",
     "@langchain/openai": "^0.0.34",
+    "@nestjs/cli": "^9.0.0",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "@nestjs/platform-express": "^9.0.0",
     "@nestjs/typeorm": "^10.0.2",
-    "@nestjs/cli": "^9.0.0",
     "@slack/bolt": "^3.18.0",
     "dotenv": "^16.4.5",
     "knex": "^3.1.0",

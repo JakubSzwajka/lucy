@@ -8,11 +8,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from './db';
 import { env } from './env';
 import { HTTPLoggingMiddleware } from './infra/http.logger';
+import { ToolsModule } from './tools/tools.module';
 
 @Module({
   imports: [
     LucyModule,
     SlackModule,
+    ToolsModule,
     TypeOrmModule.forRoot(config[env.NODE_ENV]),
   ],
   controllers: [AppController],
