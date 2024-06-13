@@ -20,6 +20,7 @@ const api = z.object({
   DB_NAME: z.string(),
   DB_PORT: z.string(),
   DB_CA_CERT: z.string().optional(),
+  TODOIST_API_KEY: z.string(),
 });
 
 const processEnv = {
@@ -35,6 +36,7 @@ const processEnv = {
   DB_NAME: process.env.DB_NAME,
   DB_PORT: process.env.DB_PORT,
   DB_CA_CERT: Buffer.from(process.env.DB_CA_CERT || '', 'base64').toString(),
+  TODOIST_API_KEY: process.env.TODOIST_API_KEY,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;

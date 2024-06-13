@@ -1,33 +1,34 @@
-import {
-  HumanMessage,
-  SystemMessage,
-  AIMessage,
-} from '@langchain/core/messages';
-import { ChatOpenAI } from '@langchain/openai';
+import { AIMessageChunk, BaseMessage } from '@langchain/core/messages';
+import { ChatOpenAI, OpenAIClient } from '@langchain/openai';
 import { env } from 'src/env';
-import { LucySystemMessage } from './prompt';
-import { Message } from 'src/lucy/entities/message.entity';
+
+const TAGS = ['lucy', env.NODE_ENV];
+
+export enum Models {
+  GPT_3_5_TURBO = 'gpt-3.5-turbo',
+  GPT_4o = 'gpt-4o',
+}
 
 export const call = async (
-  message: string,
-  conversationHistory: Message[],
-): Promise<string> => {
+  messages: BaseMessage[],
+  options: {
+    tools?: OpenAIClient.ChatCompletionTool[];
+    tool_choice?: OpenAIClient.ChatCompletionToolChoiceOption;
+    model?: Models;
+  } = {
+    tools: undefined,
+    tool_choice: undefined,
+    model: Models.GPT_4o,
+  },
+): Promise<AIMessageChunk> => {
   const chat = new ChatOpenAI({
     apiKey: env.OPENAI_API_KEY,
-    model: 'gpt-3.5-turbo',
-    tags: ['lucy', env.NODE_ENV],
+    model: Models.GPT_3_5_TURBO,
+    tags: TAGS,
+  }).bind({
+    tools: options.tools,
+    tool_choice: options.tool_choice,
   });
 
-  const conversation = conversationHistory
-    .map((message) => {
-      return [new HumanMessage(message.human), new AIMessage(message.agent)];
-    })
-    .flat();
-
-  const { content } = await chat.invoke([
-    new SystemMessage(LucySystemMessage),
-    ...conversation,
-    new HumanMessage(message),
-  ]);
-  return content as string;
+  return await chat.invoke(messages);
 };
