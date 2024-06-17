@@ -1,6 +1,6 @@
 import { AIMessageChunk, BaseMessage } from '@langchain/core/messages';
 import { ChatOpenAI, OpenAIClient } from '@langchain/openai';
-import { env } from 'src/env';
+import { env } from '@/lucy/env';
 
 const TAGS = ['lucy', env.NODE_ENV];
 

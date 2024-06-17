@@ -1,5 +1,5 @@
 import { App as BoltApp } from '@slack/bolt';
-import { env } from 'src/env';
+import { env } from '@/lucy/env';
 
 const { SLACK_BOT_TOKEN, SLACK_APP_LEVEL_TOKEN } = env;
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { call } from 'src/ai';
+import { call } from '@/lucy/ai';
 import { v4 } from 'uuid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message, MessageSource } from './entities/message.entity';
@@ -10,7 +10,7 @@ import {
   SystemMessage,
   ToolMessage,
 } from '@langchain/core/messages';
-import { LucySystemMessage } from 'src/ai/prompt';
+import { LucySystemMessage } from '@/lucy/ai/prompt';
 import { LucyToolset, Tools } from './lucy.toolset';
 import { OpenAIClient } from '@langchain/openai';
 

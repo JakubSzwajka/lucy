@@ -1,6 +1,6 @@
 import { ToolCall } from '@langchain/core/dist/messages/tool';
 import { Injectable } from '@nestjs/common';
-import { TasksService } from 'src/tools/tasks.service';
+import { TasksService } from '@/lucy/tools/tasks.service';
 
 export enum Tools {
   GET_TASKS = 'get_tasks',

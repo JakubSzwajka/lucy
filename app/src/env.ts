@@ -8,7 +8,9 @@ import { config } from 'dotenv';
 config();
 
 const api = z.object({
-  NODE_ENV: z.enum(['development', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
   PORT: z.string().default('3000'),
   OPENAI_API_KEY: z.string(),
   SLACK_BOT_TOKEN: z.string(),

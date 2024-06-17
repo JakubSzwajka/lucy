@@ -1,6 +1,6 @@
 import { TodoistApi } from '@doist/todoist-api-typescript';
 import { Injectable } from '@nestjs/common';
-import { env } from 'src/env';
+import { env } from '@/lucy/env';
 
 @Injectable()
 export class TasksService {

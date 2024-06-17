@@ -33,6 +33,13 @@ export const config: { [keyof: string]: DataSourceOptions } = {
       ca: env.DB_CA_CERT,
     },
   },
+  test: {
+    type: DbType.sqlite,
+    database: ':memory:',
+    dropSchema: true,
+    synchronize: true,
+    entities: [__dirname + '/../**/*.entity.{js,ts}'],
+  },
 };
 
 export default new DataSource(config[env.NODE_ENV]);

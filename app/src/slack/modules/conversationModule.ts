@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BotModule } from './botModule';
-import { LucyService } from 'src/lucy/lucy.service';
+import { LucyService } from '@/lucy/lucy/lucy.service';
 
 @Injectable()
 export class ConversationModule extends BotModule {
