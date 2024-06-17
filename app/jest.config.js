@@ -11,8 +11,6 @@ module.exports = {
   collectCoverageFrom: ['**/*.(t|j)s'],
   coverageDirectory: '../coverage',
   testEnvironment: 'node',
-  //   preset: 'ts-jest',
-  //   moduleDirectories: ['node_modules', '<rootDir>'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths || {}, {
     prefix: '<rootDir>/../',
   }),
