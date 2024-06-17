@@ -2,7 +2,7 @@ import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { LucyModule } from './lucy/lucy.module';
 import { SlackModule } from './slack/slackModule';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, RouterModule } from '@nestjs/core';
 import { AuthGuard } from './app.guard';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from './db';
@@ -21,6 +21,21 @@ import { join } from 'path';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'web/build'),
     }),
+    RouterModule.register([
+      {
+        path: 'api',
+        children: [
+          {
+            path: 'lucy',
+            module: LucyModule,
+          },
+          {
+            path: '',
+            module: SlackModule,
+          },
+        ],
+      },
+    ]),
   ],
   controllers: [AppController],
   providers: [
