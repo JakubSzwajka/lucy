@@ -1,14 +1,31 @@
-import { Controller, Post, UseGuards, Request, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseGuards,
+  Request,
+  Get,
+  Body,
+} from '@nestjs/common';
 import { LocalAuthGuard } from './guards/local.auth.guard';
 import { AuthService } from './services/auth.service';
 import { JwtAuthGuard } from './guards/jwt.auth.guard';
+import { Public } from './decorator';
+
+// const RegisterSchema = z.object({
+//   email: z.string().email(),
+//   password: z.string().min(6),
+// });
+
+// class RegisterDto extends createZodDto(RegisterSchema) {}
 
 @Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  async register() {
-    return 'register';
+  @Public()
+  @Post('register')
+  async register(@Body() body: { email: string; password: string }) {
+    return await this.authService.register(body);
   }
 
   @UseGuards(LocalAuthGuard)
@@ -23,19 +40,19 @@ export class AuthController {
     return req.user;
   }
 
-  async logout() {
-    return 'logout';
-  }
+  // async logout() {
+  //   return 'logout';
+  // }
 
-  async forgotPassword() {
-    return 'forgot-password';
-  }
+  // async forgotPassword() {
+  //   return 'forgot-password';
+  // }
 
-  async resetPassword() {
-    return 'reset-password';
-  }
+  // async resetPassword() {
+  //   return 'reset-password';
+  // }
 
-  async changePassword() {
-    return 'change-password';
-  }
+  // async changePassword() {
+  //   return 'change-password';
+  // }
 }
