@@ -10,13 +10,15 @@ import { LocalAuthGuard } from './guards/local.auth.guard';
 import { AuthService } from './services/auth.service';
 import { JwtAuthGuard } from './guards/jwt.auth.guard';
 import { Public } from './decorator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-// const RegisterSchema = z.object({
-//   email: z.string().email(),
-//   password: z.string().min(6),
-// });
+const RegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
 
-// class RegisterDto extends createZodDto(RegisterSchema) {}
+class RegisterDto extends createZodDto(RegisterSchema) {}
 
 @Controller()
 export class AuthController {
@@ -24,7 +26,7 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  async register(@Body() body: { email: string; password: string }) {
+  async register(@Body() body: RegisterDto) {
     return await this.authService.register(body);
   }
 

@@ -3,10 +3,6 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Skill {
-  constructor(partial: Partial<Skill>) {
-    Object.assign(this, partial);
-  }
-
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

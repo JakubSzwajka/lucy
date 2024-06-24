@@ -75,9 +75,15 @@ export class LucyService {
 
     let modelResponse = response.content as string;
 
-    if (response.tool_calls.length > 0) {
+    if (response.tool_calls && response.tool_calls.length > 0) {
       messages.push(new AIMessage(response));
-      const toolResults = await this.toolset.useTool(response.tool_calls);
+      const toolResults: {
+        tool: {
+          id: string;
+          name: string;
+        };
+        toolResult: any;
+      }[] = await this.toolset.useTool(response.tool_calls);
 
       for (const toolResult of toolResults) {
         messages.push(
@@ -94,14 +100,12 @@ export class LucyService {
     }
 
     try {
-      const message = this.messageRepository.create(
-        new Message({
-          conversationId: v4(),
-          human: query,
-          agent: modelResponse,
-          source: MessageSource.SLACK,
-        }),
-      );
+      const message = this.messageRepository.create({
+        conversationId: v4(),
+        human: query,
+        agent: modelResponse,
+        source: MessageSource.SLACK,
+      });
       await this.messageRepository.save(message);
     } catch (error) {
       console.error('Error saving message', error);

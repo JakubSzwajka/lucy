@@ -2,7 +2,7 @@ import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { LucyModule } from './lucy/lucy.module';
 import { SlackModule } from './slack/slackModule';
-import { APP_GUARD, RouterModule } from '@nestjs/core';
+import { APP_GUARD, APP_PIPE, RouterModule } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from './db';
 import { env } from './env';
@@ -10,6 +10,7 @@ import { HTTPLoggingMiddleware } from './infra/http.logger';
 import { ToolsModule } from './tools/tools.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
+import { ZodValidationPipe } from 'nestjs-zod';
 
 @Module({
   imports: [
@@ -43,6 +44,10 @@ import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_PIPE,
+      useClass: ZodValidationPipe,
     },
   ],
 })

@@ -9,10 +9,6 @@ import { Agent } from './agent.entity';
 
 @Entity()
 export class User {
-  constructor(partial: Partial<User>) {
-    Object.assign(this, partial);
-  }
-
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

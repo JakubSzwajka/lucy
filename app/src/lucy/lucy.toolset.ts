@@ -11,7 +11,7 @@ export class LucyToolset {
   constructor(private readonly taskService: TasksService) {}
 
   async useTool(tools: ToolCall[]) {
-    const result = [];
+    const result: any[] = [];
     for (const tool of tools) {
       switch (tool.name) {
         case Tools.GET_TASKS:

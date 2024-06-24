@@ -21,7 +21,7 @@ export class UserService {
     return await this.userRepository.save(data);
   }
 
-  async getUserByEmail(email: string): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | null> {
     return await this.userRepository.findOne({ where: { email } });
   }
 }
