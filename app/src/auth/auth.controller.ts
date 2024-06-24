@@ -1,14 +1,5 @@
-import {
-  Controller,
-  Post,
-  UseGuards,
-  Request,
-  Get,
-  Body,
-} from '@nestjs/common';
-import { LocalAuthGuard } from './guards/local.auth.guard';
+import { Controller, Post, Request, Get, Body } from '@nestjs/common';
 import { AuthService } from './services/auth.service';
-import { JwtAuthGuard } from './guards/jwt.auth.guard';
 import { Public } from './decorator';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
@@ -30,13 +21,12 @@ export class AuthController {
     return await this.authService.register(body);
   }
 
-  @UseGuards(LocalAuthGuard)
+  @Public()
   @Post('login')
-  async login(@Request() req) {
-    return await this.authService.login(req.user);
+  async login(@Body() body: RegisterDto) {
+    return await this.authService.login(body);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;

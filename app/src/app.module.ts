@@ -9,8 +9,8 @@ import { env } from './env';
 import { HTTPLoggingMiddleware } from './infra/http.logger';
 import { ToolsModule } from './tools/tools.module';
 import { AuthModule } from './auth/auth.module';
-import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { ZodValidationPipe } from 'nestjs-zod';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
