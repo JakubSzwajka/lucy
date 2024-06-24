@@ -21,12 +21,12 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
-      - name: Setup nx shas
-        uses: nrwl/nx-set-shas@v3
       - name: Install dependencies
         run: npm ci
+        working-directory: app
       - name: Lint
         run: npm run lint
+        working-directory: app
 
   # test:
   #   runs-on: ubuntu-latest
@@ -59,9 +59,9 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
-      - name: Setup nx shas
-        uses: nrwl/nx-set-shas@v3
       - name: Install dependencies
         run: npm ci
+        working-directory: app
       - name: Build
         run: npm run build
+        working-directory: app
