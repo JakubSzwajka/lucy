@@ -3,15 +3,17 @@ import { AppController } from './app.controller';
 import { LucyModule } from './lucy/lucy.module';
 import { SlackModule } from './slack/slackModule';
 import { APP_GUARD, RouterModule } from '@nestjs/core';
-import { AuthGuard } from './app.guard';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from './db';
 import { env } from './env';
 import { HTTPLoggingMiddleware } from './infra/http.logger';
 import { ToolsModule } from './tools/tools.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 
 @Module({
   imports: [
+    AuthModule,
     LucyModule,
     SlackModule,
     ToolsModule,
@@ -28,6 +30,10 @@ import { ToolsModule } from './tools/tools.module';
             path: '',
             module: SlackModule,
           },
+          {
+            path: 'auth',
+            module: AuthModule,
+          },
         ],
       },
     ]),
@@ -36,7 +42,7 @@ import { ToolsModule } from './tools/tools.module';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: AuthGuard,
+      useClass: JwtAuthGuard,
     },
   ],
 })
