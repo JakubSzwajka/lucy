@@ -18,10 +18,14 @@ export class ClientManager extends BoltApp {
   }
 
   constructor() {
-    super({
-      token: SLACK_BOT_TOKEN,
-      appToken: SLACK_APP_LEVEL_TOKEN,
-      socketMode: true,
-    });
+    try {
+      super({
+        token: SLACK_BOT_TOKEN,
+        appToken: SLACK_APP_LEVEL_TOKEN,
+        socketMode: true,
+      });
+    } catch (error) {
+      console.error('Error creating slack client manager', error);
+    }
   }
 }
