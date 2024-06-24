@@ -9,8 +9,6 @@ import { config } from './db';
 import { env } from './env';
 import { HTTPLoggingMiddleware } from './infra/http.logger';
 import { ToolsModule } from './tools/tools.module';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 
 @Module({
   imports: [
@@ -18,9 +16,6 @@ import { join } from 'path';
     SlackModule,
     ToolsModule,
     TypeOrmModule.forRoot(config[env.NODE_ENV]),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'web/build'),
-    }),
     RouterModule.register([
       {
         path: 'api',
