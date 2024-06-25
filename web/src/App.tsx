@@ -8,6 +8,7 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import AuthLayout from './routes/layouts/auth';
 import Register from './routes/auth/register';
+import { Toaster } from '@/components/ui/toaster';
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,7 @@ function App() {
   return (
     <React.StrictMode>
       <Provider store={store}>
+        <Toaster />
         <RouterProvider router={router} />
       </Provider>
     </React.StrictMode>

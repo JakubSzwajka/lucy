@@ -1,5 +1,5 @@
 import { User } from '@/lucy/lucy/entities/user.entity';
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -16,7 +16,10 @@ export class UserService {
     });
 
     if (user) {
-      throw new Error('User with this email already exists');
+      throw new HttpException(
+        'User with this email already exists',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     return await this.userRepository.save(data);
   }

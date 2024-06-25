@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useToast } from '@/components/ui/use-toast';
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -25,7 +26,7 @@ export default function RegisterPage({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('' as string);
-
+  const { toast } = useToast();
   const [register] = api.useRegisterMutation();
 
   const formSchema = z
@@ -51,11 +52,16 @@ export default function RegisterPage({
   async function onSubmit() {
     setIsLoading(true);
     register({ email, password })
+      .unwrap()
       .then(() => {
         setIsLoading(false);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: 'Error',
+          description: error.data.message,
+          variant: 'destructive',
+        });
         setIsLoading(false);
       });
   }
