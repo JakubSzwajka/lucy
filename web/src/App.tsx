@@ -7,7 +7,7 @@ import Home from './routes/home';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import AuthLayout from './routes/layouts/auth';
-import Register from './routes/auth/register/register';
+import Register from './routes/auth/register';
 
 const router = createBrowserRouter([
   {
@@ -28,9 +28,9 @@ const router = createBrowserRouter([
       {
         path: '',
         element: <Register />,
-      }
-    ]
-  }
+      },
+    ],
+  },
 ]);
 
 function App() {
