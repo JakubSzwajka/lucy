@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import EmailStep from "./step1"
 import PasswordStep from "./step2"
+import { api } from "@/api";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -18,13 +19,18 @@ export default function RegisterPage({ className, ...props }: UserAuthFormProps)
     setStep(step - 1)
   };
 
+  const [register] = api.useRegisterMutation()
+
   async function onSubmit(event: React.SyntheticEvent) {
     event.preventDefault()
+    
     setIsLoading(true)
-
-    setTimeout(() => {
+    register({ email, password }).then(() => {
       setIsLoading(false)
-    }, 3000)
+    }).catch((error) => {
+      console.error(error)
+      setIsLoading(false)
+    })
   }
 
 

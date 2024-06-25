@@ -1,13 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { lucyApi } from './api/lucy';
 import { setupListeners } from '@reduxjs/toolkit/query';
+import { api } from './api';
 
 export const store = configureStore({
   reducer: {
-    [lucyApi.reducerPath]: lucyApi.reducer,
+    [api.reducerPath]: api.reducer,
   },
   middleware: (getDefaultMiddleware) => {
-    return getDefaultMiddleware().concat(lucyApi.middleware);
+    return getDefaultMiddleware().concat(api.middleware);
   },
 });
 

@@ -1,8 +1,8 @@
-import { useGetMessagesQuery } from '../api/lucy';
+import { api } from '../api';
 import React from 'react';
 
 const Home: React.FC = () => {
-  const { data } = useGetMessagesQuery('');
+  const { data } = api.useGetMessagesQuery('');
 
   console.log('data', data);
 
