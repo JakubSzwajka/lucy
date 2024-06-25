@@ -1,11 +1,13 @@
 import React from 'react';
 import './App.css';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
-import Root from './routes/root';
+import Root from './routes/layouts/root';
 import NotFound from './routes/notFound';
 import Home from './routes/home';
 import { Provider } from 'react-redux';
 import { store } from './store';
+import AuthLayout from './routes/layouts/auth';
+import Register from './routes/auth/register/register';
 
 const router = createBrowserRouter([
   {
@@ -19,6 +21,16 @@ const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: '/register',
+    element: <AuthLayout />,
+    children: [
+      {
+        path: '',
+        element: <Register />,
+      }
+    ]
+  }
 ]);
 
 function App() {
