@@ -16,7 +16,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useToast } from '@/components/ui/use-toast';
 
-interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
+type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>;
 
 export default function RegisterPage({
   className,

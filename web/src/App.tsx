@@ -9,6 +9,7 @@ import { store } from './store';
 import AuthLayout from './routes/layouts/auth';
 import Register from './routes/auth/register';
 import { Toaster } from '@/components/ui/toaster';
+import LoginPage from './routes/auth/login';
 
 const router = createBrowserRouter([
   {
@@ -23,12 +24,16 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: '/register',
+    path: '/auth',
     element: <AuthLayout />,
     children: [
       {
-        path: '',
+        path: '/auth/register',
         element: <Register />,
+      },
+      {
+        path: '/auth/login',
+        element: <LoginPage />,
       },
     ],
   },

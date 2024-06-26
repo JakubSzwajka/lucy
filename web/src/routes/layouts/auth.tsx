@@ -1,30 +1,30 @@
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button';
+import { Outlet } from 'react-router-dom';
 
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-import { Outlet } from "react-router-dom"
-
-const Link = ({ children, ...props }: {
-    children: React.ReactNode
-    href: string,
-    className?: string
-
+const Link = ({
+  children,
+  ...props
+}: {
+  children: React.ReactNode;
+  href: string;
+  className?: string;
 }) => (
-    <a className="text-primary hover:underline" {...props}>
-        {children}
-    </a>
-    )
+  <a className="text-primary hover:underline" {...props}>
+    {children}
+  </a>
+);
 
 export default function AuthenticationPage() {
   return (
     <>
-      <div className="md:hidden">
-      </div>
+      <div className="md:hidden"></div>
       <div className="container relative hidden h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
         <Link
           href="/examples/authentication"
           className={cn(
-            buttonVariants({ variant: "ghost" }),
-            "absolute right-4 top-4 md:right-8 md:top-8"
+            buttonVariants({ variant: 'ghost' }),
+            'absolute right-4 top-4 md:right-8 md:top-8',
           )}
         >
           Login
@@ -36,9 +36,7 @@ export default function AuthenticationPage() {
           </div>
           <div className="relative z-20 mt-auto">
             <blockquote className="space-y-2">
-              <p className="text-lg">
-                Built to make things easier.
-              </p>
+              <p className="text-lg">Built to make things easier.</p>
               {/* <footer className="text-sm">JSZ</footer> */}
             </blockquote>
           </div>
@@ -58,5 +56,5 @@ export default function AuthenticationPage() {
         </div>
       </div>
     </>
-  )
+  );
 }

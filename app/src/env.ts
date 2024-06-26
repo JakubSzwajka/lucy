@@ -24,6 +24,7 @@ const api = z.object({
   TODOIST_API_KEY: z.string(),
   JWT_ACCESS_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),
+  CORS_ORIGIN: z.string(),
 });
 
 const processEnv = {
@@ -41,6 +42,7 @@ const processEnv = {
   TODOIST_API_KEY: process.env.TODOIST_API_KEY,
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+  CORS_ORIGIN: process.env.CORS_ORIGIN,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;

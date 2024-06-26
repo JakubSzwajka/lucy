@@ -16,7 +16,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
   imports: [
     AuthModule,
     LucyModule,
-    SlackModule,
+    // SlackModule,
     ToolsModule,
     TypeOrmModule.forRoot(config[env.NODE_ENV]),
     RouterModule.register([
