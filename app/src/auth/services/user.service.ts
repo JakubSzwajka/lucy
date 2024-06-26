@@ -7,7 +7,7 @@ import { Repository } from 'typeorm';
 export class UserService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>
   ) {}
 
   async createUser(data: { email: string; password: string }): Promise<User> {
@@ -18,7 +18,7 @@ export class UserService {
     if (user) {
       throw new HttpException(
         'User with this email already exists',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     return await this.userRepository.save(data);

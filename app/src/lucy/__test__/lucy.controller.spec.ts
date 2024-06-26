@@ -36,7 +36,7 @@ describe('LucyController', () => {
           name: skill.name,
           description: skill.description,
           parameters: skill.parameters,
-        }),
+        })
       );
     });
   });

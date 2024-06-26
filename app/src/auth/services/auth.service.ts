@@ -12,7 +12,7 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private jwtService: JwtService,
-    private userService: UserService,
+    private userService: UserService
   ) {}
 
   async login(payload: { email: string; password: string }) {
@@ -42,7 +42,7 @@ export class AuthService {
 
   async validateUser(
     email: string,
-    password: string,
+    password: string
   ): Promise<Omit<User, 'password'> | null> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {

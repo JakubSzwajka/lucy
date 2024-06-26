@@ -11,7 +11,7 @@ export class LucyController {
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(Skill)
-    private readonly skillRepository: Repository<Skill>,
+    private readonly skillRepository: Repository<Skill>
   ) {}
   @Get('skills')
   async getSkills(): Promise<Paginated<Skill>> {

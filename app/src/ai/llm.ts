@@ -19,7 +19,7 @@ export const call = async (
     tools: undefined,
     tool_choice: undefined,
     model: Models.GPT_4o,
-  },
+  }
 ): Promise<AIMessageChunk> => {
   const chat = new ChatOpenAI({
     apiKey: env.OPENAI_API_KEY,

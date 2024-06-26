@@ -28,7 +28,7 @@ describe('AuthService', () => {
       expect(user).toEqual(
         expect.objectContaining({
           access_token: expect.any(String),
-        }),
+        })
       );
     });
   });
@@ -44,7 +44,7 @@ describe('AuthService', () => {
       expect(user).toEqual(
         expect.objectContaining({
           access_token: expect.any(String),
-        }),
+        })
       );
     });
 
