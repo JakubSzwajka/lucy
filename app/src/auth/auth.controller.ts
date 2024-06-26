@@ -41,9 +41,11 @@ export class AuthController {
     return req.user;
   }
 
-  // async logout() {
-  //   return 'logout';
-  // }
+  @Post('logout')
+  async logout(@Res() res: Response) {
+    res.clearCookie('accessToken');
+    return res.status(200).send({ message: 'Logout successful' });
+  }
 
   // async forgotPassword() {
   //   return 'forgot-password';
