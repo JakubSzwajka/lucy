@@ -26,9 +26,9 @@ export class AuthController {
   @Public()
   @Post('login')
   async login(@Body() body: RegisterDto, @Res() res: Response) {
-    const { access_token } = await this.authService.login(body);
+    const { accessToken } = await this.authService.login(body);
 
-    res.cookie('access_token', access_token, {
+    res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: env.NODE_ENV === 'production',
       sameSite: 'strict',

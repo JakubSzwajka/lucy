@@ -21,7 +21,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return {
-      access_token: this.jwtService.sign({
+      accessToken: this.jwtService.sign({
         email: user.email,
         sub: user.id,
       }),

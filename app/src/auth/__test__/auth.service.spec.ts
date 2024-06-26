@@ -27,7 +27,7 @@ describe('AuthService', () => {
 
       expect(user).toEqual(
         expect.objectContaining({
-          access_token: expect.any(String),
+          accessToken: expect.any(String),
         })
       );
     });

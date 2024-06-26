@@ -16,5 +16,11 @@ export const authApi = api.injectEndpoints({
         body: data,
       }),
     }),
+    profile: builder.query({
+      query: () => ({
+        url: 'auth/profile',
+        method: 'GET',
+      }),
+    }),
   }),
 });

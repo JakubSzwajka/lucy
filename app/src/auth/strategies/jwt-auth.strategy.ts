@@ -20,16 +20,15 @@ type JwtToken = z.infer<typeof JwtTokenSchema>;
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     @InjectRepository(User)
-    private readonly authSessionRepository: Repository<User>
+    private readonly authSessionRepository: Repository<User>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request) => {
           let token = null;
           if (request && request.cookies) {
-            token = request.cookies['token'];
+            token = request.cookies['accessToken'];
           }
-          console.log('-------> token', token);
           return token;
         },
       ]),

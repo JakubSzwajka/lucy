@@ -10,32 +10,41 @@ import AuthLayout from './routes/layouts/auth';
 import Register from './routes/auth/register';
 import { Toaster } from '@/components/ui/toaster';
 import LoginPage from './routes/auth/login';
+import ProtectedRoute from './ProtectedRoute';
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Root />,
-    errorElement: <NotFound />,
+    element: <AuthLayout />,
     children: [
       {
-        path: '/home',
-        element: <Home />,
+        path: '/login',
+        element: <LoginPage />,
+      },
+      {
+        path: '/register',
+        element: <Register />,
       },
     ],
   },
   {
-    path: '/auth',
-    element: <AuthLayout />,
+    element: <ProtectedRoute />,
     children: [
       {
-        path: '/auth/register',
-        element: <Register />,
-      },
-      {
-        path: '/auth/login',
-        element: <LoginPage />,
+        path: '/app',
+        element: <Root />,
+        children: [
+          {
+            path: '/app/home',
+            element: <Home />,
+          },
+        ],
       },
     ],
+  },
+  {
+    path: '*',
+    element: <NotFound />,
   },
 ]);
 
