@@ -1,9 +1,9 @@
-import { api as baseApi } from './apiClient';
+import { baseClient } from './apiClient';
 import { authApi } from './auth';
 import { lucyApi } from './lucy';
 
 const api = {
-  ...baseApi,
+  ...baseClient,
   ...authApi,
   ...lucyApi,
 };

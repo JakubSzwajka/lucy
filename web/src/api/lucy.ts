@@ -1,6 +1,6 @@
-import { api } from './apiClient';
+import { baseClient } from './apiClient';
 
-export const lucyApi = api.injectEndpoints({
+export const lucyApi = baseClient.injectEndpoints({
   endpoints: (builder) => ({
     getSkills: builder.query({
       query: (query: string) => `lucy/skills${query ? `?query=${query}` : ''}`,

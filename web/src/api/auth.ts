@@ -1,6 +1,6 @@
-import { api } from './apiClient';
+import { baseClient } from './apiClient';
 
-export const authApi = api.injectEndpoints({
+export const authApi = baseClient.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (data: { email: string; password: string }) => ({
