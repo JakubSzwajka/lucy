@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { v4 } from 'uuid';
 
 export enum MessageSource {
   SLACK = 'slack',
@@ -12,10 +13,6 @@ export enum MessageSource {
 
 @Entity()
 export class Message {
-  constructor(partial: Partial<Message>) {
-    Object.assign(this, partial);
-  }
-
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

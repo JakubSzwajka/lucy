@@ -15,7 +15,6 @@ const api = z.object({
   OPENAI_API_KEY: z.string(),
   SLACK_BOT_TOKEN: z.string(),
   SLACK_APP_LEVEL_TOKEN: z.string(),
-  AUTH_TOKEN: z.string(),
   DB_HOST: z.string(),
   DB_USER: z.string(),
   DB_PASSWORD: z.string(),
@@ -23,6 +22,9 @@ const api = z.object({
   DB_PORT: z.string(),
   DB_CA_CERT: z.string().optional(),
   TODOIST_API_KEY: z.string(),
+  JWT_ACCESS_SECRET: z.string(),
+  JWT_REFRESH_SECRET: z.string(),
+  CORS_ORIGIN: z.string(),
 });
 
 const processEnv = {
@@ -31,7 +33,6 @@ const processEnv = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
   SLACK_APP_LEVEL_TOKEN: process.env.SLACK_APP_LEVEL_TOKEN,
-  AUTH_TOKEN: process.env.AUTH_TOKEN,
   DB_HOST: process.env.DB_HOST,
   DB_USER: process.env.DB_USER,
   DB_PASSWORD: process.env.DB_PASSWORD,
@@ -39,6 +40,9 @@ const processEnv = {
   DB_PORT: process.env.DB_PORT,
   DB_CA_CERT: Buffer.from(process.env.DB_CA_CERT || '', 'base64').toString(),
   TODOIST_API_KEY: process.env.TODOIST_API_KEY,
+  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+  CORS_ORIGIN: process.env.CORS_ORIGIN,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;
