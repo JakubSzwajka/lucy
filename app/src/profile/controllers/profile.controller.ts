@@ -8,6 +8,9 @@ import { createZodDto } from 'nestjs-zod';
 
 const CreateAgentSchema = z.object({
   name: z.string(),
+  description: z.string(),
+  defaultPrompt: z.string(),
+  preferredChannel: z.string(),
 });
 
 class CreateAgentDto extends createZodDto(CreateAgentSchema) {}
@@ -59,6 +62,9 @@ export class ProfileController {
     return await this.agentService.updateAgent({
       id,
       name: body.name,
+      description: body.description,
+      defaultPrompt: body.defaultPrompt,
+      preferredChannel: body.preferredChannel,
     });
   }
 }

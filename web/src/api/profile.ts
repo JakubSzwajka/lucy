@@ -24,7 +24,13 @@ export const profileApi = baseClient.injectEndpoints({
       invalidatesTags: [API_TAGS.AGENTS],
     }),
     updateAgent: builder.mutation({
-      query: (data: { id: string; name: string }) => ({
+      query: (data: {
+        id: string;
+        name: string;
+        description: string;
+        defaultPrompt: string;
+        preferredChannel: string;
+      }) => ({
         url: `profile/agents/${data.id}`,
         method: 'PATCH',
         body: data,
