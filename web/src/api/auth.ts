@@ -1,6 +1,6 @@
-import { api } from './apiClient';
+import { baseClient } from './apiClient';
 
-export const authApi = api.injectEndpoints({
+export const authApi = baseClient.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (data: { email: string; password: string }) => ({
@@ -9,17 +9,17 @@ export const authApi = api.injectEndpoints({
         body: data,
       }),
     }),
+    logout: builder.mutation({
+      query: () => ({
+        url: 'auth/logout',
+        method: 'POST',
+      }),
+    }),
     register: builder.mutation({
       query: (data: { email: string; password: string }) => ({
         url: 'auth/register',
         method: 'POST',
         body: data,
-      }),
-    }),
-    profile: builder.query({
-      query: () => ({
-        url: 'auth/profile',
-        method: 'GET',
       }),
     }),
   }),

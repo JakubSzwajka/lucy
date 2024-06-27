@@ -1,11 +1,13 @@
-import { api as baseApi } from './apiClient';
+import { baseClient } from './apiClient';
 import { authApi } from './auth';
 import { lucyApi } from './lucy';
+import { profileApi } from './profile';
 
 const api = {
-  ...baseApi,
+  ...baseClient,
   ...authApi,
   ...lucyApi,
+  ...profileApi,
 };
 
 export { api };

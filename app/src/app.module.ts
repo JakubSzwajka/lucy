@@ -11,6 +11,7 @@ import { ToolsModule } from './tools/tools.module';
 import { AuthModule } from './auth/auth.module';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     LucyModule,
     // SlackModule,
     ToolsModule,
+    ProfileModule,
     TypeOrmModule.forRoot(config[env.NODE_ENV]),
     RouterModule.register([
       {
@@ -34,6 +36,10 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
           {
             path: 'auth',
             module: AuthModule,
+          },
+          {
+            path: 'profile',
+            module: ProfileModule,
           },
         ],
       },

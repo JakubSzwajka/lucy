@@ -11,18 +11,34 @@ import Register from './routes/auth/register';
 import { Toaster } from '@/components/ui/toaster';
 import LoginPage from './routes/auth/login';
 import ProtectedRoute from './ProtectedRoute';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import Messages from './routes/app/messages/messages';
+
+export const ROUTES = {
+  base: '/',
+  auth: {
+    base: '/',
+    login: '/login',
+    register: '/register',
+  },
+  app: {
+    base: '/app',
+    messages: '/app/messages',
+  },
+  all: '*',
+};
 
 const router = createBrowserRouter([
   {
-    path: '/',
+    path: ROUTES.auth.base,
     element: <AuthLayout />,
     children: [
       {
-        path: '/login',
+        path: ROUTES.auth.login,
         element: <LoginPage />,
       },
       {
-        path: '/register',
+        path: ROUTES.auth.register,
         element: <Register />,
       },
     ],
@@ -31,19 +47,23 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
-        path: '/app',
+        path: ROUTES.base,
         element: <Root />,
         children: [
           {
-            path: '/app/home',
+            path: ROUTES.app.base,
             element: <Home />,
+          },
+          {
+            path: ROUTES.app.messages,
+            element: <Messages />,
           },
         ],
       },
     ],
   },
   {
-    path: '*',
+    path: ROUTES.all,
     element: <NotFound />,
   },
 ]);
@@ -52,8 +72,10 @@ function App() {
   return (
     <React.StrictMode>
       <Provider store={store}>
-        <Toaster />
-        <RouterProvider router={router} />
+        <TooltipProvider>
+          <Toaster />
+          <RouterProvider router={router} />
+        </TooltipProvider>
       </Provider>
     </React.StrictMode>
   );
