@@ -6,13 +6,14 @@ import {
   ResizableHandle,
 } from '@/components/ui/resizable';
 import { cn } from '@/lib/utils';
-import { Separator } from '@radix-ui/react-context-menu';
+import { Separator } from '@/components/ui/separator';
 import { Nav } from './nav';
 import { AccountSwitcher } from './accountSwitcher';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../App';
 import { api } from '@/api';
 import { useToast } from '@/components/ui/use-toast';
+import UserNav from './userNav';
 
 const accounts = [
   {
@@ -121,8 +122,14 @@ const Root: React.FC = () => {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={defaultLayout[1]} minSize={30}>
-          <div className="px-8 py-4">
-            <Outlet />
+          <div>
+            <div className="p-2 grid w-full items-center justify-items-end h-[52px]">
+              <UserNav />
+            </div>
+            <Separator />
+            <div className="px-8 py-4">
+              <Outlet />
+            </div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

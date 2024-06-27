@@ -6,12 +6,17 @@ export type Message = {
   source: string;
   human: string;
   agent: string;
+  createdAt: string;
 };
 
 export const columns: ColumnDef<Message>[] = [
   {
-    accessorKey: 'date',
+    accessorKey: 'createdAt',
     header: 'Date',
+    cell: (row) => {
+      const createdAt = row.getValue() as string;
+      return new Date(createdAt).toLocaleString();
+    },
   },
   {
     accessorKey: 'source',

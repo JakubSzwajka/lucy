@@ -1,5 +1,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
+export const API_TAGS = {
+  AGENTS: 'Agents',
+};
+
 export const baseClient = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
@@ -7,4 +11,5 @@ export const baseClient = createApi({
     credentials: 'include',
   }),
   endpoints: () => ({}),
+  tagTypes: [API_TAGS.AGENTS],
 });

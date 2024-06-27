@@ -22,11 +22,5 @@ export const authApi = baseClient.injectEndpoints({
         body: data,
       }),
     }),
-    profile: builder.query({
-      query: () => ({
-        url: 'auth/profile',
-        method: 'GET',
-      }),
-    }),
   }),
 });
