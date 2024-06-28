@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
+  lint-backend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,25 +27,44 @@ jobs:
       - name: Lint
         run: npm run lint
         working-directory: app
+  
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web
+      - name: Lint
+        run: npm run lint
+        working-directory: web
 
-  # test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Setup node
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: ${{ env.node-version }}
-  #         cache: 'npm'
-  #     - name: Setup nx shas
-  #       uses: nrwl/nx-set-shas@v3
-  #     - name: Install dependencies
-  #       run: npm ci
-  #     - name: Test
-  #       run: npm run test
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+      - name: Test
+        run: npm run test
+        working-directory: app
 
   build:
     runs-on: ubuntu-latest
