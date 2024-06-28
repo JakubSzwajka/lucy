@@ -29,7 +29,7 @@ describe('UserService', () => {
         expect.objectContaining({
           id: expect.any(String),
           email: user.email,
-        })
+        }),
       );
 
       const userFromDb = await service.getUserByEmail(user.email);
@@ -38,7 +38,7 @@ describe('UserService', () => {
         expect.objectContaining({
           id: user.id,
           email: user.email,
-        })
+        }),
       );
     });
 
@@ -52,7 +52,7 @@ describe('UserService', () => {
           email,
           password,
         });
-      } catch (error) {
+      } catch (error: any) {
         expect(error.message).toBe('User with this email already exists');
       }
     });
