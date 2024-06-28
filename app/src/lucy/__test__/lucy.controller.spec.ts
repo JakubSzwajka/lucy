@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LucyController } from '../lucy.controller';
 import { AppModule } from '@/lucy/app.module';
-import { Skill } from '../entities/skill.entity';
 import { faker } from '@faker-js/faker';
 
 describe('LucyController', () => {
@@ -23,12 +22,11 @@ describe('LucyController', () => {
     });
 
     it('should create a new skill', async () => {
-      let skill = new Skill({
+      const skill = await controller.createSkill({
         name: faker.lorem.word(),
         description: faker.lorem.sentence(),
         parameters: {},
       });
-      skill = await controller.createSkill(skill);
 
       expect(skill).toEqual(
         expect.objectContaining({
@@ -36,7 +34,7 @@ describe('LucyController', () => {
           name: skill.name,
           description: skill.description,
           parameters: skill.parameters,
-        })
+        }),
       );
     });
   });
