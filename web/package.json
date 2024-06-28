@@ -71,9 +71,9 @@
     "zod": "^3.23.8"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test",
+    "start": "vite",
+    "serve": "vite preview",
+    "build": "tsc && vite build",
     "lint": "eslint \"{src,apps,libs,test}/**/*.tsx\"",
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.tsx\" --fix"
   },
