@@ -1,5 +1,5 @@
-import { api } from '@/api';
 import React from 'react';
+import { api } from '@/api';
 import {
   Card,
   CardContent,
@@ -57,7 +57,7 @@ const NoAssistant: React.FC = () => {
         <CardHeader>
           <CardTitle>Your Assistant</CardTitle>
           <CardDescription>
-            You don't have an assistant yet. Create one to get started.
+            You do not have an assistant yet. Create one to get started.
           </CardDescription>
         </CardHeader>
         <CardContent>
