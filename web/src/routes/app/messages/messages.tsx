@@ -1,3 +1,4 @@
+import React from 'react';
 import { api } from '@/api';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';

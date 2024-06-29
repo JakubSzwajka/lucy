@@ -1,3 +1,4 @@
+import React from 'react';
 type IconProps = React.HTMLAttributes<SVGElement>;
 
 export const Icons = {
