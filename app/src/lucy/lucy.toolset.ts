@@ -14,7 +14,7 @@ export class LucyToolset {
     const result: any[] = [];
     for (const tool of tools) {
       switch (tool.name) {
-        case Tools.GET_TASKS:
+        case Tools.GET_TASKS:{
           const { due } = tool.args;
           const tasks = await this.taskService.getTasks(due);
           result.push({
@@ -22,6 +22,7 @@ export class LucyToolset {
             toolResult: tasks,
           });
           break;
+        }
         default:
           console.error(`Tool ${tool.name} not found`);
       }

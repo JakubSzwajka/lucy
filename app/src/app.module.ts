@@ -18,7 +18,7 @@ import { MessangerModule } from './messanger/messanger.module';
   imports: [
     AuthModule,
     LucyModule,
-    // SlackModule,
+    SlackModule,
     MessangerModule,
     ToolsModule,
     ProfileModule,
