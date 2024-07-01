@@ -43,6 +43,10 @@ import { MessangerModule } from './messanger/messanger.module';
             path: 'profile',
             module: ProfileModule,
           },
+          {
+            path: 'messanger',
+            module: MessangerModule,
+          },
         ],
       },
     ]),

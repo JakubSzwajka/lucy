@@ -1,5 +1,6 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { LucyService } from './lucy/lucy.service';
+import { Public } from './auth/decorator';
 
 @Controller()
 export class AppController {
@@ -13,5 +14,27 @@ export class AppController {
     return {
       message: response,
     };
+  }
+
+  @Public()
+  @Get()
+  async getWebhook() {
+    return 'Hello World';
+  }
+
+  @Public()
+  @Get('favicon.ico')
+  async getFavicon() {
+    return '';
+  }
+  @Public()
+  @Get('apple-touch-icon.png')
+  async getAppleTouchIcon() {
+    return '';
+  }
+  @Public()
+  @Get('apple-touch-icon-precomposed.png')
+  async getAppleTouchIconPrecomposed() {
+    return '';
   }
 }
