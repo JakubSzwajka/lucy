@@ -28,7 +28,7 @@ describe('AuthService', () => {
       expect(user).toEqual(
         expect.objectContaining({
           accessToken: expect.any(String),
-        })
+        }),
       );
     });
   });
@@ -43,8 +43,8 @@ describe('AuthService', () => {
 
       expect(user).toEqual(
         expect.objectContaining({
-          access_token: expect.any(String),
-        })
+          accessToken: expect.any(String),
+        }),
       );
     });
 
@@ -54,7 +54,7 @@ describe('AuthService', () => {
 
       try {
         await service.login({ email, password });
-      } catch (error) {
+      } catch (error: any) {
         expect(error.message).toBe('Unauthorized');
       }
     });
@@ -66,7 +66,7 @@ describe('AuthService', () => {
 
       try {
         await service.login({ email, password: faker.internet.password() });
-      } catch (error) {
+      } catch (error: any) {
         expect(error.message).toBe('Unauthorized');
       }
     });

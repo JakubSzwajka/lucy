@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { v4 } from 'uuid';
 
 export enum MessageSource {
   SLACK = 'slack',

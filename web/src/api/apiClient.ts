@@ -7,7 +7,7 @@ export const API_TAGS = {
 export const baseClient = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: `${process.env.REACT_APP_API_URL}/api`,
+    baseUrl: `${import.meta.env.VITE_APP_API_URL}/api`,
     credentials: 'include',
   }),
   endpoints: () => ({}),

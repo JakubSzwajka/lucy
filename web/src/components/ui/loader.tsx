@@ -1,3 +1,4 @@
+import React from 'react';
 import { Icons } from './icons';
 
 const Loader = ({ loading = false, children }) => {

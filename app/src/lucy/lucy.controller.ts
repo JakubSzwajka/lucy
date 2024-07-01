@@ -4,6 +4,16 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Skill } from './entities/skill.entity';
 import { Paginated } from 'src/infra/types';
+import { z } from 'zod';
+import { createZodDto } from 'nestjs-zod';
+
+const CreateSkillSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  parameters: z.object({}),
+});
+
+class CreateSkillDto extends createZodDto(CreateSkillSchema) {}
 
 @Controller()
 export class LucyController {
@@ -22,7 +32,7 @@ export class LucyController {
   }
 
   @Post('skills')
-  async createSkill(@Body() skill: Skill): Promise<Skill> {
+  async createSkill(@Body() skill: CreateSkillDto): Promise<Skill> {
     return this.skillRepository.save(skill);
   }
 

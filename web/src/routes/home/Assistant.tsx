@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/use-toast';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -25,6 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 const AssistantSummary = ({
   assistant,
@@ -79,105 +86,110 @@ const AssistantSummary = ({
   };
 
   return (
-    <div className="space-y-6">
-      <H3>AI Assistant Summary</H3>
-      <P>
-        Your assistant is a virtual agent that can help you with your tasks and
-        answer your questions.
-      </P>
-      <Separator />
+    <Card>
+      <CardHeader>
+        <CardTitle>AI Assistant Summary</CardTitle>
+        <CardDescription>
+          Your assistant is a virtual agent that can help you with your tasks
+          and answer your questions.
+        </CardDescription>
+      </CardHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Assistant Name</FormLabel>
-                <FormControl>
-                  <Input
-                    id="name"
-                    placeholder="Assistant Name"
-                    type="text"
-                    autoComplete="name"
-                    disabled={false}
-                    {...form.register('name')}
-                  />
-                </FormControl>
-                <FormMessage {...field} />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    id="description"
-                    placeholder="Description"
-                    autoComplete="description"
-                    disabled={false}
-                    {...form.register('description')}
-                  />
-                </FormControl>
-                <FormMessage {...field} />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="defaultPrompt"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Default Prompt</FormLabel>
-                <FormControl>
-                  <Textarea
-                    id="defaultPrompt"
-                    placeholder="Default Prompt"
-                    autoComplete="defaultPrompt"
-                    disabled={false}
-                    {...form.register('defaultPrompt')}
-                  />
-                </FormControl>
-                <FormMessage {...field} />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="preferredChannel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Preferred Channel</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardContent className="space-y-8">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assistant Name</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select preferred way of communication for agent." />
-                    </SelectTrigger>
+                    <Input
+                      id="name"
+                      placeholder="Assistant Name"
+                      type="text"
+                      autoComplete="name"
+                      disabled={false}
+                      {...form.register('name')}
+                    />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="slack">Slack</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage {...field} />
-              </FormItem>
-            )}
-          />
-          <Button disabled={isLoading}>
-            {isLoading && (
-              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Update
-          </Button>
+                  <FormMessage {...field} />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      id="description"
+                      placeholder="Description"
+                      autoComplete="description"
+                      disabled={false}
+                      {...form.register('description')}
+                    />
+                  </FormControl>
+                  <FormMessage {...field} />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="defaultPrompt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Default Prompt</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      id="defaultPrompt"
+                      placeholder="Default Prompt"
+                      autoComplete="defaultPrompt"
+                      disabled={false}
+                      {...form.register('defaultPrompt')}
+                    />
+                  </FormControl>
+                  <FormMessage {...field} />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="preferredChannel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Preferred Channel</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select preferred way of communication for agent." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="slack">Slack</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage {...field} />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+          <CardFooter>
+            <Button disabled={isLoading}>
+              {isLoading && (
+                <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Update
+            </Button>
+          </CardFooter>
         </form>
       </Form>
-    </div>
+    </Card>
   );
 };
 

@@ -2,6 +2,20 @@ name: pull-request
 
 env:
   node-version: 18.19.0 # should be in line with .nvmrc
+  NODE_ENV: test
+  PORT: 3000
+  OPENAI_API_KEY: dummy
+  SLACK_BOT_TOKEN: dummy
+  SLACK_APP_LEVEL_TOKEN: dummy
+  TODOIST_API_KEY: dummy
+  JWT_ACCESS_SECRET: dummy
+  JWT_REFRESH_SECRET: dummy
+  DB_HOST: localhost
+  DB_PORT: 5432
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  DB_NAME: postgres
+  CORS_ORIGIN: http://localhost:3000
 
 on:
   pull_request:
@@ -9,7 +23,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
+  lint-backend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,27 +41,46 @@ jobs:
       - name: Lint
         run: npm run lint
         working-directory: app
+  
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web
+      - name: Lint
+        run: npm run lint
+        working-directory: web
 
-  # test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Setup node
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: ${{ env.node-version }}
-  #         cache: 'npm'
-  #     - name: Setup nx shas
-  #       uses: nrwl/nx-set-shas@v3
-  #     - name: Install dependencies
-  #       run: npm ci
-  #     - name: Test
-  #       run: npm run test
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+      - name: Test
+        run: npm run test
+        working-directory: app
 
-  build:
+  build-backend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -65,3 +98,22 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: app
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web
+      - name: Build
+        run: npm run build
+        working-directory: web
