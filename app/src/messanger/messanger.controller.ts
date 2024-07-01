@@ -5,6 +5,7 @@ import {
   ValidateWebhook,
 } from 'fb-messenger-bot-api';
 import { Public } from '../auth/decorator';
+import { env } from '../env';
 
 @Controller()
 export class MessangerController {
@@ -55,10 +56,7 @@ export class MessangerController {
       console.log('challenge', challenge);
 
       if (mode && token) {
-        if (
-          mode === 'subscribe' &&
-          token === 'my_voice_is_my_password_verify_me'
-        ) {
+        if (mode === 'subscribe' && token === env.MESSANGER_TOKEN) {
           console.log('WEBHOOK_VERIFIED');
           return res.status(200).send(challenge);
         } else {
