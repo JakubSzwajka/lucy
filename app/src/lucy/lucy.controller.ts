@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { Message } from './entities/message.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,14 +6,15 @@ import { Skill } from './entities/skill.entity';
 import { Paginated } from 'src/infra/types';
 import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
+import { tools } from './lucy.service';
 
-const CreateSkillSchema = z.object({
+const SkillSchema = z.object({
   name: z.string(),
   description: z.string(),
-  parameters: z.object({}),
+  parameters: z.string(),
 });
 
-class CreateSkillDto extends createZodDto(CreateSkillSchema) {}
+class SkillDto extends createZodDto(SkillSchema) {}
 
 @Controller()
 export class LucyController {
@@ -25,15 +26,16 @@ export class LucyController {
   ) {}
 
   @Get('skills')
-  async getSkills(): Promise<Paginated<Skill>> {
+  async getSkills(): Promise<Paginated<SkillDto>> {
     return {
-      items: await this.skillRepository.find(),
+      items: [
+        {
+          name: 'Get Tasks',
+          description: 'Get a list of tasks',
+          parameters: JSON.stringify(tools[0]),
+        },
+      ],
     };
-  }
-
-  @Post('skills')
-  async createSkill(@Body() skill: CreateSkillDto): Promise<Skill> {
-    return this.skillRepository.save(skill);
   }
 
   @Get('messages')

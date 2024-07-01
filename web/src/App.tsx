@@ -13,6 +13,7 @@ import ProtectedRoute from './ProtectedRoute';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Messages from './routes/app/messages/messages';
 import { ThemeProvider } from '@/components/theme-provider';
+import Skills from './routes/app/skills/skills';
 
 export const ROUTES = {
   base: '/',
@@ -24,6 +25,7 @@ export const ROUTES = {
   app: {
     base: '/app',
     messages: '/app/messages',
+    skills: '/app/skills',
   },
   all: '*',
 };
@@ -57,6 +59,10 @@ const router = createBrowserRouter([
           {
             path: ROUTES.app.messages,
             element: <Messages />,
+          },
+          {
+            path: ROUTES.app.skills,
+            element: <Skills />,
           },
         ],
       },

@@ -103,6 +103,12 @@ const Root: React.FC = () => {
                     variant: 'ghost',
                     url: ROUTES.app.messages,
                   },
+                  {
+                    title: 'Skills',
+                    icon: Rocket,
+                    variant: 'ghost',
+                    url: ROUTES.app.skills,
+                  },
                 ]}
               />
               <Nav

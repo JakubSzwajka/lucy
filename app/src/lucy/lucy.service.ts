@@ -14,7 +14,7 @@ import { LucySystemMessage } from '@/lucy/ai/prompt';
 import { LucyToolset, Tools } from './lucy.toolset';
 import { OpenAIClient } from '@langchain/openai';
 
-const tools: OpenAIClient.ChatCompletionTool[] = [
+export const tools: OpenAIClient.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {

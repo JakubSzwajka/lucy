@@ -126,7 +126,7 @@ We are not liable for any damages arising from the use of this app.
 We may update these terms. Continued use of the app means acceptance of the new terms.
 
 **7. Contact Info:**
-For any questions, contact us at [your email/phone].
+For any questions, contact us at szwajkajakub@gmail.com.
 `);
     } catch (error) {
       console.error(error);
