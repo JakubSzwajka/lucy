@@ -96,4 +96,41 @@ For any privacy concerns, contact us at szwajkajakub@gmail.com.
       return res.status(400).send('ERROR');
     }
   }
+
+  @Public()
+  @Get('terms-of-service')
+  async termsOfService(@Request() req, @Res() res) {
+    try {
+      return res.status(200).send(`
+
+
+**Terms of Service**
+
+**1. Acceptance of Terms:**
+By using this app, you agree to these terms.
+
+**2. User Responsibilities:**
+- Use the app lawfully.
+- Do not misuse or abuse the app.
+
+**3. Data Storage:**
+We store conversation history securely.
+
+**4. User Rights:**
+You can access, modify, or delete your data anytime.
+
+**5. Limitation of Liability:**
+We are not liable for any damages arising from the use of this app.
+
+**6. Changes to Terms:**
+We may update these terms. Continued use of the app means acceptance of the new terms.
+
+**7. Contact Info:**
+For any questions, contact us at [your email/phone].
+`);
+    } catch (error) {
+      console.error(error);
+      return res.status(400).send('ERROR');
+    }
+  }
 }
