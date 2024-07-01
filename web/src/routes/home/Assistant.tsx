@@ -1,6 +1,5 @@
 import React from 'react';
 import { api } from '@/api';
-import { H3, P } from '@/components/ui/typography';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
