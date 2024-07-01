@@ -12,12 +12,14 @@ import { AuthModule } from './auth/auth.module';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ProfileModule } from './profile/profile.module';
+import { MessangerModule } from './messanger/messanger.module';
 
 @Module({
   imports: [
     AuthModule,
     LucyModule,
     // SlackModule,
+    MessangerModule,
     ToolsModule,
     ProfileModule,
     TypeOrmModule.forRoot(config[env.NODE_ENV]),
@@ -40,6 +42,10 @@ import { ProfileModule } from './profile/profile.module';
           {
             path: 'profile',
             module: ProfileModule,
+          },
+          {
+            path: 'messanger',
+            module: MessangerModule,
           },
         ],
       },
