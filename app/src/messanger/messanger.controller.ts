@@ -38,9 +38,28 @@ export class MessangerController {
 
   @Public()
   @Get('messaging-webhook')
-  async getWebhook2() {
-    console.log('Validating webhook');
-    return ValidateWebhook.validateServer;
+  async getWebhook2(@Request() req, @Res() res) {
+    try {
+      const mode = req.body['hub.mode'];
+      const token = req.body['hub.verify_token'];
+      const challenge = req.body['hub.challenge'];
+
+      console.log('mode', mode);
+      console.log('token', token);
+      console.log('challenge', challenge);
+
+      if (mode && token) {
+        if (mode === 'subscribe' && token === env.MESSANGER_TOKEN) {
+          console.log('WEBHOOK_VERIFIED');
+          return res.status(200).send(challenge);
+        } else {
+          return res.sendStatus(403);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      return res.status(400).send('ERROR');
+    }
   }
 
   @Public()
