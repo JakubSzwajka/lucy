@@ -67,7 +67,7 @@ export class MessangerController {
   }
 
   @Public()
-  @Post('privacy-policy')
+  @Get('privacy-policy')
   async privacyPolicy(@Request() req, @Res() res) {
     try {
       return res.status(200).send(`
