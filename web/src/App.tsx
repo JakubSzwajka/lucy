@@ -1,5 +1,4 @@
 import React from 'react';
-import './App.css';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import Root from './routes/layouts/root';
 import NotFound from './routes/notFound';
@@ -13,6 +12,7 @@ import LoginPage from './routes/auth/login';
 import ProtectedRoute from './ProtectedRoute';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Messages from './routes/app/messages/messages';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export const ROUTES = {
   base: '/',
@@ -72,10 +72,12 @@ function App() {
   return (
     <React.StrictMode>
       <Provider store={store}>
-        <TooltipProvider>
-          <Toaster />
-          <RouterProvider router={router} />
-        </TooltipProvider>
+        <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+          <TooltipProvider>
+            <Toaster />
+            <RouterProvider router={router} />
+          </TooltipProvider>
+        </ThemeProvider>
       </Provider>
     </React.StrictMode>
   );

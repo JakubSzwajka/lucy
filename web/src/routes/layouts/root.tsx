@@ -123,9 +123,7 @@ const Root: React.FC = () => {
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={defaultLayout[1]} minSize={30}>
           <div>
-            <div className="p-2 grid w-full items-center justify-items-end h-[52px]">
-              <UserNav />
-            </div>
+            <UserNav />
             <Separator />
             <div className="px-8 py-4">
               <Outlet />
