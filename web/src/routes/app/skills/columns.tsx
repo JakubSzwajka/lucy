@@ -11,6 +11,10 @@ export type Message = {
 
 export const columns: ColumnDef<Message>[] = [
   {
+    accessorKey: 'id',
+    header: 'ID',
+  },
+  {
     accessorKey: 'name',
     header: 'Name',
   },
@@ -19,7 +23,7 @@ export const columns: ColumnDef<Message>[] = [
     header: 'Description',
   },
   {
-    accessorKey: 'parameters',
-    header: 'Parameters',
+    accessorKey: 'tool',
+    header: 'Tool',
   },
 ];

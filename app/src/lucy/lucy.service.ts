@@ -11,29 +11,8 @@ import {
   ToolMessage,
 } from '@langchain/core/messages';
 import { LucySystemMessage } from '@/lucy/ai/prompt';
-import { LucyToolset, Tools } from './lucy.toolset';
-import { OpenAIClient } from '@langchain/openai';
-
-export const tools: OpenAIClient.ChatCompletionTool[] = [
-  {
-    type: 'function',
-    function: {
-      name: Tools.GET_TASKS,
-      description: 'Get a list of tasks',
-      parameters: {
-        type: 'object',
-        properties: {
-          due: {
-            type: 'string',
-            enum: ['today | overdue'],
-            description: 'Due date of the tasks.',
-          },
-        },
-        required: ['due'],
-      },
-    },
-  },
-];
+import { LucyToolset } from './lucy.toolset';
+import { tools } from './lucy.tools';
 
 @Injectable()
 export class LucyService {

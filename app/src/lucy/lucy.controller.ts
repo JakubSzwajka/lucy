@@ -5,12 +5,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Paginated } from 'src/infra/types';
 import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
-import { LucyService, tools } from './lucy.service';
+import { LucyService } from './lucy.service';
+import { skills } from './lucy.tools';
 
 const SkillSchema = z.object({
+  id: z.string(),
   name: z.string(),
   description: z.string(),
-  parameters: z.string(),
+  tool: z.string(),
 });
 
 class SkillDto extends createZodDto(SkillSchema) {}
@@ -42,13 +44,12 @@ export class LucyController {
   @Get('skills')
   async getSkills(): Promise<Paginated<SkillDto>> {
     return {
-      items: [
-        {
-          name: 'Get Tasks',
-          description: 'Get a list of tasks',
-          parameters: JSON.stringify(tools[0]),
-        },
-      ],
+      items: skills.map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        description: skill.description,
+        tool: JSON.stringify(skill.tool),
+      })),
     };
   }
 
