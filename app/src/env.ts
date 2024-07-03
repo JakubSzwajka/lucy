@@ -25,8 +25,6 @@ const api = z.object({
   JWT_ACCESS_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),
   CORS_ORIGIN: z.string(),
-  MESSANGER_TOKEN: z.string(),
-  LUCY_FB_PAGE_TOKEN: z.string(),
 });
 
 const processEnv = {
@@ -45,8 +43,6 @@ const processEnv = {
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
   CORS_ORIGIN: process.env.CORS_ORIGIN,
-  MESSANGER_TOKEN: process.env.MESSANGER_TOKEN,
-  LUCY_FB_PAGE_TOKEN: process.env.LUCY_FB_PAGE_TOKEN,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;
