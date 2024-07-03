@@ -2,7 +2,6 @@ import { Controller, Get, Post, Body } from '@nestjs/common';
 import { Message } from './entities/message.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Skill } from './entities/skill.entity';
 import { Paginated } from 'src/infra/types';
 import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
@@ -21,11 +20,10 @@ export class LucyController {
   constructor(
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
-    @InjectRepository(Skill)
     private readonly lucy: LucyService,
   ) {}
 
-  @Post('/talk')
+  @Post('talk')
   async talk(@Body() body: { message: string }): Promise<{
     message: string;
   }> {
