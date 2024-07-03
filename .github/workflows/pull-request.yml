@@ -5,8 +5,6 @@ env:
   NODE_ENV: test
   PORT: 3000
   OPENAI_API_KEY: dummy
-  SLACK_BOT_TOKEN: dummy
-  SLACK_APP_LEVEL_TOKEN: dummy
   TODOIST_API_KEY: dummy
   JWT_ACCESS_SECRET: dummy
   JWT_REFRESH_SECRET: dummy

@@ -1,7 +1,6 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { LucyModule } from './lucy/lucy.module';
-import { SlackModule } from './slack/slackModule';
 import { APP_GUARD, APP_PIPE, RouterModule } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from './db';
@@ -17,7 +16,6 @@ import { ProfileModule } from './profile/profile.module';
   imports: [
     AuthModule,
     LucyModule,
-    // SlackModule,
     ToolsModule,
     ProfileModule,
     TypeOrmModule.forRoot(config[env.NODE_ENV]),
@@ -28,10 +26,6 @@ import { ProfileModule } from './profile/profile.module';
           {
             path: 'lucy',
             module: LucyModule,
-          },
-          {
-            path: '',
-            module: SlackModule,
           },
           {
             path: 'auth',
