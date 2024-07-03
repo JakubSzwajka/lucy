@@ -47,6 +47,9 @@ jobs:
   
   lint-frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -57,15 +60,17 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
+          cache-dependency-path: './web/package-lock.json'
       - name: Install dependencies
         run: npm ci
-        working-directory: web
       - name: Lint
         run: npm run lint
-        working-directory: web
 
   test-backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -76,15 +81,17 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
+          cache-dependency-path: './app/package-lock.json'
       - name: Install dependencies
         run: npm ci
-        working-directory: app
       - name: Test
         run: npm run test
-        working-directory: app
 
   build-backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -95,15 +102,17 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
+          cache-dependency-path: './app/package-lock.json'
       - name: Install dependencies
         run: npm ci
-        working-directory: app
       - name: Build
         run: npm run build
-        working-directory: app
 
   build-frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -114,9 +123,8 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
+          cache-dependency-path: './web/package-lock.json'
       - name: Install dependencies
         run: npm ci
-        working-directory: web
       - name: Build
         run: npm run build
-        working-directory: web
