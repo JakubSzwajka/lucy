@@ -16,12 +16,7 @@ export class HTTPLoggingMiddleware implements NestMiddleware {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { cookie, authorization, ...requestWithoutCookies } =
         request.headers;
-        this.logger.log({
-          method,
-          originalUrl,
-          statusCode,
-          duration: `${duration}ms`,
-        });
+        this.logger.log(`Request: ${method} ${originalUrl} - ${statusCode} - ${duration}ms`);
     });
     next();
   }

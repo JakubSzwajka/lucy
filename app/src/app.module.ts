@@ -13,9 +13,25 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ProfileModule } from './profile/profile.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksService } from './infra/tasks.service';
+import { WinstonModule } from 'nest-winston';
+import * as winston from 'winston';
 
 @Module({
   imports: [
+    WinstonModule.forRoot({
+      transports: [
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.timestamp(),
+            winston.format.json(),
+            // winston.format.printf(({ level, message, timestamp }) => {
+            //   return `${timestamp} [${level}] ${message}`;
+            // }),
+          ),
+        }),
+      ],
+    }),
     ScheduleModule.forRoot(),
     AuthModule,
     LucyModule,
