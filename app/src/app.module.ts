@@ -15,9 +15,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TasksService } from './infra/tasks.service';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
+    HttpModule,
     WinstonModule.forRoot({
       transports: [
         new winston.transports.Console({
