@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { Message } from './entities/message.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,7 +6,7 @@ import { Skill } from './entities/skill.entity';
 import { Paginated } from 'src/infra/types';
 import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
-import { tools } from './lucy.service';
+import { LucyService, tools } from './lucy.service';
 
 const SkillSchema = z.object({
   name: z.string(),
@@ -22,8 +22,18 @@ export class LucyController {
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(Skill)
-    private readonly skillRepository: Repository<Skill>,
+    private readonly lucy: LucyService,
   ) {}
+
+  @Post('/talk')
+  async talk(@Body() body: { message: string }): Promise<{
+    message: string;
+  }> {
+    const response = await this.lucy.talk(body.message);
+    return {
+      message: response,
+    };
+  }
 
   @Get('skills')
   async getSkills(): Promise<Paginated<SkillDto>> {
