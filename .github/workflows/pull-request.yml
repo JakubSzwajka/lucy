@@ -1,7 +1,7 @@
 name: pull-request
 
 env:
-  node-version: 18.19.0 # should be in line with .nvmrc
+  node-version: 20.15.0
   NODE_ENV: test
   PORT: 3000
   OPENAI_API_KEY: dummy
