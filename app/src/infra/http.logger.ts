@@ -16,25 +16,12 @@ export class HTTPLoggingMiddleware implements NestMiddleware {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { cookie, authorization, ...requestWithoutCookies } =
         request.headers;
-
-      // use debug method for /metrics endpoint and /health endpoint
-      if (originalUrl === '/metrics' || originalUrl === '/health') {
-        this.logger.debug({
-          method,
-          originalUrl,
-          statusCode,
-          duration: `${duration}ms`,
-          //   headers: env.LOG_HTTP_HEADERS ? requestWithoutCookies : undefined,
-        });
-      } else {
         this.logger.log({
           method,
           originalUrl,
           statusCode,
           duration: `${duration}ms`,
-          //   headers: env.LOG_HTTP_HEADERS ? requestWithoutCookies : undefined,
         });
-      }
     });
     next();
   }

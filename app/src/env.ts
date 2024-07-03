@@ -23,6 +23,7 @@ const api = z.object({
   JWT_ACCESS_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),
   CORS_ORIGIN: z.string(),
+  BETTER_STACK_HEARTBEAT_URL: z.string().optional(),
 });
 
 const processEnv = {
@@ -39,6 +40,7 @@ const processEnv = {
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
   CORS_ORIGIN: process.env.CORS_ORIGIN,
+  BETTER_STACK_HEARTBEAT_URL: process.env.BETTER_STACK_HEARTBEAT_URL,
 };
 
 type ApiSchemaInput = z.infer<typeof api>;

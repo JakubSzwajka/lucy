@@ -11,9 +11,12 @@ import { AuthModule } from './auth/auth.module';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ProfileModule } from './profile/profile.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { TasksService } from './infra/tasks.service';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     AuthModule,
     LucyModule,
     ToolsModule,
@@ -41,6 +44,7 @@ import { ProfileModule } from './profile/profile.module';
   ],
   controllers: [AppController],
   providers: [
+    TasksService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
