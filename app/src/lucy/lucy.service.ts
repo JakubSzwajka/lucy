@@ -45,7 +45,14 @@ export class LucyService {
 
   private readonly MINUTES_OF_CONVERSATION_HISTORY = 10;
 
-  async talk(query: string): Promise<string> {
+  async talk(
+    query: string,
+    options: {
+      messageSource: string;
+    },
+  ): Promise<string> {
+    const messageId = v4();
+    console.debug(`(msgId: ${messageId}) Received query`, query);
     const history = await this.messageRepository.find({
       // last 10 minutes
       where: {
@@ -56,6 +63,10 @@ export class LucyService {
         }),
       },
     });
+    console.debug(
+      `(msgId: ${messageId}) Retrieved conversation history`,
+      history.length,
+    );
 
     const conversation = history
       .map((message) => {
@@ -76,6 +87,10 @@ export class LucyService {
     let modelResponse = response.content as string;
 
     if (response.tool_calls && response.tool_calls.length > 0) {
+      console.debug(
+        `(msgId: ${messageId}) Received tool calls`,
+        response.tool_calls,
+      );
       messages.push(new AIMessage(response));
       const toolResults: {
         tool: {
@@ -101,15 +116,17 @@ export class LucyService {
 
     try {
       const message = this.messageRepository.create({
+        id: messageId,
         conversationId: v4(),
         human: query,
         agent: modelResponse,
-        source: MessageSource.SLACK,
+        source: options.messageSource || MessageSource.UNKNOWN,
       });
       await this.messageRepository.save(message);
     } catch (error) {
-      console.error('Error saving message', error);
+      console.error(`(msgId: ${messageId}) Error saving message`, error);
     }
+    console.debug(`(msgId: ${messageId}) Returning response`, modelResponse);
     return modelResponse;
   }
 }

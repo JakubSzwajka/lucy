@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Headers } from '@nestjs/common';
 import { Message } from './entities/message.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,10 +24,16 @@ export class LucyController {
   ) {}
 
   @Post('talk')
-  async talk(@Body() body: { message: string }): Promise<{
+  async talk(
+    @Body() body: { message: string },
+    @Headers() headers,
+  ): Promise<{
     message: string;
   }> {
-    const response = await this.lucy.talk(body.message);
+    const source = headers['x-message-source'];
+    const response = await this.lucy.talk(body.message, {
+      messageSource: source,
+    });
     return {
       message: response,
     };

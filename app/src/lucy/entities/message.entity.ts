@@ -7,6 +7,8 @@ import {
 } from 'typeorm';
 
 export enum MessageSource {
+  UNKNOWN = 'unknown',
+  MESSANGER = 'messanger',
   SLACK = 'slack',
 }
 
