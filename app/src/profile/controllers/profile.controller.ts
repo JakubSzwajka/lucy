@@ -8,12 +8,18 @@ import { createZodDto } from 'nestjs-zod';
 
 const CreateAgentSchema = z.object({
   name: z.string(),
+});
+
+class CreateAgentDto extends createZodDto(CreateAgentSchema) {}
+
+const UpdateAgentSchema = z.object({
+  name: z.string(),
   description: z.string(),
   defaultPrompt: z.string(),
   preferredChannel: z.string(),
 });
 
-class CreateAgentDto extends createZodDto(CreateAgentSchema) {}
+class UpdateAgentDto extends createZodDto(UpdateAgentSchema) {}
 
 @Controller()
 export class ProfileController {
@@ -56,7 +62,7 @@ export class ProfileController {
   @Patch('agents/:id')
   async updateAgent(
     @Request() req,
-    @Body() body: CreateAgentDto,
+    @Body() body: UpdateAgentDto,
   ): Promise<Agent> {
     const { id } = req.params;
     return await this.agentService.updateAgent({
