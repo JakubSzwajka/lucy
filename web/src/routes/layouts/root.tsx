@@ -1,4 +1,4 @@
-import { Inbox, LogOut, Rocket } from 'lucide-react';
+import { Inbox, LogOut, Rocket, Home } from 'lucide-react';
 import React from 'react';
 import {
   ResizablePanelGroup,
@@ -98,6 +98,12 @@ const Root: React.FC = () => {
               <Nav
                 isCollapsed={isCollapsed}
                 links={[
+                  {
+                    title: 'Dashboard',
+                    icon: Home,
+                    variant: 'ghost',
+                    url: ROUTES.app.base,
+                  },
                   {
                     title: 'Messages',
                     icon: Inbox,
