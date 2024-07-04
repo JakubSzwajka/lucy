@@ -33,8 +33,10 @@ export class LucyController {
     message: string;
   }> {
     const source = headers['x-message-source'];
+    const conversationId = headers['x-conversation-id'];
     const response = await this.lucy.talk(body.message, {
       messageSource: source,
+      conversationId,
     });
     return {
       message: response,

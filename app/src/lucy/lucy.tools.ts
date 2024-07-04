@@ -11,7 +11,7 @@ type Skill = {
 export const skills: Skill[] = [
     {
         id: 'Todoist-Get-Tasks',
-        name: 'Get_Tasks',
+        name: Tools.GET_TASKS,
         description: 'Get a list of tasks',
         tool: {
             type: 'function',
@@ -23,7 +23,8 @@ export const skills: Skill[] = [
                     properties: {
                         due: {
                             type: 'string',
-                            enum: ['today', 'overdue'],
+                            // enum: ['today', 'overdue'],
+                            enum: ['today | overdue'],
                             description: 'Due date of the tasks.'
                         }
                     },
