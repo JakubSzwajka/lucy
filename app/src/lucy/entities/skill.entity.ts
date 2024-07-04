@@ -1,5 +1,5 @@
-import { OpenAIClient } from '@langchain/openai';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Agent } from './agent.entity';
 
 @Entity()
 export class Skill {
@@ -7,11 +7,11 @@ export class Skill {
   id: string;
 
   @Column({ unique: true })
-  name: string;
+  skillId: string;
+
+  @ManyToOne(() => Agent, (agent) => agent.skills)
+  agent: Agent;
 
   @Column()
-  description: string;
-
-  @Column('simple-json')
-  parameters: OpenAIClient.ChatCompletionTool['function']['parameters'];
+  active: boolean = false;
 }

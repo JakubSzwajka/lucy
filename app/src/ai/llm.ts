@@ -15,19 +15,25 @@ export const call = async (
     tools?: OpenAIClient.ChatCompletionTool[];
     tool_choice?: OpenAIClient.ChatCompletionToolChoiceOption;
     model?: Models;
+    jsonResponse?: boolean;
   } = {
     tools: undefined,
     tool_choice: undefined,
     model: Models.GPT_4o,
+    jsonResponse: false
   },
 ): Promise<AIMessageChunk> => {
+
   const chat = new ChatOpenAI({
     apiKey: env.OPENAI_API_KEY,
-    model: Models.GPT_3_5_TURBO,
+    model: options.model,
     tags: TAGS,
   }).bind({
     tools: options.tools,
     tool_choice: options.tool_choice,
+    response_format: options.jsonResponse ? {
+      type: 'json_object'
+    } : undefined
   });
 
   return await chat.invoke(messages);

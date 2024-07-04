@@ -1,5 +1,6 @@
-import { Column, Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user.entity';
+import { Skill } from './skill.entity';
 
 @Entity()
 export class Agent {
@@ -20,4 +21,7 @@ export class Agent {
 
   @OneToOne(() => User, (user) => user.agent)
   owner: User;
+
+  @OneToMany(() => Skill, (skill) => skill.agent)
+  skills: Skill[];
 }

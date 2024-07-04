@@ -159,13 +159,13 @@ const AssistantSummary = ({
               name="preferredChannel"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Preferred Channel</FormLabel>
+                  <FormLabel>Preferred Channel (TBD)</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger disabled={true}>
                         <SelectValue placeholder="Select preferred way of communication for agent." />
                       </SelectTrigger>
                     </FormControl>
