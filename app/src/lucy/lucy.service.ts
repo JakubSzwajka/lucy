@@ -53,7 +53,10 @@ export class LucyService {
 
     const conversation = history
       .map((message) => {
-        return [new HumanMessage(message.human), new AIMessage(message.agent)];
+        return [
+          new HumanMessage(message.humanMessage),
+          new AIMessage(message.agentMessage),
+        ];
       })
       .flat();
 
@@ -107,8 +110,12 @@ export class LucyService {
       const message = this.messageRepository.create({
         id: messageId,
         conversationId,
-        human: query,
-        agent: modelResponse,
+        humanMessage: query,
+        agentMessage: modelResponse,
+        agent: agent,
+        user: {
+          id: agent.owner.id,
+        },
         source: options.messageSource || MessageSource.UNKNOWN,
       });
       await this.messageRepository.save(message);

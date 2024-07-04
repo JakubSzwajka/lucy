@@ -4,7 +4,10 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
 } from 'typeorm';
+import { Agent } from './agent.entity';
+import { User } from './user.entity';
 
 export enum MessageSource {
   UNKNOWN = 'unknown',
@@ -24,14 +27,20 @@ export class Message {
   conversationId: string;
 
   @Column()
-  human: string;
+  humanMessage: string;
 
   @Column()
-  agent: string;
+  agentMessage: string;
 
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ManyToOne(() => Agent, (agent) => agent.messages)
+  agent: Agent;
+
+  @ManyToOne(() => User, (user) => user.messages)
+  user: User;
 }

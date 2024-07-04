@@ -1,11 +1,12 @@
 import {
   Column,
   Entity,
-  JoinColumn,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Agent } from './agent.entity';
+import { Message } from './message.entity';
 
 @Entity()
 export class User {
@@ -19,6 +20,8 @@ export class User {
   password: string;
 
   @OneToOne(() => Agent, (agent) => agent.owner)
-  @JoinColumn()
   agent: Agent;
+
+  @OneToMany(() => Message, (message) => message.user)
+  messages: Message[]
 }
