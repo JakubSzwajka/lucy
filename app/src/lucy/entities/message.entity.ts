@@ -15,6 +15,12 @@ export enum MessageSource {
   SLACK = 'slack',
 }
 
+export enum MessageType {
+  HUMAN = 'human',
+  AGENT = 'agent',
+  TOOL = 'tool',
+}
+
 @Entity()
 export class Message {
   @PrimaryGeneratedColumn('uuid')
@@ -27,10 +33,10 @@ export class Message {
   conversationId: string;
 
   @Column()
-  humanMessage: string;
+  type: string;
 
   @Column()
-  agentMessage: string;
+  text: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -38,9 +44,9 @@ export class Message {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => Agent, (agent) => agent.messages)
+  @ManyToOne(() => Agent, (agent) => agent.messages, { nullable: true })
   agent: Agent;
 
-  @ManyToOne(() => User, (user) => user.messages)
+  @ManyToOne(() => User, (user) => user.messages, { nullable: true })
   user: User;
 }
