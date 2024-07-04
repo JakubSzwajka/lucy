@@ -17,13 +17,6 @@ import { Icons } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Card,
   CardContent,
   CardDescription,
@@ -38,27 +31,21 @@ const AssistantSummary = ({
   assistant: {
     id: string;
     name: string;
-    description: string;
     defaultPrompt: string;
-    preferredChannel: string;
   };
 }) => {
   const { toast } = useToast();
   const [updateAgent, { isLoading }] = api.useUpdateAgentMutation();
   const formSchema = z.object({
     name: z.string(),
-    description: z.string(),
     defaultPrompt: z.string(),
-    preferredChannel: z.string(),
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: assistant.name,
-      description: assistant.description,
       defaultPrompt: assistant.defaultPrompt,
-      preferredChannel: assistant.preferredChannel,
     },
   });
 
@@ -118,25 +105,6 @@ const AssistantSummary = ({
             />
             <FormField
               control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      id="description"
-                      placeholder="Description"
-                      autoComplete="description"
-                      disabled={false}
-                      {...form.register('description')}
-                    />
-                  </FormControl>
-                  <FormMessage {...field} />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="defaultPrompt"
               render={({ field }) => (
                 <FormItem>
@@ -151,29 +119,6 @@ const AssistantSummary = ({
                       {...form.register('defaultPrompt')}
                     />
                   </FormControl>
-                  <FormMessage {...field} />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="preferredChannel"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Preferred Channel (TBD)</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger disabled={true}>
-                        <SelectValue placeholder="Select preferred way of communication for agent." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="slack">Slack</SelectItem>
-                    </SelectContent>
-                  </Select>
                   <FormMessage {...field} />
                 </FormItem>
               )}

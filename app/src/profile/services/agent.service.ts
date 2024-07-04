@@ -35,15 +35,11 @@ export class AgentService {
   async updateAgent({
     id,
     name,
-    description,
     defaultPrompt,
-    preferredChannel,
   }: {
     id: string;
     name: string;
-    description: string;
     defaultPrompt: string;
-    preferredChannel: string;
   }): Promise<Agent> {
     const agent = await this.agentRepository.findOne({
       where: {
@@ -55,13 +51,10 @@ export class AgentService {
       throw new HttpException('Agent not found', HttpStatus.NOT_FOUND);
     }
 
-    console.log(preferredChannel);
     return await this.agentRepository.save({
       ...agent,
       name,
-      description,
       defaultPrompt,
-      preferredChannel,
     });
   }
 }

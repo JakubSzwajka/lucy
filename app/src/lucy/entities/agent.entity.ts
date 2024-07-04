@@ -12,13 +12,7 @@ export class Agent {
   name: string;
 
   @Column({ nullable: true })
-  description: string;
-
-  @Column({ nullable: true })
   defaultPrompt: string;
-
-  @Column({ nullable: true })
-  preferredChannel: string;
 
   @OneToOne(() => User, (user) => user.agent, {
     onDelete: 'CASCADE',

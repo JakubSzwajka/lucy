@@ -14,9 +14,7 @@ class CreateAgentDto extends createZodDto(CreateAgentSchema) {}
 
 const UpdateAgentSchema = z.object({
   name: z.string(),
-  description: z.string(),
   defaultPrompt: z.string(),
-  preferredChannel: z.string(),
 });
 
 class UpdateAgentDto extends createZodDto(UpdateAgentSchema) {}
@@ -68,9 +66,7 @@ export class ProfileController {
     return await this.agentService.updateAgent({
       id,
       name: body.name,
-      description: body.description,
       defaultPrompt: body.defaultPrompt,
-      preferredChannel: body.preferredChannel,
     });
   }
 }
