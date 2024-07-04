@@ -16,10 +16,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Paginated } from 'src/infra/types';
 import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
-import { LucyService } from './lucy.service';
-import { skills } from './lucy.tools';
+import { LucyService } from './services/lucy.service';
 import { Agent } from './entities/agent.entity';
 import { Skill } from './entities/skill.entity';
+import { ToolsService } from './services/tools.service';
 
 const SkillSchema = z.object({
   name: z.string(),
@@ -39,6 +39,7 @@ export class LucyController {
     private readonly agentRepository: Repository<Agent>,
     @InjectRepository(Skill)
     private readonly skillRepository: Repository<Skill>,
+    private readonly toolsService: ToolsService,
   ) {}
 
   @Post('talk')
@@ -67,6 +68,7 @@ export class LucyController {
     const response = await this.lucy.talk({
       query: body.message,
       agent,
+      user: request.user,
       options: {
         messageSource: source,
         conversationId,
@@ -98,7 +100,7 @@ export class LucyController {
       .map((skill) => skill.skillId);
 
     return {
-      items: skills.map((skill) => ({
+      items: this.toolsService.skills.map((skill) => ({
         name: skill.name,
         description: skill.description,
         active: agentSkillsIds.includes(skill.name),

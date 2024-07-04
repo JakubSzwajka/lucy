@@ -25,4 +25,7 @@ export class Agent {
   
   @OneToMany(() => Message, (message) => message.agent)
   messages: Message[]
+
+  @Column({nullable: true})
+  retrieveKnowledgePrompt: string;
 }

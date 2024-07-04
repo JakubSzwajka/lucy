@@ -9,9 +9,9 @@ import { ColumnDef } from '@tanstack/react-table';
 export type Message = {
   id: string;
   date: string;
+  type: string;
   source: string;
-  humanMessage: string;
-  agentMessage: string;
+  text: string;
   conversationId: string;
   createdAt: string;
 };
@@ -37,24 +37,47 @@ export const columns: ColumnDef<Message>[] = [
     },
   },
   {
+    accessorKey: 'type',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Type" />
+    ),
+    cell: (row) => {
+      const type = row.getValue() as string;
+      return <Badge>{type}</Badge>;
+    },
+  },
+  {
     accessorFn: (row) => row,
     id: 'message',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Message" />
     ),
     cell: (info) => {
-      return (
-        <div>
-          <div className="text-sm text-muted-foreground">
-            <b>Human: </b>
-            {info.row.original.humanMessage}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <b>AI: </b>
-            {info.row.original.agentMessage}
-          </div>
-        </div>
-      );
+      const type = info.row.original.type;
+
+      switch (type) {
+        case 'human':
+          return (
+            <div className="text-sm text-muted-foreground">
+              <b>Human: </b>
+              {info.row.original.text}
+            </div>
+          );
+        case 'agent':
+          return (
+            <div className="text-sm text-muted-foreground">
+              <b>AI: </b>
+              {info.row.original.text}
+            </div>
+          );
+        case 'tool':
+          return (
+            <div className="text-sm text-muted-foreground">
+              <b>Tool: </b>
+              {info.row.original.text}
+            </div>
+          );
+      }
     },
   },
   {
