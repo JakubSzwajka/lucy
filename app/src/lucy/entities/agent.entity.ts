@@ -20,9 +20,9 @@ export class Agent {
   @JoinColumn()
   owner: User;
 
-  @OneToOne(() => Skill, (skill) => skill.agent)
+  @OneToMany(() => Skill, (skill) => skill.agent)
   skills: Skill[];
-
+  
   @OneToMany(() => Message, (message) => message.agent)
   messages: Message[]
 }
