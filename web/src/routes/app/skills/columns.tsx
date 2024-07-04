@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { SkillRowActions } from './rowActions';
 
 export type Skill = {
-  id: string;
   name: string;
   description: string;
   active: boolean;
@@ -21,13 +20,6 @@ export const columns: ColumnDef<Skill>[] = [
     id: 'select',
     header: DataTableSelectionColumnHeader,
     cell: DataTableSelectionColumnCell,
-  },
-
-  {
-    accessorKey: 'id',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
   },
   {
     accessorKey: 'name',
@@ -70,7 +62,7 @@ export const columns: ColumnDef<Skill>[] = [
   {
     id: 'actions',
     cell: ({ row }) => {
-      const skillId = row.original.id;
+      const skillId = row.original.name;
       return <SkillRowActions skillId={skillId} />;
     },
   },

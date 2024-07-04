@@ -22,7 +22,6 @@ import { Agent } from './entities/agent.entity';
 import { Skill } from './entities/skill.entity';
 
 const SkillSchema = z.object({
-  id: z.string(),
   name: z.string(),
   description: z.string(),
   active: z.boolean(),
@@ -58,7 +57,7 @@ export class LucyController {
           id: request.user.id,
         },
       },
-      relations: ['skills'],
+      relations: ['skills', 'owner'],
     });
 
     if (!agent) {
@@ -100,10 +99,9 @@ export class LucyController {
 
     return {
       items: skills.map((skill) => ({
-        id: skill.id,
         name: skill.name,
         description: skill.description,
-        active: agentSkillsIds.includes(skill.id),
+        active: agentSkillsIds.includes(skill.name),
       })),
     };
   }

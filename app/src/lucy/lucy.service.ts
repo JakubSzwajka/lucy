@@ -70,8 +70,9 @@ export class LucyService {
       new HumanMessage(query),
     ];
 
+    const activeTools = this.getActiveTools(agent, tools);
     const response = await call(messages, {
-      tools,
+      tools: activeTools.length > 0 ? activeTools : undefined,
     });
 
     let modelResponse = response.content as string;
@@ -124,6 +125,12 @@ export class LucyService {
     }
     console.debug(`${this.logPrefix} Returning response`, modelResponse);
     return modelResponse;
+  }
+
+  private getActiveTools(agent: Agent, tools) {
+    const skillsIds = agent.skills.map((skill) => skill.skillId) || [];
+    console.debug(`${this.logPrefix} Active skills`, skillsIds);
+    return tools.filter((tool) => skillsIds.includes(tool.function.name));
   }
 
   private async tryToFixToolCall({ toolDefinition, toolCall, errors }) {

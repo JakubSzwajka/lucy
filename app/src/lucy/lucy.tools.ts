@@ -2,7 +2,6 @@ import { OpenAIClient } from "@langchain/openai";
 import { Tools } from "./lucy.toolset";
 
 type Skill = {
-    id: string;
     name: string;
     description: string;
     tool: OpenAIClient.ChatCompletionTool;
@@ -10,7 +9,6 @@ type Skill = {
 
 export const skills: Skill[] = [
     {
-        id: 'Todoist-Get-Tasks',
         name: Tools.GET_TASKS,
         description: 'Get a list of tasks',
         tool: {

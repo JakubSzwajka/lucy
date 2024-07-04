@@ -10,8 +10,8 @@ export type Message = {
   id: string;
   date: string;
   source: string;
-  human: string;
-  agent: string;
+  humanMessage: string;
+  agentMessage: string;
   conversationId: string;
   createdAt: string;
 };
@@ -47,11 +47,11 @@ export const columns: ColumnDef<Message>[] = [
         <div>
           <div className="text-sm text-muted-foreground">
             <b>Human: </b>
-            {info.row.original.human}
+            {info.row.original.humanMessage}
           </div>
           <div className="text-sm text-muted-foreground">
             <b>AI: </b>
-            {info.row.original.agent}
+            {info.row.original.agentMessage}
           </div>
         </div>
       );

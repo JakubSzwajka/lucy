@@ -15,12 +15,22 @@ export class LucyToolset {
     for (const tool of tools) {
       switch (tool.name) {
         case Tools.GET_TASKS:{
-          const { due } = tool.args;
-          const tasks = await this.taskService.getTasks(due);
-          result.push({
-            tool,
-            toolResult: tasks,
-          });
+          try {
+
+            const { due } = tool.args;
+            const tasks = await this.taskService.getTasks(due);
+            result.push({
+              tool,
+              toolResult: tasks,
+            });
+            break;
+          } catch (error) {
+            console.error('Error calling tool', tool.name, error);
+            result.push({
+              tool,
+              toolResult: error,
+            });
+          }
           break;
         }
         default:
