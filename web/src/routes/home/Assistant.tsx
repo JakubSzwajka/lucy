@@ -147,6 +147,7 @@ const AssistantSummary = ({
                       placeholder="Default Prompt"
                       autoComplete="defaultPrompt"
                       disabled={false}
+                      rows={50}
                       {...form.register('defaultPrompt')}
                     />
                   </FormControl>
