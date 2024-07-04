@@ -6,13 +6,9 @@ import { env } from '@/lucy/env';
 export class TasksService {
   private readonly client = new TodoistApi(env.TODOIST_API_KEY);
 
-  async getTasks(due: 'today' | 'tomorrow') {
-    console.log('due: ', due);
-    const tasks = await this.client.getTasks({
+  async getTasks(due: 'today' | 'tomorrow' | 'today | overdue') {
+    return await this.client.getTasks({
       filter: due,
     });
-
-    console.log('tasks: ', tasks);
-    return tasks;
   }
 }

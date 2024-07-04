@@ -17,7 +17,7 @@ export const skills: Skill[] = [
             type: 'function',
             function: {
                 name: Tools.GET_TASKS,
-                description: 'Get a list of tasks',
+                description: 'Get a list of tasks from todoist',
                 parameters: {
                     type: 'object',
                     properties: {

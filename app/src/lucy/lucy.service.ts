@@ -10,10 +10,11 @@ import {
   SystemMessage,
   ToolMessage,
 } from '@langchain/core/messages';
-import { LucySystemMessage } from '@/lucy/ai/prompt';
+import { getAgentSystemMessage } from '@/lucy/ai/prompt';
 import { LucyToolset } from './lucy.toolset';
 import { tools } from './lucy.tools';
 import { ToolCall } from '@langchain/core/dist/messages/tool';
+import { Agent } from './entities/agent.entity';
 
 const CONVERSATIONS_IDS = {
   DEFAULT: 'default',
@@ -31,13 +32,18 @@ export class LucyService {
   private readonly MINUTES_OF_CONVERSATION_HISTORY = 10;
   private logPrefix = '';
 
-  async talk(
-    query: string,
+  async talk({
+    query,
+    agent,
+    options,
+  }: {
+    query: string;
+    agent: Agent;
     options: {
       messageSource: string;
       conversationId: string;
-    },
-  ): Promise<string> {
+    };
+  }): Promise<string> {
     const messageId = v4();
     const conversationId = options.conversationId || CONVERSATIONS_IDS.DEFAULT;
     this.logPrefix = `(convId: ${conversationId} | msgId: ${messageId})`;
@@ -52,7 +58,11 @@ export class LucyService {
       .flat();
 
     const messages = [
-      new SystemMessage(LucySystemMessage),
+      new SystemMessage(
+        getAgentSystemMessage({
+          agent,
+        }),
+      ),
       ...conversation,
       new HumanMessage(query),
     ];

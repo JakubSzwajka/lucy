@@ -8,20 +8,20 @@ import {
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Nav } from './nav';
-import { AccountSwitcher } from './accountSwitcher';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../App';
 import { api } from '@/api';
 import { useToast } from '@/components/ui/use-toast';
 import UserNav from './userNav';
+import { H3 } from '@/components/ui/typography';
 
-const accounts = [
-  {
-    label: 'Lucy',
-    description: 'Lucy, your AI assistant',
-    icon: <Rocket />,
-  },
-];
+// const accounts = [
+//   {
+//     label: 'Lucy',
+//     description: 'Lucy, your AI assistant',
+//     icon: <Rocket />,
+//   },
+// ];
 
 const Root: React.FC = () => {
   const defaultLayout = [265, 440, 655];
@@ -90,7 +90,8 @@ const Root: React.FC = () => {
                 isCollapsed ? 'h-[52px]' : 'px-2'
               )}
             >
-              <AccountSwitcher isCollapsed={isCollapsed} accounts={accounts} />
+              {/* <AccountSwitcher isCollapsed={isCollapsed} accounts={accounts} /> */}
+              <H3>Lucy</H3>
             </div>
             <Separator />
             <div className="flex flex-col flex-grow justify-between">

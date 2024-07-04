@@ -1,29 +1,77 @@
+import {
+  DataTableColumnHeader,
+  DataTableSelectionColumnCell,
+  DataTableSelectionColumnHeader,
+} from '@/components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
+import { CheckCircleIcon } from 'lucide-react';
+import { CrossCircledIcon } from '@radix-ui/react-icons';
+import { Badge } from '@/components/ui/badge';
+import { SkillRowActions } from './rowActions';
 
-export type Message = {
+export type Skill = {
   id: string;
-  date: string;
-  source: string;
-  human: string;
-  agent: string;
-  createdAt: string;
+  name: string;
+  description: string;
+  active: boolean;
 };
 
-export const columns: ColumnDef<Message>[] = [
+export const columns: ColumnDef<Skill>[] = [
+  {
+    id: 'select',
+    header: DataTableSelectionColumnHeader,
+    cell: DataTableSelectionColumnCell,
+  },
+
   {
     accessorKey: 'id',
-    header: 'ID',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="ID" />
+    ),
   },
   {
     accessorKey: 'name',
-    header: 'Name',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Name" />
+    ),
+    cell: (row) => {
+      return <Badge>{row.getValue() as string}</Badge>;
+    },
   },
   {
     accessorKey: 'description',
-    header: 'Description',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Description" />
+    ),
   },
   {
-    accessorKey: 'tool',
-    header: 'Tool',
+    id: 'active',
+    accessorFn: (row) => row,
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Active" />
+    ),
+    cell: (row) => {
+      const { active } = row.getValue() as { active: boolean };
+      const label = active ? 'Active' : 'Inactive';
+      const icon = active ? (
+        <CheckCircleIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+      ) : (
+        <CrossCircledIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+      );
+
+      return (
+        <div className="flex w-[100px] items-center">
+          {icon}
+          <span>{label}</span>
+        </div>
+      );
+    },
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => {
+      const skillId = row.original.id;
+      return <SkillRowActions skillId={skillId} />;
+    },
   },
 ];

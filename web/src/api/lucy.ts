@@ -11,15 +11,17 @@ export const lucyApi = baseClient.injectEndpoints({
         `lucy/messages${query ? `?query=${query}` : ''}`,
       providesTags: [API_TAGS.MESSAGES],
     }),
-    createSkill: builder.mutation({
-      query: (skill: {
-        name: string;
-        description: string;
-        parameters: string;
-      }) => ({
-        url: `lucy/skills`,
+    deleteMessage: builder.mutation({
+      query: () => ({
+        url: `lucy/messages`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: API_TAGS.MESSAGES }],
+    }),
+    toogleSkill: builder.mutation({
+      query: (skill: { skillId: string }) => ({
+        url: `lucy/skills/${skill.skillId}/toggle`,
         method: 'POST',
-        body: skill,
       }),
       invalidatesTags: [{ type: API_TAGS.SKILLS }],
     }),

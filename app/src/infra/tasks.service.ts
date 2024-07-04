@@ -11,7 +11,6 @@ export class TasksService {
     private readonly httpService: HttpService
   ) {}
 
-  // @Cron(CronExpression.EVERY_SECOND)
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleCron() {
 
