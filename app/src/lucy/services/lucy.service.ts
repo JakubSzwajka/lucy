@@ -75,7 +75,7 @@ export class LucyService {
     ];
 
     console.debug(`${this.logPrefix} Received query`, query);
-    await this.messageRepository.save({
+    const message = await this.messageRepository.save({
       text: query,
       type: MessageType.HUMAN,
       conversationId,
@@ -96,7 +96,7 @@ export class LucyService {
     await this.eventBus.publish(
       new MessageReceivedEvent({
         user,
-        conversation,
+        message,
       }),
     );
 

@@ -7,7 +7,7 @@ export class MessageReceivedHandler {
   constructor(private readonly memoriesService: MemoriesService) {}
   handle(event: MessageReceivedEvent) {
     this.memoriesService.extractMemories(
-      event.payload.conversation,
+      event.payload.message,
       event.payload.user,
     );
   }

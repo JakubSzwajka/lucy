@@ -176,6 +176,7 @@ export class LucyController {
             id: req.user.id,
           },
         },
+        relations: ['messages'],
         order: {
           createdAt: 'DESC',
         },

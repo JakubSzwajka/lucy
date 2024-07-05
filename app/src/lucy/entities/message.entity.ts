@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  ManyToMany,
 } from 'typeorm';
 import { Agent } from './agent.entity';
 import { User } from './user.entity';
+import { Memory } from './memory.entity';
 
 export enum MessageSource {
   UNKNOWN = 'unknown',
@@ -49,4 +51,7 @@ export class Message {
 
   @ManyToOne(() => User, (user) => user.messages, { nullable: true })
   user: User;
+
+  @ManyToMany(() => Memory, (memory) => memory.messages, { nullable: true })
+  memories: Memory[];
 }
