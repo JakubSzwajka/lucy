@@ -20,6 +20,8 @@ import { Agent } from '../entities/agent.entity';
 import { ToolsService } from './tools.service';
 import { ConversationService } from './conversation.service';
 import { User } from '../entities/user.entity';
+import { MessageReceivedEvent } from '@/lucy/events/messageReceived.event';
+import { EventBus } from '@nestjs/cqrs';
 
 const CONVERSATIONS_IDS = {
   DEFAULT: 'default',
@@ -41,8 +43,8 @@ export class LucyService {
     private readonly messageRepository: Repository<Message>,
     private readonly toolsService: ToolsService,
     private readonly conversationService: ConversationService,
+    private readonly eventBus: EventBus,
   ) {}
-
   private logPrefix = '';
 
   async talk({
@@ -89,8 +91,14 @@ export class LucyService {
       if (message.type === MessageType.AGENT)
         conversation.push(new AIMessage(message.text));
     });
-
     conversation.push(new HumanMessage(query));
+
+    await this.eventBus.publish(
+      new MessageReceivedEvent({
+        user,
+        conversation,
+      }),
+    );
 
     const modelResponse = await call(conversation, {
       tools,

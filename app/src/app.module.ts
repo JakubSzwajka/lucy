@@ -16,9 +16,11 @@ import { TasksService } from './infra/tasks.service';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { HttpModule } from '@nestjs/axios';
+import { CqrsModule } from '@nestjs/cqrs';
 
 @Module({
   imports: [
+    CqrsModule,
     HttpModule,
     WinstonModule.forRoot({
       transports: [
@@ -27,9 +29,6 @@ import { HttpModule } from '@nestjs/axios';
             winston.format.colorize(),
             winston.format.timestamp(),
             winston.format.json(),
-            // winston.format.printf(({ level, message, timestamp }) => {
-            //   return `${timestamp} [${level}] ${message}`;
-            // }),
           ),
         }),
       ],

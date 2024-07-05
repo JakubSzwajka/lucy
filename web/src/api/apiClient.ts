@@ -4,6 +4,7 @@ export const API_TAGS = {
   AGENTS: 'Agents',
   SKILLS: 'Skills',
   MESSAGES: 'Messages',
+  MEMORIES: 'Memories',
 };
 
 export const baseClient = createApi({
@@ -13,5 +14,10 @@ export const baseClient = createApi({
     credentials: 'include',
   }),
   endpoints: () => ({}),
-  tagTypes: [API_TAGS.AGENTS, API_TAGS.SKILLS, API_TAGS.MESSAGES],
+  tagTypes: [
+    API_TAGS.AGENTS,
+    API_TAGS.SKILLS,
+    API_TAGS.MESSAGES,
+    API_TAGS.MEMORIES,
+  ],
 });

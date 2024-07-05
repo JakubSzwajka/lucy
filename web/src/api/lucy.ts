@@ -25,5 +25,24 @@ export const lucyApi = baseClient.injectEndpoints({
       }),
       invalidatesTags: [{ type: API_TAGS.SKILLS }],
     }),
+    getMemories: builder.query({
+      query: (query: string) =>
+        `lucy/memories${query ? `?query=${query}` : ''}`,
+      providesTags: [API_TAGS.MEMORIES],
+    }),
+    deleteMemories: builder.mutation({
+      query: () => ({
+        url: `lucy/memories`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: API_TAGS.MEMORIES }],
+    }),
+    deleteMemory: builder.mutation({
+      query: (memoryId: string) => ({
+        url: `lucy/memories/${memoryId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: API_TAGS.MEMORIES }],
+    }),
   }),
 });

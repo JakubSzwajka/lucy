@@ -116,6 +116,12 @@ const Root: React.FC = () => {
                     variant: 'ghost',
                     url: ROUTES.app.skills,
                   },
+                  {
+                    title: 'Memories',
+                    icon: Rocket,
+                    variant: 'ghost',
+                    url: ROUTES.app.memories,
+                  },
                 ]}
               />
               <Nav
