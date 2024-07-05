@@ -14,6 +14,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import Messages from './routes/app/messages/messages';
 import { ThemeProvider } from '@/components/theme-provider';
 import Skills from './routes/app/skills/skills';
+import Memories from './routes/app/memories/memories';
 
 export const ROUTES = {
   base: '/',
@@ -26,6 +27,7 @@ export const ROUTES = {
     base: '/app',
     messages: '/app/messages',
     skills: '/app/skills',
+    memories: '/app/memories',
   },
   all: '*',
 };
@@ -63,6 +65,10 @@ const router = createBrowserRouter([
           {
             path: ROUTES.app.skills,
             element: <Skills />,
+          },
+          {
+            path: ROUTES.app.memories,
+            element: <Memories />,
           },
         ],
       },

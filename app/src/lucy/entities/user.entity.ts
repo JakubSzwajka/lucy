@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Agent } from './agent.entity';
 import { Message } from './message.entity';
+import { Memory } from './memory.entity';
 
 @Entity()
 export class User {
@@ -23,5 +24,8 @@ export class User {
   agent: Agent;
 
   @OneToMany(() => Message, (message) => message.user)
-  messages: Message[]
+  messages: Message[];
+
+  @OneToMany(() => Memory, (memory) => memory.user)
+  memories: Memory[];
 }

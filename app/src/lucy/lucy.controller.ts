@@ -20,6 +20,7 @@ import { LucyService } from './services/lucy.service';
 import { Agent } from './entities/agent.entity';
 import { Skill } from './entities/skill.entity';
 import { ToolsService } from './services/tools.service';
+import { Memory } from './entities/memory.entity';
 
 const SkillSchema = z.object({
   name: z.string(),
@@ -40,6 +41,8 @@ export class LucyController {
     @InjectRepository(Skill)
     private readonly skillRepository: Repository<Skill>,
     private readonly toolsService: ToolsService,
+    @InjectRepository(Memory)
+    private readonly memoryRepository: Repository<Memory>,
   ) {}
 
   @Post('talk')
@@ -162,5 +165,46 @@ export class LucyController {
         },
       }),
     };
+  }
+
+  @Get('memories')
+  async getMemories(@Request() req): Promise<Paginated<Memory>> {
+    return {
+      items: await this.memoryRepository.find({
+        where: {
+          user: {
+            id: req.user.id,
+          },
+        },
+        relations: ['messages'],
+        order: {
+          createdAt: 'DESC',
+        },
+      }),
+    };
+  }
+
+  @Delete('memories')
+  async deleteMemories(@Request() req): Promise<string> {
+    await this.memoryRepository.delete({
+      user: {
+        id: req.user.id,
+      },
+    });
+    return 'ok';
+  }
+
+  @Delete('memories/:memoryId')
+  async deleteMemory(
+    @Request() req,
+    @Param('memoryId') memoryId: string,
+  ): Promise<string> {
+    await this.memoryRepository.delete({
+      id: memoryId,
+      user: {
+        id: req.user.id,
+      },
+    });
+    return 'ok';
   }
 }
