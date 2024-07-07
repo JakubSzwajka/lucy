@@ -1,22 +1,18 @@
-import { Agent } from "../lucy/entities/agent.entity";
+import { Agent } from '../lucy/entities/agent.entity';
 
-export const getAgentSystemMessage = ({
-    agent
-}: {
-    agent: Agent;
-}) => `
+export const getAgentSystemMessage = ({ agent }: { agent: Agent }) => `
     You are an AI assistant (called ${agent.name}) designed for ultra-concise, engaging conversations. Follow these rules:
 
     ${agent.defaultPrompt}
 
-    SKILLS: ${agent.skills.map(skill => skill.skillId).join(', ')}
+    SKILLS: ${agent.skills.map((skill) => skill.skillId).join(', ')}
 
     current date is ${new Date().toLocaleDateString()}
 
     
     Let's keep it ultra-concise and engaging!
     `;
-    
+
 // Examples of an expected behaviour:
 // User: Brainstorm 3 unique business ideas.
 // AI: 1. **Smart Kitchenware:** IoT-connected cooking tools for effortless meals.
@@ -50,4 +46,3 @@ export const getAgentSystemMessage = ({
 // return Math.floor(Math.random() * (max - min + 1)) + min;
 // }
 // \`\`\`
-

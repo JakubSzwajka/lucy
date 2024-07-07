@@ -96,6 +96,7 @@ export class LucyService {
     await this.eventBus.publish(
       new MessageReceivedEvent({
         user,
+        conversation,
         message,
       }),
     );

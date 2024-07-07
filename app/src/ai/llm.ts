@@ -7,6 +7,8 @@ const TAGS = ['lucy', env.NODE_ENV];
 export enum Models {
   GPT_3_5_TURBO = 'gpt-3.5-turbo',
   GPT_4o = 'gpt-4o',
+  GPT_4_turbo = 'gpt-4-turbo',
+  GPT_4_1106_preview = 'gpt-4-1106-preview',
 }
 
 export const call = async (
@@ -16,24 +18,29 @@ export const call = async (
     tool_choice?: OpenAIClient.ChatCompletionToolChoiceOption;
     model?: Models;
     jsonResponse?: boolean;
-  } = {
-    tools: undefined,
-    tool_choice: undefined,
-    model: Models.GPT_4o,
-    jsonResponse: false
-  },
+    additionalTags?: string[];
+  } = {},
 ): Promise<AIMessageChunk> => {
-
+  const {
+    tools = undefined,
+    tool_choice = undefined,
+    model = Models.GPT_4o,
+    jsonResponse = false,
+    additionalTags = [],
+  } = options;
+  const tags = additionalTags?.concat(TAGS) || TAGS;
   const chat = new ChatOpenAI({
     apiKey: env.OPENAI_API_KEY,
-    model: options.model,
-    tags: TAGS,
+    model,
+    tags,
   }).bind({
-    tools: options.tools,
-    tool_choice: options.tool_choice,
-    response_format: options.jsonResponse ? {
-      type: 'json_object'
-    } : undefined
+    tools,
+    tool_choice,
+    response_format: jsonResponse
+      ? {
+          type: 'json_object',
+        }
+      : undefined,
   });
 
   return await chat.invoke(messages);
