@@ -6,8 +6,8 @@
     "node": ">=20.15.0"
   },
   "scripts": {
-    "prebuild": "cd ../shared-dto && npm run install && npm run build",
-    "build": "npm run prebuild && tsc && vite build",
+    "prebuild": "cd ../shared-dto && npm install && npm run build",
+    "build": "tsc && vite build",
     "start": "vite",
     "serve": "vite preview",
     "lint": "eslint \"{src,apps,libs,test}/**/*.tsx\"",

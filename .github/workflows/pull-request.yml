@@ -123,6 +123,8 @@ jobs:
           node-version: ${{ env.node-version }}
           cache: 'npm'
           cache-dependency-path: './app/package-lock.json'
+      - name: PreBuild
+        run: npm run prebuild
       - name: Install dependencies
         run: npm ci
       - name: Test
@@ -146,6 +148,8 @@ jobs:
           cache-dependency-path: './app/package-lock.json'
       - name: Install dependencies
         run: npm ci
+      - name: PreBuild
+        run: npm run prebuild
       - name: Build
         run: npm run build
 
@@ -167,5 +171,7 @@ jobs:
           cache-dependency-path: './web/package-lock.json'
       - name: Install dependencies
         run: npm ci
+      - name: PreBuild
+        run: npm run prebuild
       - name: Build
         run: npm run build
