@@ -13,18 +13,11 @@ import {
 } from '@/components/ui/drawer';
 import { MessageCircleIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Message, columns as MessagesColumns } from '../messages/columns';
+import { columns as MessagesColumns } from '../messages/columns';
+import { GetMemorySchema } from 'shared-dto';
+import { z } from 'zod';
 
-export type Memory = {
-  id: string;
-  title: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: Message[];
-};
-
-export const columns: ColumnDef<Memory>[] = [
+export const columns: ColumnDef<z.infer<typeof GetMemorySchema>>[] = [
   {
     accessorKey: 'createdAt',
     header: ({ column }) => (

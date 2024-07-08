@@ -5,18 +5,10 @@ import {
 } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { ColumnDef } from '@tanstack/react-table';
+import { GetMessageSchema } from 'shared-dto';
+import { z } from 'zod';
 
-export type Message = {
-  id: string;
-  date: string;
-  type: string;
-  source: string;
-  text: string;
-  conversationId: string;
-  createdAt: string;
-};
-
-export const columns: ColumnDef<Message>[] = [
+export const columns: ColumnDef<z.infer<typeof GetMessageSchema>>[] = [
   {
     id: 'select',
     header: DataTableSelectionColumnHeader,

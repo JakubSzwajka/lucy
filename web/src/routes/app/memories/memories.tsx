@@ -67,7 +67,7 @@ const HeaderActions = () => {
 const Memories = () => {
   const { data, isLoading } = api.useGetMemoriesQuery('');
 
-  if (isLoading) {
+  if (isLoading || !data) {
     return <div>Loading...</div>;
   }
 

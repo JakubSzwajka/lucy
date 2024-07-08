@@ -67,8 +67,8 @@ const HeaderActions = () => {
 
 const Messages = () => {
   const { data, isLoading } = api.useGetMessagesQuery('');
-  // console.log('data', data);
-  if (isLoading) {
+
+  if (isLoading || !data) {
     return <div>Loading...</div>;
   }
 

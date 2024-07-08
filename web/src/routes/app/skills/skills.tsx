@@ -5,7 +5,7 @@ import { columns } from './columns';
 
 const Skills = () => {
   const { data, isLoading } = api.useGetSkillsQuery('');
-  if (isLoading) {
+  if (isLoading || !data) {
     return <div>Loading...</div>;
   }
 
