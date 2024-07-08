@@ -1,0 +1,23 @@
+{
+  "name": "shared-dto",
+  "version": "1.0.0",
+  "description": "Shared DTOs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=20.15.0"
+  },
+  "scripts": {
+    "build": "npx tsc",
+    "watch": "npx tsc -w",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\""
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "typescript-eslint": "^7.14.1",
+    "typescript": "^5.5.3"
+  }
+}

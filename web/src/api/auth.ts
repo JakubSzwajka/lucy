@@ -1,9 +1,11 @@
 import { baseClient } from './apiClient';
+import { z } from 'zod';
+import { RegisterSchema, LoginSchema } from 'shared-dto';
 
 export const authApi = baseClient.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation({
-      query: (data: { email: string; password: string }) => ({
+      query: (data: z.infer<typeof LoginSchema>) => ({
         url: 'auth/login',
         method: 'POST',
         body: data,
@@ -16,7 +18,7 @@ export const authApi = baseClient.injectEndpoints({
       }),
     }),
     register: builder.mutation({
-      query: (data: { email: string; password: string }) => ({
+      query: (data: z.infer<typeof RegisterSchema>) => ({
         url: 'auth/register',
         method: 'POST',
         body: data,

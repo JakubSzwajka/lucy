@@ -13,22 +13,16 @@ import {
 import { Message } from './entities/message.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Paginated } from 'src/infra/types';
-import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
 import { LucyService } from './services/lucy.service';
 import { Agent } from './entities/agent.entity';
 import { Skill } from './entities/skill.entity';
 import { ToolsService } from './services/tools.service';
 import { Memory } from './entities/memory.entity';
+import { GetSkillSchema, Paginated, GetMemorySchema } from 'shared-dto';
 
-const SkillSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  active: z.boolean(),
-});
-
-class SkillDto extends createZodDto(SkillSchema) {}
+class GetSkillDto extends createZodDto(GetSkillSchema) {}
+class GetMemoryDto extends createZodDto(GetMemorySchema) {}
 
 @Controller()
 export class LucyController {
@@ -83,7 +77,7 @@ export class LucyController {
   }
 
   @Get('skills')
-  async getSkills(@Request() req): Promise<Paginated<SkillDto>> {
+  async getSkills(@Request() req): Promise<Paginated<GetSkillDto>> {
     const agent = await this.agentRepository.findOne({
       where: {
         owner: {
@@ -168,19 +162,34 @@ export class LucyController {
   }
 
   @Get('memories')
-  async getMemories(@Request() req): Promise<Paginated<Memory>> {
+  async getMemories(@Request() req): Promise<Paginated<GetMemoryDto>> {
+    const memories = await this.memoryRepository.find({
+      where: {
+        user: {
+          id: req.user.id,
+        },
+      },
+      relations: ['messages'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
     return {
-      items: await this.memoryRepository.find({
-        where: {
-          user: {
-            id: req.user.id,
-          },
-        },
-        relations: ['messages'],
-        order: {
-          createdAt: 'DESC',
-        },
-      }),
+      items: memories.map((memory) => ({
+        id: memory.id,
+        text: memory.text,
+        createdAt: memory.createdAt.toISOString(),
+        updatedAt: memory.updatedAt.toISOString(),
+        messages: memory.messages.map((message) => ({
+          id: message.id,
+          source: message.source,
+          conversationId: message.conversationId,
+          type: message.type,
+          text: message.text,
+          createdAt: message.createdAt.toISOString(),
+          updatedAt: message.updatedAt.toISOString(),
+        })),
+      })),
     };
   }
 

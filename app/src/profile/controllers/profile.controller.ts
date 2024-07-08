@@ -3,20 +3,10 @@ import { Controller, Request, Get, Post, Body, Patch } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AgentService } from '../services/agent.service';
-import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
-
-const CreateAgentSchema = z.object({
-  name: z.string(),
-});
+import { CreateAgentSchema, UpdateAgentSchema } from 'shared-dto';
 
 class CreateAgentDto extends createZodDto(CreateAgentSchema) {}
-
-const UpdateAgentSchema = z.object({
-  name: z.string(),
-  defaultPrompt: z.string(),
-});
-
 class UpdateAgentDto extends createZodDto(UpdateAgentSchema) {}
 
 @Controller()

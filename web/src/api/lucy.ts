@@ -1,12 +1,25 @@
+import { z } from 'zod';
 import { API_TAGS, baseClient } from './apiClient';
+import {
+  GetMemorySchema,
+  GetMessageSchema,
+  GetSkillSchema,
+  Paginated,
+} from 'shared-dto';
 
 export const lucyApi = baseClient.injectEndpoints({
   endpoints: (builder) => ({
-    getSkills: builder.query({
-      query: (query: string) => `lucy/skills${query ? `?query=${query}` : ''}`,
-      providesTags: [API_TAGS.SKILLS],
-    }),
-    getMessages: builder.query({
+    getSkills: builder.query<Paginated<z.infer<typeof GetSkillSchema>>, string>(
+      {
+        query: (query: string) =>
+          `lucy/skills${query ? `?query=${query}` : ''}`,
+        providesTags: [API_TAGS.SKILLS],
+      }
+    ),
+    getMessages: builder.query<
+      Paginated<z.infer<typeof GetMessageSchema>>,
+      string
+    >({
       query: (query: string) =>
         `lucy/messages${query ? `?query=${query}` : ''}`,
       providesTags: [API_TAGS.MESSAGES],
@@ -25,7 +38,10 @@ export const lucyApi = baseClient.injectEndpoints({
       }),
       invalidatesTags: [{ type: API_TAGS.SKILLS }],
     }),
-    getMemories: builder.query({
+    getMemories: builder.query<
+      Paginated<z.infer<typeof GetMemorySchema>>,
+      string
+    >({
       query: (query: string) =>
         `lucy/memories${query ? `?query=${query}` : ''}`,
       providesTags: [API_TAGS.MEMORIES],

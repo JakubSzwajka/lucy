@@ -2,15 +2,11 @@ import { Controller, Post, Request, Get, Body, Res } from '@nestjs/common';
 import { AuthService } from './services/auth.service';
 import { Public } from './decorator';
 import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod';
 import { Response } from 'express';
 import { env } from '../env';
+import { RegisterSchema, LoginSchema } from 'shared-dto';
 
-const RegisterSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
+class LoginDto extends createZodDto(LoginSchema) {}
 class RegisterDto extends createZodDto(RegisterSchema) {}
 
 @Controller()
@@ -25,7 +21,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  async login(@Body() body: RegisterDto, @Res() res: Response) {
+  async login(@Body() body: LoginDto, @Res() res: Response) {
     const { accessToken } = await this.authService.login(body);
 
     res.cookie('accessToken', accessToken, {
@@ -46,16 +42,4 @@ export class AuthController {
     res.clearCookie('accessToken');
     return res.status(200).send({ message: 'Logout successful' });
   }
-
-  // async forgotPassword() {
-  //   return 'forgot-password';
-  // }
-
-  // async resetPassword() {
-  //   return 'reset-password';
-  // }
-
-  // async changePassword() {
-  //   return 'change-password';
-  // }
 }

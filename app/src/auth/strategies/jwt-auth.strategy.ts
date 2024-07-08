@@ -6,13 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@/lucy/lucy/entities/user.entity';
 import { Repository } from 'typeorm';
 import { z } from 'zod';
-
-const JwtTokenSchema = z.object({
-  sub: z.string().uuid(),
-  role: z.string(),
-  iat: z.number(),
-  exp: z.number(),
-});
+import { JwtTokenSchema } from 'shared-dto';
 
 type JwtToken = z.infer<typeof JwtTokenSchema>;
 

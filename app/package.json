@@ -9,6 +9,7 @@
     "node": ">=20.15.0"
   },
   "scripts": {
+    "prebuild": "cd ../shared-dto && npm run install && npm run build",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npx nest start",
@@ -25,6 +26,7 @@
     "migrate:generate": "npx typeorm-ts-node-commonjs migration:generate -d ./src/db.ts"
   },
   "dependencies": {
+    "shared-dto": "file:../shared-dto",
     "@doist/todoist-api-typescript": "^3.0.3",
     "@eslint/js": "^9.6.0",
     "@langchain/core": "^0.2.11",
