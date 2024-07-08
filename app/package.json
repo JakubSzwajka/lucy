@@ -10,7 +10,7 @@
   },
   "scripts": {
     "prebuild": "cd ../shared-dto && npm run install && npm run build",
-    "build": "nest build",
+    "build": "npm run prebuild && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npx nest start",
     "start:dev": "nest start --watch",

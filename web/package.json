@@ -7,9 +7,9 @@
   },
   "scripts": {
     "prebuild": "cd ../shared-dto && npm run install && npm run build",
+    "build": "npm run prebuild && tsc && vite build",
     "start": "vite",
     "serve": "vite preview",
-    "build": "tsc && vite build",
     "lint": "eslint \"{src,apps,libs,test}/**/*.tsx\"",
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.tsx\" --fix"
   },
