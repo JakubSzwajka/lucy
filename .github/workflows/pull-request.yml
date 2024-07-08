@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
-          cache-dependency-path: './shared/package-lock.json'
+          cache-dependency-path: './shared-dto/package-lock.json'
       - name: Install dependencies
         run: npm ci
       - name: Lint
@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
           cache: 'npm'
-          cache-dependency-path: './shared/package-lock.json'
+          cache-dependency-path: './shared-dto/package-lock.json'
       - name: Install dependencies
         run: npm ci
       - name: Build
