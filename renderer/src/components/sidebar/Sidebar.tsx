@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SessionItem } from "./SessionItem";
 import type { Session } from "@/types";
 
@@ -10,7 +12,6 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string) => void;
-  onOpenSettings: () => void;
 }
 
 export function Sidebar({
@@ -19,13 +20,14 @@ export function Sidebar({
   onSelectSession,
   onNewChat,
   onDeleteSession,
-  onOpenSettings,
 }: SidebarProps) {
+  const pathname = usePathname();
+  const isOnSettings = pathname?.startsWith("/settings");
   return (
     <aside className="w-80 border-r border-border flex flex-col bg-background-tertiary">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <Image
             src="/logo.png"
             alt="Lucy"
@@ -34,7 +36,7 @@ export function Sidebar({
             className="rounded-sm"
           />
           <span className="label">lucy</span>
-        </div>
+        </Link>
       </div>
 
       {/* New Chat Button */}
@@ -65,7 +67,7 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto">
         {sessions.length === 0 ? (
           <div className="p-4 text-center">
-            <span className="label-dark">// NO_SESSIONS</span>
+            <span className="label-dark">{"// NO_SESSIONS"}</span>
             <p className="text-sm text-muted-dark mt-2">Start a new conversation</p>
           </div>
         ) : (
@@ -84,9 +86,13 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
-        <button
-          onClick={onOpenSettings}
-          className="w-full flex items-center justify-center gap-2 py-2 text-xs text-muted-dark hover:text-foreground transition-colors"
+        <Link
+          href="/settings"
+          className={`w-full flex items-center justify-center gap-2 py-2 text-xs transition-colors ${
+            isOnSettings
+              ? "text-foreground"
+              : "text-muted-dark hover:text-foreground"
+          }`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -109,7 +115,7 @@ export function Sidebar({
             />
           </svg>
           Settings
-        </button>
+        </Link>
         <span className="label-sm text-muted-darker block text-center mt-2">
           POWERED BY AI // 2026
         </span>

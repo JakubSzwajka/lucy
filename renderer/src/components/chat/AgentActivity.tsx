@@ -270,7 +270,7 @@ export function AgentActivityContainer({ activities, isStreaming }: AgentActivit
   const latestLabel = isDone ? "Done" : getLatestActivityLabel(activities);
 
   return (
-    <div className="max-w-[80%] mb-2">
+    <div className="w-[50%]  mb-2">
       {/* Outer collapsible wrapper */}
       <div className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
         <button

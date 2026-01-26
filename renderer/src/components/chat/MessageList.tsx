@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import { MessageBubble } from "./MessageBubble";
 import { AgentActivityContainer } from "./AgentActivity";
 import type { ChatMessage } from "@/types";
@@ -35,6 +36,13 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted">
         <div className="text-center">
+          <Image
+            src="/logo.png"
+            alt="Lucy"
+            width={80}
+            height={80}
+            className="mx-auto mb-4"
+          />
           <span className="label block mb-2">// INIT.SEQUENCE</span>
           <h2 className="text-xl font-medium mb-2 tracking-tight">Welcome to Lucy</h2>
           <p className="text-sm text-muted-dark">Start a conversation by typing a message below.</p>

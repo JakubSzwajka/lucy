@@ -1,20 +1,42 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, createContext, useContext } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { ChatContainer } from "@/components/chat";
-import { SettingsModal } from "@/components/settings";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_MODEL, AVAILABLE_MODELS } from "@/lib/ai/models";
-import type { AvailableProviders, Session } from "@/types";
+import type { AvailableProviders } from "@/types";
 
-export default function Home() {
+interface MainContextType {
+  activeSessionId: string | null;
+  activeAgentId: string | null;
+  selectedModel: string;
+  availableProviders?: AvailableProviders;
+  settings: ReturnType<typeof useSettings>["settings"];
+  setActiveSessionId: (id: string | null) => void;
+  setSelectedModel: (model: string) => void;
+  handleNewChat: () => Promise<void>;
+}
+
+const MainContext = createContext<MainContextType | null>(null);
+
+export function useMainContext() {
+  const context = useContext(MainContext);
+  if (!context) {
+    throw new Error("useMainContext must be used within MainLayout");
+  }
+  return context;
+}
+
+export default function MainLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const { settings } = useSettings();
 
@@ -113,54 +135,36 @@ export default function Home() {
     setActiveSessionId(id);
   }, []);
 
+  const contextValue: MainContextType = {
+    activeSessionId,
+    activeAgentId,
+    selectedModel,
+    availableProviders,
+    settings,
+    setActiveSessionId,
+    setSelectedModel,
+    handleNewChat,
+  };
+
   return (
-    <div className="h-screen bg-background p-5">
-      <div className="flex w-full h-[calc(100vh-40px)] border border-border overflow-hidden">
-        {/* Sidebar */}
-        <Sidebar
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={handleSelectSession}
-          onNewChat={handleNewChat}
-          onDeleteSession={handleDeleteSession}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-        />
+    <MainContext.Provider value={contextValue}>
+      <div className="h-screen bg-background p-5">
+        <div className="flex w-full h-[calc(100vh-40px)] border border-border overflow-hidden">
+          {/* Sidebar */}
+          <Sidebar
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={handleSelectSession}
+            onNewChat={handleNewChat}
+            onDeleteSession={handleDeleteSession}
+          />
 
-        {/* Main Chat Area */}
-        <main className="flex-1 flex flex-col bg-background">
-          {activeSessionId && activeAgentId ? (
-            <ChatContainer
-              sessionId={activeSessionId}
-              agentId={activeAgentId}
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              availableProviders={availableProviders}
-              enabledModels={settings?.enabledModels}
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-muted">
-              <div className="text-center">
-                <span className="label block mb-2">// INIT.SEQUENCE</span>
-                <h2 className="text-xl font-medium mb-2 tracking-tight">Welcome to Lucy</h2>
-                <p className="text-sm text-muted-dark mb-6">Create a new session to get started.</p>
-                <button
-                  onClick={handleNewChat}
-                  className="btn-ship"
-                >
-                  New Session
-                </button>
-              </div>
-            </div>
-          )}
-        </main>
+          {/* Main Content Area */}
+          <main className="flex-1 flex flex-col bg-background overflow-hidden">
+            {children}
+          </main>
+        </div>
       </div>
-
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        availableProviders={availableProviders}
-      />
-    </div>
+    </MainContext.Provider>
   );
 }

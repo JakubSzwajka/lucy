@@ -47,7 +47,12 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    if (e.key === "Enter") {
+      if (e.shiftKey) {
+        // Shift + Enter: allow default behavior (new line)
+        return;
+      }
+      // Plain Enter: send message
       e.preventDefault();
       handleSubmit();
     }
@@ -101,7 +106,7 @@ export function ChatInput({
       </div>
 
       <div className="mt-2 flex gap-4">
-        <span className="label-sm text-muted-darkest">SHORTCUTS: CTRL+ENTER TO SHIP</span>
+        <span className="label-sm text-muted-darkest">SHORTCUTS: ENTER TO SHIP • SHIFT+ENTER FOR NEW LINE</span>
         <span className="label-sm text-muted-darkest">MODE: CHAT_v1.0</span>
       </div>
     </div>
