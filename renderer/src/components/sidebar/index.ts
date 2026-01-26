@@ -1,2 +1,2 @@
 export { Sidebar } from "./Sidebar";
-export { ConversationItem } from "./ConversationItem";
+export { SessionItem } from "./SessionItem";

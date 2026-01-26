@@ -1,10 +1,10 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { Conversation } from "@/types";
+import type { Session } from "@/types";
 
-interface ConversationItemProps {
-  conversation: Conversation;
+interface SessionItemProps {
+  session: Session;
   index: number;
   isActive: boolean;
   onSelect: () => void;
@@ -35,13 +35,13 @@ function formatTime(date: Date): string {
   }
 }
 
-export function ConversationItem({
-  conversation,
+export function SessionItem({
+  session,
   index,
   isActive,
   onSelect,
   onDelete,
-}: ConversationItemProps) {
+}: SessionItemProps) {
   return (
     <div
       className={cn(
@@ -53,14 +53,14 @@ export function ConversationItem({
       onClick={onSelect}
     >
       <div className="flex justify-between items-start mb-1">
-        <span className="label text-muted">// LOG.{formatLogNumber(index)}</span>
+        <span className="label text-muted">// SESSION.{formatLogNumber(index)}</span>
         <span className="label-sm text-muted-dark">
-          {formatTime(new Date(conversation.updatedAt))}
+          {formatTime(new Date(session.updatedAt))}
         </span>
       </div>
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium truncate flex-1 pr-2">
-          {conversation.title}
+          {session.title}
         </div>
         <button
           onClick={(e) => {
@@ -68,7 +68,7 @@ export function ConversationItem({
             onDelete();
           }}
           className="opacity-0 group-hover:opacity-100 p-1 hover:bg-border rounded transition-opacity text-muted-dark hover:text-foreground"
-          aria-label="Delete conversation"
+          aria-label="Delete session"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -86,10 +86,10 @@ export function ConversationItem({
           </svg>
         </button>
       </div>
-      {conversation.lastMessage && (
-        <p className="text-xs text-muted-dark truncate mt-1">
-          {conversation.lastMessage}
-        </p>
+      {session.status === "archived" && (
+        <span className="text-xs text-muted-dark mt-1 inline-block">
+          [ARCHIVED]
+        </span>
       )}
     </div>
   );

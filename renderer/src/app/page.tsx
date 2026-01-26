@@ -4,13 +4,14 @@ import { useState, useCallback, useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { ChatContainer } from "@/components/chat";
 import { SettingsModal } from "@/components/settings";
-import { useConversations } from "@/hooks/useConversations";
+import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_MODEL, AVAILABLE_MODELS } from "@/lib/ai/models";
-import type { AvailableProviders } from "@/types";
+import type { AvailableProviders, Session } from "@/types";
 
 export default function Home() {
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -49,39 +50,67 @@ export default function Home() {
   }, []);
 
   const {
-    conversations,
-    createConversation,
-    deleteConversation,
-  } = useConversations();
+    sessions,
+    createSession,
+    deleteSession,
+  } = useSessions();
 
-  // Select first conversation on load if available
+  // Fetch session details to get root agent when session changes
   useEffect(() => {
-    if (conversations.length > 0 && !activeConversationId) {
-      setActiveConversationId(conversations[0].id);
+    async function fetchSessionDetails() {
+      if (activeSessionId) {
+        try {
+          const response = await fetch(`/api/sessions/${activeSessionId}`);
+          if (response.ok) {
+            const session = await response.json();
+            // Set the root agent as active
+            if (session.rootAgentId) {
+              setActiveAgentId(session.rootAgentId);
+            } else if (session.agents && session.agents.length > 0) {
+              // Fallback to first agent if no root agent set
+              setActiveAgentId(session.agents[0].id);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch session details:", error);
+        }
+      } else {
+        setActiveAgentId(null);
+      }
     }
-  }, [conversations, activeConversationId]);
+    fetchSessionDetails();
+  }, [activeSessionId]);
+
+  // Select first session on load if available
+  useEffect(() => {
+    if (sessions.length > 0 && !activeSessionId) {
+      setActiveSessionId(sessions[0].id);
+    }
+  }, [sessions, activeSessionId]);
 
   const handleNewChat = useCallback(async () => {
-    const newConversation = await createConversation();
-    if (newConversation) {
-      setActiveConversationId(newConversation.id);
+    const newSession = await createSession();
+    if (newSession) {
+      setActiveSessionId(newSession.id);
+      // The root agent ID will be set via the useEffect above
     }
-  }, [createConversation]);
+  }, [createSession]);
 
-  const handleDeleteConversation = useCallback(
+  const handleDeleteSession = useCallback(
     async (id: string) => {
-      const success = await deleteConversation(id);
-      if (success && activeConversationId === id) {
-        // Select another conversation or null
-        const remaining = conversations.filter((c) => c.id !== id);
-        setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
+      const success = await deleteSession(id);
+      if (success && activeSessionId === id) {
+        // Select another session or null
+        const remaining = sessions.filter((s) => s.id !== id);
+        setActiveSessionId(remaining.length > 0 ? remaining[0].id : null);
+        setActiveAgentId(null);
       }
     },
-    [deleteConversation, activeConversationId, conversations]
+    [deleteSession, activeSessionId, sessions]
   );
 
-  const handleSelectConversation = useCallback((id: string) => {
-    setActiveConversationId(id);
+  const handleSelectSession = useCallback((id: string) => {
+    setActiveSessionId(id);
   }, []);
 
   return (
@@ -89,19 +118,20 @@ export default function Home() {
       <div className="flex w-full h-[calc(100vh-40px)] border border-border overflow-hidden">
         {/* Sidebar */}
         <Sidebar
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          onSelectConversation={handleSelectConversation}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
           onNewChat={handleNewChat}
-          onDeleteConversation={handleDeleteConversation}
+          onDeleteSession={handleDeleteSession}
           onOpenSettings={() => setIsSettingsOpen(true)}
         />
 
         {/* Main Chat Area */}
         <main className="flex-1 flex flex-col bg-background">
-          {activeConversationId ? (
+          {activeSessionId && activeAgentId ? (
             <ChatContainer
-              conversationId={activeConversationId}
+              sessionId={activeSessionId}
+              agentId={activeAgentId}
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
               availableProviders={availableProviders}
@@ -112,12 +142,12 @@ export default function Home() {
               <div className="text-center">
                 <span className="label block mb-2">// INIT.SEQUENCE</span>
                 <h2 className="text-xl font-medium mb-2 tracking-tight">Welcome to Lucy</h2>
-                <p className="text-sm text-muted-dark mb-6">Create a new thread to get started.</p>
+                <p className="text-sm text-muted-dark mb-6">Create a new session to get started.</p>
                 <button
                   onClick={handleNewChat}
                   className="btn-ship"
                 >
-                  New Thread
+                  New Session
                 </button>
               </div>
             </div>

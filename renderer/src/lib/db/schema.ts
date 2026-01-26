@@ -1,8 +1,24 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
-export const conversations = sqliteTable("conversations", {
+// ============================================================================
+// SESSIONS - User-facing conversation container
+// ============================================================================
+
+export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
-  title: text("title").notNull(),
+
+  // Optional user association (for future multi-user support)
+  userId: text("user_id"),
+
+  // Points to the orchestrating agent for this session
+  rootAgentId: text("root_agent_id"),
+
+  // Display
+  title: text("title").notNull().default("New Chat"),
+
+  // Session lifecycle
+  status: text("status", { enum: ["active", "archived"] }).notNull().default("active"),
+
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -11,18 +27,102 @@ export const conversations = sqliteTable("conversations", {
     .$defaultFn(() => new Date()),
 });
 
-export const messages = sqliteTable("messages", {
+// ============================================================================
+// AGENTS - Runtime instances with parent-child hierarchy
+// ============================================================================
+
+export const agentStatusEnum = ["pending", "running", "waiting", "completed", "failed", "cancelled"] as const;
+
+export const agents = sqliteTable("agents", {
   id: text("id").primaryKey(),
-  conversationId: text("conversation_id")
+
+  // Relationships
+  sessionId: text("session_id")
     .notNull()
-    .references(() => conversations.id, { onDelete: "cascade" }),
-  role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
-  content: text("content").notNull(),
-  model: text("model"),
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  parentId: text("parent_id"),
+
+  // If spawned by a tool call, which one?
+  sourceCallId: text("source_call_id"),
+
+  // Task definition
+  name: text("name").notNull(), // e.g., "orchestrator", "researcher", "coder"
+  task: text("task"), // The goal/instruction for this agent
+  systemPrompt: text("system_prompt"), // Agent-specific system prompt
+  model: text("model"), // Which model to use
+  config: text("config", { mode: "json" }).$type<Record<string, unknown>>(), // Additional config
+
+  // Runtime state
+  status: text("status", { enum: agentStatusEnum }).notNull().default("pending"),
+  waitingForCallId: text("waiting_for_call_id"), // Blocked on this tool call
+  result: text("result"), // Final result/output
+  error: text("error"), // Error message if failed
+  turnCount: integer("turn_count").notNull().default(0), // Number of turns completed
+
+  // Timestamps
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-});
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+}, (table) => [
+  index("agents_session_idx").on(table.sessionId),
+  index("agents_parent_idx").on(table.parentId),
+]);
+
+// ============================================================================
+// ITEMS - Polymorphic conversation entries per agent
+// ============================================================================
+
+export const itemTypeEnum = ["message", "tool_call", "tool_result", "reasoning"] as const;
+export const messageRoleEnum = ["user", "assistant", "system"] as const;
+export const toolCallStatusEnum = ["pending", "running", "completed", "failed"] as const;
+
+export const items = sqliteTable("items", {
+  id: text("id").primaryKey(),
+
+  // Belongs to an agent's conversation thread
+  agentId: text("agent_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+
+  // Ordering within the agent's thread
+  sequence: integer("sequence").notNull(),
+
+  // Discriminator for polymorphism
+  type: text("type", { enum: itemTypeEnum }).notNull(),
+
+  // === TYPE: message ===
+  role: text("role", { enum: messageRoleEnum }),
+  content: text("content"),
+
+  // === TYPE: tool_call ===
+  callId: text("call_id"), // Unique ID for linking call → result
+  toolName: text("tool_name"),
+  toolArgs: text("tool_args", { mode: "json" }).$type<Record<string, unknown>>(),
+  toolStatus: text("tool_status", { enum: toolCallStatusEnum }),
+
+  // === TYPE: tool_result ===
+  // Uses callId to link back to the tool_call
+  toolOutput: text("tool_output"),
+  toolError: text("tool_error"),
+
+  // === TYPE: reasoning ===
+  reasoningSummary: text("reasoning_summary"),
+  reasoningContent: text("reasoning_content"),
+
+  // Metadata
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => [
+  index("items_agent_seq_idx").on(table.agentId, table.sequence),
+  index("items_call_id_idx").on(table.callId),
+]);
+
+// ============================================================================
+// SYSTEM PROMPTS - Reusable system prompts
+// ============================================================================
 
 export const systemPrompts = sqliteTable("system_prompts", {
   id: text("id").primaryKey(),
@@ -35,6 +135,10 @@ export const systemPrompts = sqliteTable("system_prompts", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+// ============================================================================
+// SETTINGS - App-wide settings (single row)
+// ============================================================================
 
 export const settings = sqliteTable("settings", {
   id: text("id").primaryKey(), // Fixed "default" ID for single-row
@@ -49,11 +153,25 @@ export const settings = sqliteTable("settings", {
     .$defaultFn(() => new Date()),
 });
 
-export type ConversationRecord = typeof conversations.$inferSelect;
-export type NewConversation = typeof conversations.$inferInsert;
-export type MessageRecord = typeof messages.$inferSelect;
-export type NewMessage = typeof messages.$inferInsert;
+// ============================================================================
+// TYPE EXPORTS
+// ============================================================================
+
+export type SessionRecord = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+
+export type AgentRecord = typeof agents.$inferSelect;
+export type NewAgent = typeof agents.$inferInsert;
+export type AgentStatus = (typeof agentStatusEnum)[number];
+
+export type ItemRecord = typeof items.$inferSelect;
+export type NewItem = typeof items.$inferInsert;
+export type ItemType = (typeof itemTypeEnum)[number];
+export type MessageRole = (typeof messageRoleEnum)[number];
+export type ToolCallStatus = (typeof toolCallStatusEnum)[number];
+
 export type SystemPromptRecord = typeof systemPrompts.$inferSelect;
 export type NewSystemPrompt = typeof systemPrompts.$inferInsert;
+
 export type SettingsRecord = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;

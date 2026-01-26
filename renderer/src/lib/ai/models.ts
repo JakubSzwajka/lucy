@@ -39,18 +39,21 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     name: "Claude Opus 4.5",
     provider: "anthropic",
     modelId: "claude-opus-4-5-20251101",
+    supportsReasoning: true,
   },
   {
     id: "claude-opus-4",
     name: "Claude Opus 4",
     provider: "anthropic",
     modelId: "claude-opus-4-20250514",
+    supportsReasoning: true,
   },
   {
     id: "claude-sonnet-4",
     name: "Claude Sonnet 4",
     provider: "anthropic",
     modelId: "claude-sonnet-4-20250514",
+    supportsReasoning: true,
   },
   {
     id: "claude-3-5-haiku",

@@ -69,15 +69,26 @@ npm run dev
 
 ### API Routes
 API routes run via Next.js standalone server in production:
-- `/api/chat` - AI chat streaming
-- `/api/conversations` - Conversation CRUD
+- `/api/sessions` - Session CRUD (user-facing conversation container)
+- `/api/agents` - Agent CRUD (runtime instances, support hierarchy)
+- `/api/agents/[id]/items` - Polymorphic items (messages, tool calls, results, reasoning)
+- `/api/chat` - AI chat streaming (works with agentId)
 - `/api/providers` - Available AI providers
+- `/api/settings` - App settings
+- `/api/system-prompts` - System prompt management
 
 ### Database
 - SQLite via `better-sqlite3` + Drizzle ORM
 - Schema defined in `renderer/src/lib/db/schema.ts`
 - In dev: Database at project root (`lucy.db`)
 - In prod: Database in user data directory (via `LUCY_USER_DATA_PATH`)
+
+**Multi-Agent Schema:**
+- `sessions` - User-facing conversation container (has rootAgentId)
+- `agents` - Runtime instances with parent-child hierarchy (parentId, sourceCallId)
+- `items` - Polymorphic entries per agent (message | tool_call | tool_result | reasoning)
+- `system_prompts` - Reusable system prompts
+- `settings` - App-wide settings
 
 ## TypeScript
 

@@ -1,12 +1,12 @@
 import { streamText } from "ai";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
-import { db, messages, settings, systemPrompts } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { db, agents, items, settings, systemPrompts, sessions, NewItem } from "@/lib/db";
+import { eq, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 // Fetch the default system prompt content if configured
-async function getSystemPrompt(): Promise<string | null> {
+async function getDefaultSystemPrompt(): Promise<string | null> {
   try {
     const [currentSettings] = await db
       .select()
@@ -28,38 +28,87 @@ async function getSystemPrompt(): Promise<string | null> {
   }
 }
 
-// Convert UIMessage format (with parts) to ModelMessage format (with content)
-function convertToModelMessages(chatMessages: any[]) {
-  return chatMessages.map((msg) => {
-    // Extract text content from parts array if present
-    let content = msg.content;
+// Get next sequence number for an agent
+async function getNextSequence(agentId: string): Promise<number> {
+  const [maxSeq] = await db
+    .select({ max: sql<number>`MAX(${items.sequence})` })
+    .from(items)
+    .where(eq(items.agentId, agentId));
+
+  return (maxSeq?.max ?? -1) + 1;
+}
+
+// Insert an item with auto-incrementing sequence
+async function insertItem(agentId: string, itemData: Omit<NewItem, "id" | "agentId" | "sequence">) {
+  const sequence = await getNextSequence(agentId);
+  const id = uuidv4();
+
+  await db.insert(items).values({
+    id,
+    agentId,
+    sequence,
+    ...itemData,
+  } as NewItem);
+
+  return { id, sequence };
+}
+
+// Convert UIMessage format (with parts) to simple messages
+function convertToModelMessages(chatMessages: unknown[]): Array<{ role: "user" | "assistant" | "system"; content: string }> {
+  return (chatMessages as Record<string, unknown>[]).map((msg) => {
+    let content = msg.content as string | undefined;
     if (!content && Array.isArray(msg.parts)) {
-      content = msg.parts
-        .filter((part: any) => part.type === "text")
-        .map((part: any) => part.text)
+      content = (msg.parts as Record<string, unknown>[])
+        .filter((part) => part.type === "text")
+        .map((part) => part.text as string)
         .join("");
     }
     return {
-      role: msg.role,
+      role: msg.role as "user" | "assistant" | "system",
       content: content || "",
     };
   });
 }
 
 export async function POST(req: Request) {
-  const { messages: chatMessages, model: modelId, conversationId } = await req.json();
+  const { messages: chatMessages, model: modelId, agentId } = await req.json();
 
-  const modelConfig = getModelConfig(modelId) || DEFAULT_MODEL;
+  if (!agentId) {
+    return new Response(JSON.stringify({ error: "agentId is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // Get agent and verify it exists
+  const [agent] = await db
+    .select()
+    .from(agents)
+    .where(eq(agents.id, agentId));
+
+  if (!agent) {
+    return new Response(JSON.stringify({ error: "Agent not found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // Use model from request, agent config, or default
+  const effectiveModelId = modelId || agent.model;
+  const modelConfig = getModelConfig(effectiveModelId) || DEFAULT_MODEL;
   const languageModel = getLanguageModel(modelConfig);
 
   // Convert messages to the format expected by streamText
   const modelMessages = convertToModelMessages(chatMessages);
 
-  // Prepend system prompt if configured
-  const systemPromptContent = await getSystemPrompt();
+  // Determine system prompt: agent-specific > default > none
+  let systemPromptContent = agent.systemPrompt;
+  if (!systemPromptContent) {
+    systemPromptContent = await getDefaultSystemPrompt();
+  }
+
   if (systemPromptContent) {
-    // Only add if there isn't already a system message
-    const hasSystemMessage = modelMessages.some((m: { role: string }) => m.role === "system");
+    const hasSystemMessage = modelMessages.some((m) => m.role === "system");
     if (!hasSystemMessage) {
       modelMessages.unshift({
         role: "system",
@@ -68,27 +117,80 @@ export async function POST(req: Request) {
     }
   }
 
+  // Update agent status to running
+  await db
+    .update(agents)
+    .set({
+      status: "running",
+      startedAt: agent.startedAt || new Date(),
+    })
+    .where(eq(agents.id, agentId));
+
+  // Update session timestamp
+  await db
+    .update(sessions)
+    .set({ updatedAt: new Date() })
+    .where(eq(sessions.id, agent.sessionId));
+
+  // Build provider-specific options for reasoning/thinking
+  const getProviderOptions = () => {
+    if (!modelConfig.supportsReasoning) return undefined;
+
+    if (modelConfig.provider === "openai") {
+      return {
+        openai: {
+          reasoningEffort: "medium",
+        },
+      };
+    }
+
+    if (modelConfig.provider === "anthropic") {
+      return {
+        anthropic: {
+          thinking: {
+            type: "enabled",
+            budgetTokens: 10000, // Allow up to 10k tokens for thinking
+          },
+        },
+      };
+    }
+
+    return undefined;
+  };
+
   const result = streamText({
     model: languageModel,
     messages: modelMessages,
-    providerOptions: modelConfig.supportsReasoning
-      ? {
-          openai: {
-            reasoningEffort: "medium",
-          },
-        }
-      : undefined,
+    // Anthropic extended thinking requires sufficient maxTokens
+    maxTokens: modelConfig.provider === "anthropic" && modelConfig.supportsReasoning ? 16000 : undefined,
+    providerOptions: getProviderOptions(),
     onFinish: async ({ text, reasoning }) => {
-      // Save assistant message to database
-      if (conversationId) {
-        await db.insert(messages).values({
-          id: uuidv4(),
-          conversationId,
-          role: "assistant",
-          content: text,
-          model: modelConfig.id,
+      // Save reasoning as a separate item if present
+      // reasoning is an array of ReasoningPart objects
+      if (reasoning && reasoning.length > 0) {
+        const reasoningText = reasoning.map((r) => r.text).join("\n");
+        await insertItem(agentId, {
+          type: "reasoning",
+          reasoningContent: reasoningText,
+          reasoningSummary: reasoningText.slice(0, 200) + (reasoningText.length > 200 ? "..." : ""),
         });
       }
+
+      // Save assistant message
+      await insertItem(agentId, {
+        type: "message",
+        role: "assistant",
+        content: text,
+      });
+
+      // Update agent status and turn count
+      await db
+        .update(agents)
+        .set({
+          status: "waiting", // Waiting for next user input
+          turnCount: agent.turnCount + 1,
+        })
+        .where(eq(agents.id, agentId));
     },
   });
 

@@ -50,11 +50,11 @@ function ReasoningActivityView({ activity }: { activity: ReasoningActivity }) {
 }
 
 function ToolCallActivityView({ activity }: { activity: ToolCallActivity }) {
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     pending: "text-muted",
     running: "text-accent",
     completed: "text-green-500",
-    error: "text-red-500",
+    failed: "text-red-500",
   };
 
   return (

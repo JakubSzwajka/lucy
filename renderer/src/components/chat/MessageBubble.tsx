@@ -1,5 +1,6 @@
 "use client";
 
+import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 
 interface MessageBubbleProps {
@@ -39,7 +40,9 @@ export function MessageBubble({ role, content, model, timestamp }: MessageBubble
             : "bg-assistant-bubble border-assistant-bubble-border"
         )}
       >
-        <div className="whitespace-pre-wrap break-words">{content}</div>
+        <div className="markdown-content break-words">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
       </div>
 
       {/* Timestamp and model */}

@@ -1,30 +1,30 @@
 "use client";
 
-import { ConversationItem } from "./ConversationItem";
-import type { Conversation } from "@/types";
+import { SessionItem } from "./SessionItem";
+import type { Session } from "@/types";
 
 interface SidebarProps {
-  conversations: Conversation[];
-  activeConversationId: string | null;
-  onSelectConversation: (id: string) => void;
+  sessions: Session[];
+  activeSessionId: string | null;
+  onSelectSession: (id: string) => void;
   onNewChat: () => void;
-  onDeleteConversation: (id: string) => void;
+  onDeleteSession: (id: string) => void;
   onOpenSettings: () => void;
 }
 
 export function Sidebar({
-  conversations,
-  activeConversationId,
-  onSelectConversation,
+  sessions,
+  activeSessionId,
+  onSelectSession,
   onNewChat,
-  onDeleteConversation,
+  onDeleteSession,
   onOpenSettings,
 }: SidebarProps) {
   return (
     <aside className="w-80 border-r border-border flex flex-col bg-background-tertiary">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <h1 className="label mb-1">Architecture // Threads</h1>
+        <h1 className="label mb-1">Architecture // Sessions</h1>
         <div className="text-sm font-medium">LUCY AI</div>
       </div>
 
@@ -48,26 +48,26 @@ export function Sidebar({
               d="M12 4v16m8-8H4"
             />
           </svg>
-          New Thread
+          New Session
         </button>
       </div>
 
-      {/* Conversations List */}
+      {/* Sessions List */}
       <div className="flex-1 overflow-y-auto">
-        {conversations.length === 0 ? (
+        {sessions.length === 0 ? (
           <div className="p-4 text-center">
-            <span className="label-dark">// NO_THREADS</span>
+            <span className="label-dark">// NO_SESSIONS</span>
             <p className="text-sm text-muted-dark mt-2">Start a new conversation</p>
           </div>
         ) : (
-          conversations.map((conversation, index) => (
-            <ConversationItem
-              key={conversation.id}
-              conversation={conversation}
+          sessions.map((session, index) => (
+            <SessionItem
+              key={session.id}
+              session={session}
               index={index}
-              isActive={conversation.id === activeConversationId}
-              onSelect={() => onSelectConversation(conversation.id)}
-              onDelete={() => onDeleteConversation(conversation.id)}
+              isActive={session.id === activeSessionId}
+              onSelect={() => onSelectSession(session.id)}
+              onDelete={() => onDeleteSession(session.id)}
             />
           ))
         )}
