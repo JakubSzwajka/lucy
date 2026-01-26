@@ -52,11 +52,22 @@ async function createMainWindow() {
     app.setPath("userData", `${app.getPath("userData")} (development)`);
   }
 
+  // Set app icon path
+  const iconPath = isProd
+    ? path.join(process.resourcesPath, "icon.png")
+    : path.join(__dirname, "..", "resources", "icon.png");
+
+  // Set dock icon on macOS
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.setIcon(iconPath);
+  }
+
   mainWindow = createWindow("main", {
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,

@@ -73,3 +73,38 @@ export interface AvailableProviders {
   anthropic: boolean;
   google: boolean;
 }
+
+// Settings Types
+export interface UserSettings {
+  id: string;
+  defaultModelId: string | null;
+  defaultSystemPromptId: string | null;
+  enabledModels: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SettingsUpdate {
+  defaultModelId?: string | null;
+  defaultSystemPromptId?: string | null;
+  enabledModels?: string[];
+}
+
+// System Prompt Types
+export interface SystemPrompt {
+  id: string;
+  name: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SystemPromptCreate {
+  name: string;
+  content: string;
+}
+
+export interface SystemPromptUpdate {
+  name?: string;
+  content?: string;
+}

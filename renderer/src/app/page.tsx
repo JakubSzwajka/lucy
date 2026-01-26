@@ -3,7 +3,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { ChatContainer } from "@/components/chat";
+import { SettingsModal } from "@/components/settings";
 import { useConversations } from "@/hooks/useConversations";
+import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_MODEL, AVAILABLE_MODELS } from "@/lib/ai/models";
 import type { AvailableProviders } from "@/types";
 
@@ -11,6 +13,16 @@ export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const { settings } = useSettings();
+
+  // Apply default model from settings when settings load
+  useEffect(() => {
+    if (settings?.defaultModelId) {
+      setSelectedModel(settings.defaultModelId);
+    }
+  }, [settings?.defaultModelId]);
 
   useEffect(() => {
     async function fetchProviders() {
@@ -82,6 +94,7 @@ export default function Home() {
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}
           onDeleteConversation={handleDeleteConversation}
+          onOpenSettings={() => setIsSettingsOpen(true)}
         />
 
         {/* Main Chat Area */}
@@ -92,6 +105,7 @@ export default function Home() {
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
               availableProviders={availableProviders}
+              enabledModels={settings?.enabledModels}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted">
@@ -110,6 +124,13 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        availableProviders={availableProviders}
+      />
     </div>
   );
 }

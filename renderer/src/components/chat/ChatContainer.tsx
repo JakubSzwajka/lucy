@@ -11,6 +11,7 @@ interface ChatContainerProps {
   selectedModel: string;
   onModelChange: (modelId: string) => void;
   availableProviders?: AvailableProviders;
+  enabledModels?: string[];
 }
 
 export function ChatContainer({
@@ -18,6 +19,7 @@ export function ChatContainer({
   selectedModel,
   onModelChange,
   availableProviders,
+  enabledModels,
 }: ChatContainerProps) {
   const { messages, sendMessage, isLoading } = usePersistentChat({
     conversationId,
@@ -39,6 +41,7 @@ export function ChatContainer({
           selectedModel={selectedModel}
           onModelChange={onModelChange}
           availableProviders={availableProviders}
+          enabledModels={enabledModels}
         />
       </header>
 

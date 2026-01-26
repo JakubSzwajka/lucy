@@ -1,8 +1,32 @@
 import { streamText } from "ai";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
-import { db, messages } from "@/lib/db";
+import { db, messages, settings, systemPrompts } from "@/lib/db";
+import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+
+// Fetch the default system prompt content if configured
+async function getSystemPrompt(): Promise<string | null> {
+  try {
+    const [currentSettings] = await db
+      .select()
+      .from(settings)
+      .where(eq(settings.id, "default"));
+
+    if (!currentSettings?.defaultSystemPromptId) {
+      return null;
+    }
+
+    const [prompt] = await db
+      .select()
+      .from(systemPrompts)
+      .where(eq(systemPrompts.id, currentSettings.defaultSystemPromptId));
+
+    return prompt?.content || null;
+  } catch {
+    return null;
+  }
+}
 
 // Convert UIMessage format (with parts) to ModelMessage format (with content)
 function convertToModelMessages(chatMessages: any[]) {
@@ -30,6 +54,19 @@ export async function POST(req: Request) {
 
   // Convert messages to the format expected by streamText
   const modelMessages = convertToModelMessages(chatMessages);
+
+  // Prepend system prompt if configured
+  const systemPromptContent = await getSystemPrompt();
+  if (systemPromptContent) {
+    // Only add if there isn't already a system message
+    const hasSystemMessage = modelMessages.some((m: { role: string }) => m.role === "system");
+    if (!hasSystemMessage) {
+      modelMessages.unshift({
+        role: "system",
+        content: systemPromptContent,
+      });
+    }
+  }
 
   const result = streamText({
     model: languageModel,
