@@ -5,8 +5,10 @@ import { SettingsTabs, type SettingsTab } from "./SettingsTabs";
 import { GeneralSettings } from "./GeneralSettings";
 import { ModelsSettings } from "./ModelsSettings";
 import { SystemPromptsSettings } from "./SystemPromptsSettings";
+import { McpServersSettings } from "./McpServersSettings";
 import { useSettings } from "@/hooks/useSettings";
 import { useSystemPrompts } from "@/hooks/useSystemPrompts";
+import { useMcpServers } from "@/hooks/useMcpServers";
 import type { AvailableProviders } from "@/types";
 
 interface SettingsModalProps {
@@ -29,6 +31,14 @@ export function SettingsModal({
     updatePrompt,
     deletePrompt,
   } = useSystemPrompts();
+  const {
+    servers: mcpServers,
+    isLoading: mcpLoading,
+    createServer: createMcpServer,
+    updateServer: updateMcpServer,
+    deleteServer: deleteMcpServer,
+    testConnection: testMcpConnection,
+  } = useMcpServers();
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -46,7 +56,7 @@ export function SettingsModal({
 
   if (!isOpen) return null;
 
-  const isLoading = settingsLoading || promptsLoading;
+  const isLoading = settingsLoading || promptsLoading || mcpLoading;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -117,6 +127,15 @@ export function SettingsModal({
                   onUpdatePrompt={updatePrompt}
                   onDeletePrompt={deletePrompt}
                   onUpdateSettings={updateSettings}
+                />
+              )}
+              {activeTab === "mcp" && (
+                <McpServersSettings
+                  servers={mcpServers}
+                  onCreateServer={createMcpServer}
+                  onUpdateServer={updateMcpServer}
+                  onDeleteServer={deleteMcpServer}
+                  onTestConnection={testMcpConnection}
                 />
               )}
             </>

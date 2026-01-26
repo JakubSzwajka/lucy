@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
-import { ModelSelector } from "./ModelSelector";
 import { useAgentChat } from "@/hooks/useAgentChat";
+import { useMcpStatus } from "@/hooks/useMcpStatus";
 import { getModelConfig } from "@/lib/ai/models";
 import type { AvailableProviders } from "@/types";
 
@@ -30,6 +30,14 @@ export function ChatContainer({
     agentId,
     model: selectedModel,
   });
+
+  // MCP servers (global setting)
+  const {
+    allServers: mcpServers,
+    enabledServers: enabledMcpServers,
+    toggleServer: toggleMcpServer,
+    isLoading: isMcpLoading,
+  } = useMcpStatus();
 
   // Get model config to check thinking support
   const modelConfig = getModelConfig(selectedModel);
@@ -75,7 +83,7 @@ export function ChatContainer({
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <header className="h-16 border-b border-border flex items-center justify-between px-6">
+      <header className="h-16 border-b border-border flex items-center px-6">
         <div className="flex items-center gap-3">
           <div className={`w-2 h-2 rounded-full ${getStatusIndicator()}`} />
           <div>
@@ -90,12 +98,6 @@ export function ChatContainer({
             )}
           </div>
         </div>
-        <ModelSelector
-          selectedModel={selectedModel}
-          onModelChange={onModelChange}
-          availableProviders={availableProviders}
-          enabledModels={enabledModels}
-        />
       </header>
 
       {/* Messages */}
@@ -108,6 +110,14 @@ export function ChatContainer({
         thinkingEnabled={thinkingEnabled}
         onThinkingChange={setThinkingEnabled}
         supportsThinking={supportsThinking}
+        selectedModel={selectedModel}
+        onModelChange={onModelChange}
+        availableProviders={availableProviders}
+        enabledModels={enabledModels}
+        mcpServers={mcpServers}
+        enabledMcpServers={enabledMcpServers}
+        onMcpToggle={toggleMcpServer}
+        isMcpLoading={isMcpLoading}
       />
     </div>
   );

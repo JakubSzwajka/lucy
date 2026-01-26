@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { SessionItem } from "./SessionItem";
 import type { Session } from "@/types";
 
@@ -24,8 +25,16 @@ export function Sidebar({
     <aside className="w-80 border-r border-border flex flex-col bg-background-tertiary">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <h1 className="label mb-1">Architecture // Sessions</h1>
-        <div className="text-sm font-medium">LUCY AI</div>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/logo.png"
+            alt="Lucy"
+            width={32}
+            height={32}
+            className="rounded-sm"
+          />
+          <span className="label">lucy</span>
+        </div>
       </div>
 
       {/* New Chat Button */}

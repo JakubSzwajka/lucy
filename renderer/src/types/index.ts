@@ -76,7 +76,7 @@ export interface AgentUpdate {
 
 export type ItemType = "message" | "tool_call" | "tool_result" | "reasoning";
 export type MessageRole = "user" | "assistant" | "system";
-export type ToolCallStatus = "pending" | "running" | "completed" | "failed";
+export type ToolCallStatus = "pending" | "pending_approval" | "running" | "completed" | "failed";
 
 // Base item fields shared by all types
 export interface ItemBase {
@@ -266,4 +266,98 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+// ============================================================================
+// MCP (Model Context Protocol) TYPES
+// ============================================================================
+
+export type McpTransportType = "stdio" | "sse" | "http";
+
+export interface McpServer {
+  id: string;
+  name: string;
+  description?: string | null;
+  transportType: McpTransportType;
+  // Stdio transport
+  command?: string | null;
+  args?: string[] | null;
+  env?: Record<string, string> | null;
+  // HTTP/SSE transport
+  url?: string | null;
+  headers?: Record<string, string> | null;
+  // Settings
+  requireApproval: boolean;
+  enabled: boolean;
+  iconUrl?: string | null;
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface McpServerCreate {
+  name: string;
+  description?: string;
+  transportType: McpTransportType;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+  requireApproval?: boolean;
+  enabled?: boolean;
+  iconUrl?: string;
+}
+
+export interface McpServerUpdate {
+  name?: string;
+  description?: string | null;
+  transportType?: McpTransportType;
+  command?: string | null;
+  args?: string[] | null;
+  env?: Record<string, string> | null;
+  url?: string | null;
+  headers?: Record<string, string> | null;
+  requireApproval?: boolean;
+  enabled?: boolean;
+  iconUrl?: string | null;
+}
+
+// Tool discovered from an MCP server
+export interface McpTool {
+  name: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+  serverId: string;
+  serverName: string;
+}
+
+// Connection status for an MCP server
+export interface McpServerStatus {
+  serverId: string;
+  serverName: string;
+  connected: boolean;
+  tools: McpTool[];
+  error?: string;
+  requireApproval: boolean;
+}
+
+// Session MCP configuration response
+export interface SessionMcpConfig {
+  enabledServers: McpServerStatus[];
+}
+
+// Tool call with pending approval
+export type ToolApprovalStatus = "pending_approval" | "approved" | "rejected";
+
+export interface ToolCallActivity extends AgentActivityBase {
+  type: "tool_call";
+  callId: string;
+  toolName: string;
+  args?: Record<string, unknown>;
+  status: ToolCallStatus;
+  serverId?: string;
+  serverName?: string;
+  approvalStatus?: ToolApprovalStatus;
+  executionTimeMs?: number;
 }

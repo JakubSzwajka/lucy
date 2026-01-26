@@ -45,7 +45,8 @@ function extractActivities(message: any): AgentActivity[] {
     }
 
     // Future: Extract tool calls, results, etc.
-    // message.parts.filter(p => p.type === "tool-invocation").forEach(...)
+    // AI SDK uses part.type = "tool-${toolName}" format (e.g., "tool-getWeather")
+    // message.parts.filter(p => p.type?.startsWith("tool-")).forEach(...)
   }
 
   return activities;

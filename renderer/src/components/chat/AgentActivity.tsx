@@ -51,23 +51,51 @@ function ReasoningActivityView({ activity }: { activity: ReasoningActivity }) {
 
 function ToolCallActivityView({ activity }: { activity: ToolCallActivity }) {
   const statusColors: Record<string, string> = {
-    pending: "text-muted",
-    running: "text-accent",
+    pending: "text-yellow-500",
+    pending_approval: "text-orange-500 animate-pulse",
+    running: "text-blue-400 animate-pulse",
     completed: "text-green-500",
     failed: "text-red-500",
   };
 
+  const statusIcons: Record<string, string> = {
+    pending: "⏳",
+    pending_approval: "🔐",
+    running: "⚡",
+    completed: "✓",
+    failed: "✗",
+  };
+
+  // Build title with server name if available
+  const title = activity.serverName
+    ? `${activity.toolName} [${activity.serverName}]`
+    : activity.toolName;
+
   return (
-    <AgentActivitySection title={`TOOL: ${activity.toolName.toUpperCase()}`} icon="🔧">
+    <AgentActivitySection
+      title={`TOOL CALL: ${title.toUpperCase()}`}
+      icon="🔧"
+      defaultExpanded={activity.status === "running" || activity.status === "failed"}
+    >
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-muted">Status:</span>
-          <span className={statusColors[activity.status]}>{activity.status}</span>
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted">Status:</span>
+            <span className={statusColors[activity.status]}>
+              {statusIcons[activity.status]} {activity.status}
+            </span>
+          </div>
+          {activity.executionTimeMs && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted">Time:</span>
+              <span className="text-muted-dark">{activity.executionTimeMs}ms</span>
+            </div>
+          )}
         </div>
-        {activity.args && (
+        {activity.args && Object.keys(activity.args).length > 0 && (
           <div>
             <span className="text-muted block mb-1">Arguments:</span>
-            <pre className="bg-background/50 rounded p-2 overflow-x-auto">
+            <pre className="bg-background/50 rounded p-2 overflow-x-auto text-xs font-mono">
               {JSON.stringify(activity.args, null, 2)}
             </pre>
           </div>
@@ -78,17 +106,40 @@ function ToolCallActivityView({ activity }: { activity: ToolCallActivity }) {
 }
 
 function ToolResultActivityView({ activity }: { activity: ToolResultActivity }) {
+  const hasError = !!activity.error;
+  const hasResult = activity.result !== undefined && activity.result !== null;
+
+  // Format result for display
+  const formatResult = (result: unknown): string => {
+    if (typeof result === "string") {
+      // Try to parse as JSON for pretty printing
+      try {
+        const parsed = JSON.parse(result);
+        return JSON.stringify(parsed, null, 2);
+      } catch {
+        return result;
+      }
+    }
+    return JSON.stringify(result, null, 2);
+  };
+
   return (
-    <AgentActivitySection title="TOOL RESULT" icon="📤">
+    <AgentActivitySection
+      title={hasError ? "TOOL ERROR" : "TOOL RESULT"}
+      icon={hasError ? "❌" : "📤"}
+      defaultExpanded={hasError}
+    >
       <div className="space-y-2">
-        {activity.error ? (
-          <div className="text-red-500">Error: {activity.error}</div>
-        ) : (
-          <pre className="bg-background/50 rounded p-2 overflow-x-auto whitespace-pre-wrap">
-            {typeof activity.result === "string"
-              ? activity.result
-              : JSON.stringify(activity.result, null, 2)}
+        {hasError ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded p-2 text-red-400">
+            {activity.error}
+          </div>
+        ) : hasResult ? (
+          <pre className="bg-background/50 rounded p-2 overflow-x-auto whitespace-pre-wrap text-xs font-mono max-h-48">
+            {formatResult(activity.result)}
           </pre>
+        ) : (
+          <span className="text-muted-dark italic">No output</span>
         )}
       </div>
     </AgentActivitySection>

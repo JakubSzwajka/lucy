@@ -47,6 +47,8 @@ function extractContent(message: Record<string, unknown>): string {
 }
 
 // Helper to extract activities from UIMessage parts (streaming)
+// AI SDK uses part.type = "tool-${toolName}" format (e.g., "tool-getWeather")
+// States: "input-streaming", "input-available", "output-available", "output-error"
 function extractActivitiesFromParts(message: Record<string, unknown>): AgentActivity[] {
   const activities: AgentActivity[] = [];
 
@@ -68,27 +70,51 @@ function extractActivitiesFromParts(message: Record<string, unknown>): AgentActi
       activities.push(reasoningActivity);
     }
 
-    // Extract tool calls
+    // Extract tool calls - AI SDK uses "tool-${toolName}" format for part.type
     parts
-      .filter((part) => part.type === "tool-invocation")
+      .filter((part) => typeof part.type === "string" && (part.type as string).startsWith("tool-"))
       .forEach((part, index) => {
+        const partType = part.type as string;
+        // Extract tool name from "tool-${toolName}" format
+        const toolName = partType.slice(5); // Remove "tool-" prefix
+        const state = part.state as string;
+
+        // Determine status based on AI SDK state values
+        let status: "running" | "completed" | "failed" = "running";
+        if (state === "output-available") {
+          status = "completed";
+        } else if (state === "output-error") {
+          status = "failed";
+        }
+
         const toolActivity: ToolCallActivity = {
           id: `${message.id}-tool-${index}`,
           type: "tool_call",
           callId: part.toolCallId as string,
-          toolName: part.toolName as string,
-          args: part.args as Record<string, unknown>,
-          status: (part.state as string) === "result" ? "completed" : "running",
+          toolName: toolName,
+          args: part.input as Record<string, unknown>, // AI SDK uses "input" not "args"
+          status,
         };
         activities.push(toolActivity);
 
-        // If tool has result, add result activity
-        if (part.state === "result" && part.result) {
+        // If tool has output, add result activity
+        if (state === "output-available" && part.output) {
           const resultActivity: ToolResultActivity = {
             id: `${message.id}-tool-result-${index}`,
             type: "tool_result",
             callId: part.toolCallId as string,
-            result: JSON.stringify(part.result),
+            result: JSON.stringify(part.output), // AI SDK uses "output" not "result"
+          };
+          activities.push(resultActivity);
+        }
+
+        // If tool has error, add result activity with error
+        if (state === "output-error" && part.errorText) {
+          const resultActivity: ToolResultActivity = {
+            id: `${message.id}-tool-result-${index}`,
+            type: "tool_result",
+            callId: part.toolCallId as string,
+            error: part.errorText as string,
           };
           activities.push(resultActivity);
         }

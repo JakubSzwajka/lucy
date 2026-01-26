@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { ChatOptionsPanel } from "./ChatOptionsPanel";
+import type { AvailableProviders, McpServer, McpServerStatus } from "@/types";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -9,6 +10,15 @@ interface ChatInputProps {
   thinkingEnabled?: boolean;
   onThinkingChange?: (enabled: boolean) => void;
   supportsThinking?: boolean;
+  selectedModel?: string;
+  onModelChange?: (modelId: string) => void;
+  availableProviders?: AvailableProviders;
+  enabledModels?: string[];
+  // MCP props
+  mcpServers?: McpServer[];
+  enabledMcpServers?: McpServerStatus[];
+  onMcpToggle?: (serverId: string, enabled: boolean) => void;
+  isMcpLoading?: boolean;
 }
 
 export function ChatInput({
@@ -17,6 +27,14 @@ export function ChatInput({
   thinkingEnabled = false,
   onThinkingChange,
   supportsThinking = false,
+  selectedModel,
+  onModelChange,
+  availableProviders,
+  enabledModels,
+  mcpServers = [],
+  enabledMcpServers = [],
+  onMcpToggle,
+  isMcpLoading,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -50,6 +68,14 @@ export function ChatInput({
         thinkingEnabled={thinkingEnabled}
         onThinkingChange={onThinkingChange ?? (() => {})}
         supportsThinking={supportsThinking}
+        selectedModel={selectedModel}
+        onModelChange={onModelChange}
+        availableProviders={availableProviders}
+        enabledModels={enabledModels}
+        mcpServers={mcpServers}
+        enabledMcpServers={enabledMcpServers}
+        onMcpToggle={onMcpToggle}
+        isMcpLoading={isMcpLoading}
       />
       <div className="relative flex items-end gap-3 border border-border rounded-lg p-2 focus-within:border-muted-darker transition-all bg-background-secondary/20">
         <textarea

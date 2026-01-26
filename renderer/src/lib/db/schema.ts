@@ -76,7 +76,7 @@ export const agents = sqliteTable("agents", {
 
 export const itemTypeEnum = ["message", "tool_call", "tool_result", "reasoning"] as const;
 export const messageRoleEnum = ["user", "assistant", "system"] as const;
-export const toolCallStatusEnum = ["pending", "running", "completed", "failed"] as const;
+export const toolCallStatusEnum = ["pending", "pending_approval", "running", "completed", "failed"] as const;
 
 export const items = sqliteTable("items", {
   id: text("id").primaryKey(),
@@ -175,3 +175,67 @@ export type NewSystemPrompt = typeof systemPrompts.$inferInsert;
 
 export type SettingsRecord = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
+
+// ============================================================================
+// MCP SERVERS - External tool providers (Model Context Protocol)
+// ============================================================================
+
+export const mcpTransportTypeEnum = ["stdio", "sse", "http"] as const;
+
+export const mcpServers = sqliteTable("mcp_servers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+
+  // Transport configuration
+  transportType: text("transport_type", { enum: mcpTransportTypeEnum }).notNull(),
+
+  // Stdio transport fields
+  command: text("command"), // e.g., "npx", "/usr/local/bin/mcp-server"
+  args: text("args"), // JSON array of arguments
+  env: text("env"), // JSON object of environment variables
+
+  // HTTP/SSE transport fields
+  url: text("url"),
+  headers: text("headers"), // JSON object of headers
+
+  // Settings
+  requireApproval: integer("require_approval", { mode: "boolean" }).notNull().default(false),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  iconUrl: text("icon_url"),
+
+  // Timestamps
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+// ============================================================================
+// SESSION MCP SERVERS - Junction table for session-to-MCP mapping
+// ============================================================================
+
+export const sessionMcpServers = sqliteTable("session_mcp_servers", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  mcpServerId: text("mcp_server_id")
+    .notNull()
+    .references(() => mcpServers.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => [
+  index("session_mcp_session_idx").on(table.sessionId),
+  index("session_mcp_server_idx").on(table.mcpServerId),
+]);
+
+// MCP Types
+export type McpTransportType = (typeof mcpTransportTypeEnum)[number];
+export type McpServerRecord = typeof mcpServers.$inferSelect;
+export type NewMcpServer = typeof mcpServers.$inferInsert;
+export type SessionMcpServerRecord = typeof sessionMcpServers.$inferSelect;
+export type NewSessionMcpServer = typeof sessionMcpServers.$inferInsert;

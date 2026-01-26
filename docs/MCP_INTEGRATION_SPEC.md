@@ -1,719 +1,613 @@
 # MCP Integration Specification
 
-## Overview
+## Executive Summary
 
-Add Model Context Protocol (MCP) support to Lucy, enabling agents to use external tools from providers like Todoist, Notion, GitHub, filesystem access, and more.
+This document specifies the integration of Model Context Protocol (MCP) into Lucy, enabling AI agents to use external tools from providers like Todoist, Notion, GitHub, and custom services.
 
-**Key Decisions:**
-- Transport: Both stdio (local CLI tools) and HTTP/SSE (remote servers)
-- Scope: Per-session MCP selection (all agents in a session share tools)
-- UI: Dropdown/chips above message input
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Lucy Desktop App                         │
-├─────────────────────────────────────────────────────────────────┤
-│  Settings                                                        │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ MCP Server Registry                                         ││
-│  │ • Todoist (stdio: npx @anthropic/mcp-todoist)              ││
-│  │ • Notion (http: https://notion-mcp.example.com)            ││
-│  │ • Filesystem (stdio: npx @anthropic/mcp-filesystem)        ││
-│  └─────────────────────────────────────────────────────────────┘│
-├─────────────────────────────────────────────────────────────────┤
-│  Session                                                         │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ Enabled MCPs: [Todoist, Notion]                             ││
-│  │                                                              ││
-│  │  Agent 1 ──► Chat API ──► MCP Client Pool ──► MCP Servers   ││
-│  │      │           │                                          ││
-│  │      │           ▼                                          ││
-│  │      │      Tool Discovery                                  ││
-│  │      │      Tool Execution                                  ││
-│  │      │      Result Handling                                 ││
-│  │      │           │                                          ││
-│  │      ◄───────────┘                                          ││
-│  └─────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
-```
+**Core Requirements:**
+- Users can configure multiple MCP servers in Settings
+- Each MCP server has an approval setting: "always ask" or "auto-execute"
+- Per-session tool selection: users choose which MCPs are active for each conversation
+- Tool execution details displayed in UI (similar to reasoning blocks)
 
 ---
 
-## Database Schema Changes
+## 1. Background & Context
+
+### What is MCP?
+
+Model Context Protocol is a standard for connecting AI models to external tools and data sources. An MCP server exposes a set of tools (functions) that an AI can invoke during a conversation.
+
+**Transport Types:**
+- **Stdio**: Local process communication. The MCP server runs as a CLI tool (e.g., `npx @anthropic/mcp-todoist`). Best for local tools, filesystem access, or tools requiring local credentials.
+- **HTTP/SSE**: Remote server communication. The MCP server is hosted somewhere and accessed via HTTP. Best for cloud services with their own hosting.
+
+### How AI SDK Handles MCP
+
+The Vercel AI SDK provides `createMCPClient()` which:
+1. Connects to an MCP server via configured transport
+2. Discovers available tools (name, description, input schema)
+3. Returns tool definitions compatible with `streamText()`
+
+When the AI decides to use a tool:
+1. AI SDK parses the tool call from the model response
+2. Executes the tool via the MCP client
+3. Returns the result to the model for continued reasoning
+4. This loop continues until the model produces a final response (controlled by `maxSteps`)
+
+### Current Lucy Architecture
+
+Lucy already has:
+- Multi-agent sessions with parent-child hierarchy
+- Polymorphic `items` table storing messages, tool_calls, tool_results, reasoning
+- Streaming chat API using AI SDK's `streamText()`
+- Settings system with single-row configuration
+
+What's missing:
+- MCP server configuration storage
+- MCP client connection management
+- Tool discovery and execution
+- UI for server management and tool selection
+
+---
+
+## 2. Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                              SETTINGS                                │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ MCP Server Registry                                            │ │
+│  │ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐            │ │
+│  │ │ Todoist      │ │ Filesystem   │ │ Custom API   │            │ │
+│  │ │ stdio        │ │ stdio        │ │ http         │            │ │
+│  │ │ ☑ Auto-exec  │ │ ☐ Ask first  │ │ ☑ Auto-exec  │            │ │
+│  │ └──────────────┘ └──────────────┘ └──────────────┘            │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────────┤
+│                              SESSION                                 │
+│  Enabled MCPs: [Todoist ✓] [Filesystem ✓] [Custom API ✗]           │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │                         CHAT API                               │ │
+│  │  1. Receive message                                            │ │
+│  │  2. Load enabled MCPs for session                              │ │
+│  │  3. Connect to MCP servers (if not already connected)          │ │
+│  │  4. Discover tools from each server                            │ │
+│  │  5. Pass tools to streamText()                                 │ │
+│  │  6. On tool call:                                              │ │
+│  │     - Check approval setting                                   │ │
+│  │     - If "ask first": pause, request user approval via UI      │ │
+│  │     - Execute tool via MCP client                              │ │
+│  │     - Persist tool_call and tool_result items                  │ │
+│  │  7. Loop until model produces final response                   │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Data Model
 
 ### New Table: `mcp_servers`
 
-Stores configured MCP server definitions (the registry of available MCPs).
+Stores the registry of configured MCP servers.
 
-```typescript
-// renderer/src/lib/db/schema.ts
+**Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| id | TEXT PK | UUID |
+| name | TEXT | Display name (e.g., "Todoist", "My Filesystem") |
+| description | TEXT | Optional user notes |
+| transport_type | ENUM | "stdio" \| "sse" \| "http" |
+| command | TEXT | For stdio: the executable (e.g., "npx", "/usr/local/bin/mcp-server") |
+| args | JSON | For stdio: array of arguments (e.g., ["@anthropic/mcp-todoist"]) |
+| env | JSON | For stdio: environment variables (e.g., {"TODOIST_API_KEY": "..."}) |
+| url | TEXT | For http/sse: server URL |
+| headers | JSON | For http/sse: auth headers (e.g., {"Authorization": "Bearer ..."}) |
+| require_approval | BOOLEAN | If true, user must approve each tool execution |
+| enabled | BOOLEAN | If false, server is disabled globally |
+| icon_url | TEXT | Optional icon for UI |
+| created_at | TIMESTAMP | |
+| updated_at | TIMESTAMP | |
 
-export const mcpServers = sqliteTable("mcp_servers", {
-  id: text("id").primaryKey(), // uuid
-  name: text("name").notNull(), // "Todoist", "Notion"
-  description: text("description"), // Optional description
-
-  // Transport configuration (discriminated union)
-  transportType: text("transport_type", {
-    enum: ["stdio", "sse", "http"]
-  }).notNull(),
-
-  // For stdio transport
-  command: text("command"), // "npx" or "/path/to/binary"
-  args: text("args"), // JSON array: ["@anthropic/mcp-todoist"]
-  env: text("env"), // JSON object: {"API_KEY": "..."}
-
-  // For HTTP/SSE transport
-  url: text("url"), // "https://mcp-server.example.com"
-  headers: text("headers"), // JSON object for auth headers
-
-  // Status & metadata
-  enabled: integer("enabled", { mode: "boolean" }).default(true),
-  iconUrl: text("icon_url"), // Optional icon for UI
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .default(sql`(unixepoch())`),
-});
-```
+**Design Decisions:**
+- Store transport config as separate fields (not polymorphic JSON) for easier querying and validation
+- `require_approval` is per-server, not per-tool. Simpler UX, tools from same server typically have similar trust levels
+- `enabled` allows temporarily disabling a server without deleting it
 
 ### New Table: `session_mcp_servers`
 
-Junction table linking sessions to their enabled MCP servers.
+Junction table linking sessions to their active MCP servers.
 
-```typescript
-export const sessionMcpServers = sqliteTable("session_mcp_servers", {
-  id: text("id").primaryKey(),
-  sessionId: text("session_id")
-    .notNull()
-    .references(() => sessions.id, { onDelete: "cascade" }),
-  mcpServerId: text("mcp_server_id")
-    .notNull()
-    .references(() => mcpServers.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .default(sql`(unixepoch())`),
-});
-```
+**Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| id | TEXT PK | UUID |
+| session_id | TEXT FK | References sessions.id, CASCADE delete |
+| mcp_server_id | TEXT FK | References mcp_servers.id, CASCADE delete |
+| created_at | TIMESTAMP | |
 
-### Schema Relations
+**Why per-session, not per-agent?**
+- Simpler mental model: "this conversation has these tools available"
+- Agents within a session collaborate; inconsistent tool access would be confusing
+- Per-agent would require complex UI for each agent in the hierarchy
 
-```typescript
-export const mcpServersRelations = relations(mcpServers, ({ many }) => ({
-  sessions: many(sessionMcpServers),
-}));
+### Existing Table: `items`
 
-export const sessionMcpServersRelations = relations(sessionMcpServers, ({ one }) => ({
-  session: one(sessions, {
-    fields: [sessionMcpServers.sessionId],
-    references: [sessions.id],
-  }),
-  mcpServer: one(mcpServers, {
-    fields: [sessionMcpServers.mcpServerId],
-    references: [mcpServers.id],
-  }),
-}));
+Already supports tool_call and tool_result types. No schema changes needed, but ensure these fields are properly populated:
 
-// Update sessions relations
-export const sessionsRelations = relations(sessions, ({ many, one }) => ({
-  agents: many(agents),
-  mcpServers: many(sessionMcpServers), // Add this
-}));
-```
+- `tool_call`: callId, toolName, toolArgs (JSON), toolStatus (pending/running/completed/failed)
+- `tool_result`: callId (matches tool_call), toolOutput (JSON string), toolError (string)
+
+**Enhancement:** Consider adding `mcp_server_id` to tool_call items for debugging/display purposes. This lets the UI show which server provided each tool.
 
 ---
 
-## Type Definitions
+## 4. MCP Client Management
 
-```typescript
-// renderer/src/types/mcp.ts
+### Connection Pool Pattern
 
-export type McpTransportType = "stdio" | "sse" | "http";
+MCP connections should be managed per-session to:
+- Avoid reconnecting on every message
+- Properly clean up when sessions end
+- Isolate failures between sessions
 
-export interface McpServerConfig {
-  id: string;
-  name: string;
-  description?: string;
-  transportType: McpTransportType;
-  enabled: boolean;
-  iconUrl?: string;
+**Implementation Approach:**
 
-  // Stdio-specific
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
+Create a `McpClientPool` class that:
+1. Takes a list of server configs
+2. Establishes connections lazily (on first use) or eagerly (on session MCP change)
+3. Caches discovered tools per server
+4. Provides a unified tool map for the chat API
+5. Handles disconnection and cleanup
 
-  // HTTP/SSE-specific
-  url?: string;
-  headers?: Record<string, string>;
-}
+**Key Considerations:**
 
-export interface McpTool {
-  name: string;
-  description?: string;
-  inputSchema: Record<string, unknown>; // JSON Schema
-  serverId: string; // Which MCP server provides this tool
-}
+- **Connection Lifecycle**: For stdio transports, the child process stays alive for the session duration. For HTTP, connections are stateless but the client instance caches tool schemas.
 
-export interface McpToolCall {
-  toolName: string;
-  serverId: string;
-  args: Record<string, unknown>;
-}
+- **Error Handling**: If a server fails to connect, log the error but don't block the session. The tools from that server simply won't be available. Show status in UI.
 
-export interface McpToolResult {
-  success: boolean;
-  output?: unknown;
-  error?: string;
-}
+- **Tool Namespacing**: Multiple servers might have tools with the same name. Namespace tools as `{serverId}:{toolName}` internally, but display just the tool name in UI with a server badge.
 
-export interface McpClientStatus {
-  serverId: string;
-  connected: boolean;
-  tools: McpTool[];
-  error?: string;
-}
+- **Session Cleanup**: When a session is deleted, ensure all MCP connections are closed. Register cleanup handlers.
+
+### Registry Pattern
+
+Use a module-level registry (Map) to track pools by session ID:
+
 ```
+sessionId -> McpClientPool instance
+```
+
+This allows the chat API to get the pool for the current session without passing it through the request chain.
+
+**Important:** This registry lives in the Next.js server process. In development with hot reload, be aware that the registry may reset. In production with standalone mode, it persists for the server lifetime.
 
 ---
 
-## MCP Client Layer
-
-### Directory Structure
-
-```
-renderer/src/lib/mcp/
-├── index.ts              # Public exports
-├── client.ts             # MCP client wrapper
-├── pool.ts               # Client pool management
-├── transports/
-│   ├── stdio.ts          # Stdio transport helpers
-│   └── http.ts           # HTTP/SSE transport helpers
-└── tools.ts              # Tool discovery & execution
-```
-
-### MCP Client Pool
-
-Manages connections to multiple MCP servers for a session.
-
-```typescript
-// renderer/src/lib/mcp/pool.ts
-
-import { createMCPClient, MCPClient } from "ai";
-import { McpServerConfig, McpClientStatus, McpTool } from "@/types/mcp";
-
-export class McpClientPool {
-  private clients: Map<string, MCPClient> = new Map();
-  private tools: Map<string, McpTool[]> = new Map();
-
-  async connect(server: McpServerConfig): Promise<McpClientStatus> {
-    const transport = this.buildTransport(server);
-    const client = await createMCPClient({ transport });
-
-    this.clients.set(server.id, client);
-
-    // Discover tools from this server
-    const discoveredTools = await client.tools();
-    const toolList = Object.entries(discoveredTools).map(([name, tool]) => ({
-      name,
-      description: tool.description,
-      inputSchema: tool.parameters,
-      serverId: server.id,
-    }));
-
-    this.tools.set(server.id, toolList);
-
-    return {
-      serverId: server.id,
-      connected: true,
-      tools: toolList,
-    };
-  }
-
-  async disconnect(serverId: string): Promise<void> {
-    const client = this.clients.get(serverId);
-    if (client) {
-      await client.close();
-      this.clients.delete(serverId);
-      this.tools.delete(serverId);
-    }
-  }
-
-  async disconnectAll(): Promise<void> {
-    for (const serverId of this.clients.keys()) {
-      await this.disconnect(serverId);
-    }
-  }
-
-  getAllTools(): Record<string, McpTool> {
-    const allTools: Record<string, McpTool> = {};
-    for (const [serverId, tools] of this.tools) {
-      for (const tool of tools) {
-        // Namespace tools by server to avoid collisions
-        allTools[`${serverId}:${tool.name}`] = tool;
-      }
-    }
-    return allTools;
-  }
-
-  getClient(serverId: string): MCPClient | undefined {
-    return this.clients.get(serverId);
-  }
-
-  private buildTransport(server: McpServerConfig) {
-    switch (server.transportType) {
-      case "stdio":
-        return {
-          type: "stdio" as const,
-          command: server.command!,
-          args: server.args || [],
-          env: server.env,
-        };
-      case "sse":
-        return {
-          type: "sse" as const,
-          url: server.url!,
-          headers: server.headers,
-        };
-      case "http":
-        return {
-          type: "http" as const,
-          url: server.url!,
-          headers: server.headers,
-        };
-    }
-  }
-}
-```
-
-### Session Pool Registry
-
-Singleton to manage pools per session (important for connection lifecycle).
-
-```typescript
-// renderer/src/lib/mcp/registry.ts
-
-const sessionPools = new Map<string, McpClientPool>();
-
-export function getPoolForSession(sessionId: string): McpClientPool {
-  if (!sessionPools.has(sessionId)) {
-    sessionPools.set(sessionId, new McpClientPool());
-  }
-  return sessionPools.get(sessionId)!;
-}
-
-export async function destroyPoolForSession(sessionId: string): Promise<void> {
-  const pool = sessionPools.get(sessionId);
-  if (pool) {
-    await pool.disconnectAll();
-    sessionPools.delete(sessionId);
-  }
-}
-```
-
----
-
-## API Routes
-
-### New: `/api/mcp-servers` - MCP Server Registry CRUD
-
-```typescript
-// renderer/src/app/api/mcp-servers/route.ts
-
-// GET - List all configured MCP servers
-// POST - Add a new MCP server
-
-// renderer/src/app/api/mcp-servers/[id]/route.ts
-// GET - Get single server
-// PATCH - Update server config
-// DELETE - Remove server
-
-// renderer/src/app/api/mcp-servers/[id]/test/route.ts
-// POST - Test connection to a server (returns available tools)
-```
-
-### New: `/api/sessions/[id]/mcp` - Session MCP Management
-
-```typescript
-// renderer/src/app/api/sessions/[id]/mcp/route.ts
-
-// GET - List MCP servers enabled for this session (with connection status)
-// PUT - Set the list of enabled MCP servers for session
-// Response includes discovered tools from connected servers
-```
-
-### Modified: `/api/chat` - Tool Execution Loop
-
-The chat route needs significant changes to support tool execution:
-
-```typescript
-// renderer/src/app/api/chat/route.ts
-
-import { streamText } from "ai";
-import { getPoolForSession } from "@/lib/mcp/registry";
-
-export async function POST(req: Request) {
-  const { messages, model, agentId, sessionId, thinkingEnabled } = await req.json();
-
-  // Get MCP pool for this session
-  const mcpPool = getPoolForSession(sessionId);
-  const mcpTools = mcpPool.getAllTools();
-
-  // Convert MCP tools to AI SDK format
-  const tools = Object.fromEntries(
-    Object.entries(mcpTools).map(([name, tool]) => [
-      name,
-      {
-        description: tool.description,
-        parameters: tool.inputSchema,
-        execute: async (args: unknown) => {
-          // Execute tool via MCP client
-          const client = mcpPool.getClient(tool.serverId);
-          if (!client) throw new Error(`MCP server ${tool.serverId} not connected`);
-
-          // Save tool_call item to DB
-          await saveToolCallItem(agentId, name, args, "running");
-
-          try {
-            const result = await client.callTool({ name: tool.name, arguments: args });
-            await saveToolResultItem(agentId, name, result, null);
-            return result;
-          } catch (error) {
-            await saveToolResultItem(agentId, name, null, error.message);
-            throw error;
-          }
-        },
-      },
-    ])
-  );
-
-  const result = streamText({
-    model: getLanguageModel(model),
-    messages,
-    tools: Object.keys(tools).length > 0 ? tools : undefined,
-    maxSteps: 10, // Allow multi-step tool use
-    onFinish: async ({ text, reasoning, toolCalls, toolResults }) => {
-      // Persist final assistant message
-      // ... existing persistence logic
-    },
-  });
-
-  return result.toDataStreamResponse();
-}
-```
-
----
-
-## UI Components
-
-### 1. Settings: MCP Server Management
-
-Location: Settings page, new "MCP Servers" section.
-
-```typescript
-// renderer/src/components/settings/McpServerList.tsx
-
-interface Props {
-  servers: McpServerConfig[];
-  onAdd: () => void;
-  onEdit: (server: McpServerConfig) => void;
-  onDelete: (serverId: string) => void;
-  onTest: (serverId: string) => void;
-}
-
-export function McpServerList({ servers, onAdd, onEdit, onDelete, onTest }: Props) {
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">MCP Servers</h3>
-        <Button onClick={onAdd}>Add Server</Button>
-      </div>
-
-      {servers.map((server) => (
-        <McpServerCard
-          key={server.id}
-          server={server}
-          onEdit={() => onEdit(server)}
-          onDelete={() => onDelete(server.id)}
-          onTest={() => onTest(server.id)}
-        />
-      ))}
-    </div>
-  );
-}
-```
-
-```typescript
-// renderer/src/components/settings/McpServerForm.tsx (Add/Edit dialog)
-
-interface Props {
-  server?: McpServerConfig; // undefined for new
-  onSave: (config: McpServerConfig) => void;
-  onCancel: () => void;
-}
-
-// Form fields:
-// - Name (text)
-// - Description (textarea)
-// - Transport Type (radio: stdio | sse | http)
-// - For stdio: Command, Args (comma-separated), Env vars (key=value pairs)
-// - For http/sse: URL, Headers (key=value pairs)
-// - Test Connection button
-```
-
-### 2. Chat: MCP Selector Dropdown
-
-Location: Above the message input textarea.
-
-```typescript
-// renderer/src/components/chat/McpSelector.tsx
-
-interface Props {
-  sessionId: string;
-  availableServers: McpServerConfig[];
-  enabledServerIds: string[];
-  onToggle: (serverId: string, enabled: boolean) => void;
-}
-
-export function McpSelector({
-  sessionId,
-  availableServers,
-  enabledServerIds,
-  onToggle
-}: Props) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-2 border-b">
-      <span className="text-sm text-muted-foreground">Tools:</span>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            Add MCP
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent>
-          {availableServers.map((server) => (
-            <div key={server.id} className="flex items-center gap-2">
-              <Checkbox
-                checked={enabledServerIds.includes(server.id)}
-                onCheckedChange={(checked) => onToggle(server.id, !!checked)}
-              />
-              <span>{server.name}</span>
-            </div>
-          ))}
-        </PopoverContent>
-      </Popover>
-
-      {/* Active MCPs as chips */}
-      {enabledServerIds.map((id) => {
-        const server = availableServers.find((s) => s.id === id);
-        if (!server) return null;
-        return (
-          <Badge
-            key={id}
-            variant="secondary"
-            className="cursor-pointer"
-            onClick={() => onToggle(id, false)}
-          >
-            {server.name}
-            <X className="h-3 w-3 ml-1" />
-          </Badge>
-        );
-      })}
-    </div>
-  );
-}
-```
-
-### 3. Chat: Tool Activity Display
-
-The existing `AgentActivity.tsx` component already handles tool_call and tool_result items. Minor enhancements needed:
-
-```typescript
-// Enhance AgentActivity.tsx to show:
-// - Tool name with server badge (e.g., "create_task [Todoist]")
-// - Tool arguments (collapsible JSON)
-// - Execution status (pending → running → completed/failed)
-// - Tool result or error message
-```
-
-### 4. Updated ChatInput Layout
-
-```typescript
-// renderer/src/components/chat/ChatInput.tsx
-
-export function ChatInput({ sessionId, agentId, onSend }: Props) {
-  const { servers, enabledIds, toggle } = useMcpServers(sessionId);
-
-  return (
-    <div className="border-t">
-      {/* MCP Selector - only show if servers are configured */}
-      {servers.length > 0 && (
-        <McpSelector
-          sessionId={sessionId}
-          availableServers={servers}
-          enabledServerIds={enabledIds}
-          onToggle={toggle}
-        />
-      )}
-
-      {/* Existing options panel (thinking toggle) */}
-      <ChatOptionsPanel ... />
-
-      {/* Existing textarea and send button */}
-      <div className="flex gap-2 p-4">
-        <Textarea ... />
-        <Button onClick={handleSend}>Ship</Button>
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-## Hooks
-
-### `useMcpServers` - Manage session MCP selection
-
-```typescript
-// renderer/src/hooks/useMcpServers.ts
-
-export function useMcpServers(sessionId: string) {
-  const [servers, setServers] = useState<McpServerConfig[]>([]);
-  const [enabledIds, setEnabledIds] = useState<string[]>([]);
-  const [status, setStatus] = useState<Map<string, McpClientStatus>>(new Map());
-
-  // Fetch all available servers
-  useEffect(() => {
-    fetch("/api/mcp-servers")
-      .then((res) => res.json())
-      .then(setServers);
-  }, []);
-
-  // Fetch session's enabled servers
-  useEffect(() => {
-    fetch(`/api/sessions/${sessionId}/mcp`)
-      .then((res) => res.json())
-      .then((data) => {
-        setEnabledIds(data.enabledServerIds);
-        setStatus(new Map(data.status.map((s) => [s.serverId, s])));
-      });
-  }, [sessionId]);
-
-  const toggle = useCallback(async (serverId: string, enabled: boolean) => {
-    const newIds = enabled
-      ? [...enabledIds, serverId]
-      : enabledIds.filter((id) => id !== serverId);
-
-    await fetch(`/api/sessions/${sessionId}/mcp`, {
-      method: "PUT",
-      body: JSON.stringify({ enabledServerIds: newIds }),
-    });
-
-    setEnabledIds(newIds);
-  }, [sessionId, enabledIds]);
-
-  return { servers, enabledIds, status, toggle };
-}
-```
-
----
-
-## Implementation Phases
-
-### Phase 1: Foundation (Database & Types)
-1. Add `mcp_servers` and `session_mcp_servers` tables to schema
-2. Create type definitions in `types/mcp.ts`
-3. Run `npm run db:push` to update database
-4. Create API routes for MCP server CRUD (`/api/mcp-servers`)
-
-### Phase 2: MCP Client Layer
-1. Create `lib/mcp/` directory structure
-2. Implement `McpClientPool` with both transport types
-3. Implement session pool registry
-4. Add connection testing endpoint
-
-### Phase 3: Settings UI
-1. Add MCP Servers section to settings page
-2. Implement add/edit/delete server forms
-3. Add connection test functionality with tool discovery preview
-
-### Phase 4: Session MCP Management
-1. Create session MCP API endpoints
-2. Implement `useMcpServers` hook
-3. Add `McpSelector` component above chat input
-4. Wire up enable/disable functionality
-
-### Phase 5: Tool Execution
-1. Modify `/api/chat` to include MCP tools
-2. Handle tool execution loop with `maxSteps`
-3. Persist tool calls and results to items table
-4. Enhance `AgentActivity` component for better tool display
-
-### Phase 6: Polish & Edge Cases
-1. Handle MCP server disconnections gracefully
-2. Add loading states and error handling
-3. Implement reconnection logic
-4. Add tool execution timeout handling
-5. Clean up pools when sessions are deleted
-
----
-
-## Security Considerations
-
-1. **API Key Storage**: MCP server credentials (env vars, headers) should be stored securely. Consider encryption at rest for sensitive values.
-
-2. **Stdio Sandboxing**: Stdio-based MCPs run local processes. Document which MCPs are "trusted" and consider limiting which commands can be configured.
-
-3. **Tool Permissions**: Future enhancement - allow users to approve/deny specific tools or tool categories.
-
-4. **Session Isolation**: Each session has its own MCP client pool. Ensure proper cleanup on session deletion.
-
----
-
-## Testing Checklist
-
-- [ ] Add stdio MCP server (e.g., filesystem access)
-- [ ] Add HTTP MCP server (e.g., hosted API)
-- [ ] Test connection displays discovered tools
-- [ ] Enable MCP for session, verify tools appear in agent
-- [ ] Execute tool call, verify result persisted
-- [ ] Multi-step tool execution (agent uses result)
-- [ ] Disable MCP mid-conversation, verify tools removed
-- [ ] Session deletion cleans up MCP connections
-- [ ] Error handling: server unavailable, tool execution fails
-- [ ] Concurrent sessions with different MCP configurations
-
----
-
-## Dependencies
-
-Add to `package.json`:
-
+## 5. API Design
+
+### MCP Server CRUD: `/api/mcp-servers`
+
+Standard REST endpoints for managing the server registry.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/mcp-servers | List all configured servers |
+| POST | /api/mcp-servers | Add a new server |
+| GET | /api/mcp-servers/[id] | Get server details |
+| PATCH | /api/mcp-servers/[id] | Update server config |
+| DELETE | /api/mcp-servers/[id] | Remove server |
+| POST | /api/mcp-servers/[id]/test | Test connection, return discovered tools |
+
+**Test Endpoint Behavior:**
+1. Create temporary MCP client with server config
+2. Attempt connection
+3. If successful, discover and return tool list
+4. Close connection (don't persist)
+5. Return success/failure with tools or error message
+
+### Session MCP Management: `/api/sessions/[id]/mcp`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/sessions/[id]/mcp | Get enabled servers + connection status + tools |
+| PUT | /api/sessions/[id]/mcp | Set enabled server IDs |
+
+**GET Response Shape:**
 ```json
 {
-  "dependencies": {
-    "ai": "^4.x",  // Already present, may need update for MCP
-    "@ai-sdk/mcp-client": "^x.x"  // If separate package
-  }
+  "enabledServers": [
+    {
+      "id": "uuid",
+      "name": "Todoist",
+      "requireApproval": false,
+      "connected": true,
+      "tools": [
+        { "name": "create_task", "description": "..." },
+        { "name": "list_tasks", "description": "..." }
+      ]
+    }
+  ]
 }
 ```
 
-Note: Check AI SDK documentation for exact package requirements for MCP client functionality.
+**PUT Request Shape:**
+```json
+{
+  "enabledServerIds": ["uuid1", "uuid2"]
+}
+```
+
+When enabled servers change:
+1. Update junction table
+2. Connect to newly enabled servers
+3. Disconnect from removed servers
+4. Return updated status
+
+### Chat API Modifications: `/api/chat`
+
+The existing chat route needs these changes:
+
+1. **Accept sessionId** in request (currently only has agentId)
+2. **Load enabled MCPs** for the session
+3. **Get or create pool** for the session
+4. **Build tool map** from connected servers
+5. **Configure streamText** with tools and `maxSteps` (suggest: 10)
+6. **Handle tool execution** with approval flow
+
+**Tool Execution with Approval:**
+
+When `require_approval` is true for a server:
+1. Pause the stream when tool call is detected
+2. Save tool_call item with status "pending_approval"
+3. Return a special event to the client indicating approval needed
+4. Client shows approval UI
+5. Client sends approval/rejection
+6. If approved: execute tool, continue stream
+7. If rejected: return rejection to model, let it try something else
+
+**Alternative (Simpler) Approach:**
+For v1, implement approval as a blocking confirmation before execution. The stream pauses, client shows dialog, user clicks approve/reject. This avoids complex state management but means the connection stays open during approval.
 
 ---
 
-## Open Questions
+## 6. UI Components
 
-1. **Tool Approval Flow**: Should users confirm tool execution, or allow auto-execution? Could be a per-server setting.
+### Settings: MCP Server Management
 
-2. **Tool Result Display**: How verbose should tool results be in the UI? Collapsible by default?
+**Location:** Settings page, new "MCP Servers" section (tab or accordion)
 
-3. **MCP Server Presets**: Should we ship with common MCP server presets (Todoist, Notion, GitHub) that users can one-click install?
+**Components Needed:**
 
-4. **Cost Tracking**: Tool calls may increase token usage significantly with multi-step loops. Track and display?
+1. **McpServerList**: Shows all configured servers as cards
+   - Each card shows: name, transport type, enabled status, approval setting
+   - Actions: Edit, Delete, Test Connection
+   - Add Server button
+
+2. **McpServerForm**: Modal/dialog for add/edit
+   - Name field
+   - Description field (optional)
+   - Transport type selector (radio buttons)
+   - Conditional fields based on transport:
+     - Stdio: Command, Args (textarea, one per line), Env vars (key=value per line)
+     - HTTP/SSE: URL, Headers (key=value per line)
+   - Checkbox: "Require approval before executing tools"
+   - Test Connection button (shows discovered tools on success)
+   - Save/Cancel buttons
+
+3. **McpServerTestResult**: Shows connection test results
+   - Success: green checkmark + list of discovered tools
+   - Failure: red X + error message
+
+**UX Considerations:**
+- Env vars and headers may contain secrets. Consider masking values after save.
+- Show clear feedback during connection test (loading state)
+- Validate required fields before allowing test/save
+
+### Chat: MCP Selector
+
+**Location:** Above the message input textarea (as specified)
+
+**Component:** `McpSelector`
+
+**Behavior:**
+- Shows only if at least one MCP server is configured
+- Displays currently enabled MCPs as removable chips/badges
+- "Add" button opens dropdown/popover with available (not yet enabled) servers
+- Clicking a chip removes that MCP from the session
+- Changes persist immediately (optimistic UI + API call)
+
+**Visual Design:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Tools: [+ Add]  [Todoist ×]  [Filesystem ×]                     │
+├─────────────────────────────────────────────────────────────────┤
+│ [Thinking toggle]                                               │
+├─────────────────────────────────────────────────────────────────┤
+│ [Message input textarea...]                              [Send] │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**States:**
+- Loading: Show skeleton while fetching server list
+- Empty: Hide entirely if no servers configured (or show subtle "Configure MCP in Settings")
+- Error: If a server fails to connect, show warning badge on its chip
+
+### Chat: Tool Activity Display
+
+**Location:** In message thread, similar to reasoning blocks
+
+**Requirement:** Show tool execution details for debugging, collapsible like reasoning.
+
+**Component:** Enhance existing `AgentActivity` or create `ToolActivityBlock`
+
+**Information to Display:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 🔧 Tool Call: create_task                        [Todoist]      │
+│ ▼ Arguments                                                     │
+│   {                                                             │
+│     "title": "Buy groceries",                                   │
+│     "due_date": "2024-01-15"                                    │
+│   }                                                             │
+│ ▼ Result                                                        │
+│   {                                                             │
+│     "task_id": "12345",                                         │
+│     "created": true                                             │
+│   }                                                             │
+│ Status: ✓ Completed in 234ms                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**States:**
+- Pending Approval: Show approval buttons (if require_approval is true)
+- Running: Show spinner
+- Completed: Show result (collapsible JSON)
+- Failed: Show error message with red styling
+
+**Collapsible Behavior:**
+- Default: Collapsed (show tool name + status only)
+- Click to expand: Show full arguments and result
+- Same interaction pattern as reasoning blocks
+
+### Chat: Tool Approval Dialog
+
+**When:** User has `require_approval` enabled for a server and agent wants to use a tool
+
+**Component:** `ToolApprovalDialog` or inline approval in ToolActivityBlock
+
+**Content:**
+- Tool name and server name
+- What the tool will do (tool description)
+- Arguments the agent is passing
+- Approve / Reject buttons
+
+**Behavior:**
+- Blocks further processing until user responds
+- Approve: Execute tool, continue conversation
+- Reject: Return rejection to model (it may try different approach)
+
+---
+
+## 7. Implementation Guidance
+
+### State Management
+
+**Server-side State (Next.js API routes):**
+- MCP client pool registry (module-level Map)
+- Database for persistent config
+
+**Client-side State:**
+- Use React hooks with SWR or React Query for server list (cache + revalidation)
+- Local state for form inputs
+- Optimistic updates for MCP selection changes
+
+### Error Handling Patterns
+
+**Connection Failures:**
+- Don't block the session; just mark that server as unavailable
+- Show status in UI so user knows
+- Allow retry via "reconnect" action
+
+**Tool Execution Failures:**
+- Persist the error to tool_result item
+- Show error in UI
+- Let model see the error (it may try to recover)
+
+**Timeout Handling:**
+- Set reasonable timeouts for MCP calls (suggest: 30 seconds)
+- On timeout, treat as failure
+- Consider per-server timeout config for slow tools
+
+### Security Considerations
+
+**Credential Storage:**
+- API keys in env vars and headers are sensitive
+- Store in database (acceptable for local desktop app)
+- For extra security, consider encrypting at rest (using Electron's safeStorage API)
+
+**Stdio Command Execution:**
+- Users can configure arbitrary commands
+- This is intentional (power user feature)
+- Document clearly that this runs local processes
+
+**Input Validation:**
+- Validate server configs before saving
+- Sanitize tool arguments before display (prevent XSS if rendering HTML)
+
+### Testing Strategy
+
+**Unit Tests:**
+- MCP client pool logic (connect, disconnect, tool discovery)
+- Database operations for server CRUD
+- Tool namespacing logic
+
+**Integration Tests:**
+- Full flow: configure server → enable for session → execute tool
+- Approval flow: pause → approve → continue
+- Error cases: server unavailable, tool fails
+
+**Manual Testing Checklist:**
+- [ ] Add stdio MCP server (e.g., `npx -y @anthropic-ai/claude-code-mcp`)
+- [ ] Add HTTP MCP server
+- [ ] Test connection shows discovered tools
+- [ ] Enable MCP for session
+- [ ] Chat triggers tool use
+- [ ] Tool call/result appears in UI with full details
+- [ ] Approval flow works (when enabled)
+- [ ] Disabling MCP removes tools from session
+- [ ] Session deletion cleans up connections
+- [ ] Server deletion removes from all sessions
+
+---
+
+## 8. Implementation Phases
+
+### Phase 1: Data Layer
+- Add database schema (mcp_servers, session_mcp_servers tables)
+- Create type definitions
+- Implement MCP server CRUD API routes
+- No UI yet; test via API directly
+
+### Phase 2: Settings UI
+- Build MCP server list component
+- Build add/edit form with transport-specific fields
+- Implement connection testing with tool discovery display
+- Wire up to API routes
+
+### Phase 3: MCP Client Layer
+- Implement McpClientPool class
+- Implement session pool registry
+- Add session MCP API endpoints
+- Test connection lifecycle
+
+### Phase 4: Session MCP Selection UI
+- Build McpSelector component
+- Add to ChatInput layout
+- Implement useMcpServers hook
+- Test enable/disable flow
+
+### Phase 5: Tool Execution
+- Modify chat API to inject MCP tools
+- Implement tool execution loop
+- Persist tool_call and tool_result items
+- Handle multi-step execution (maxSteps)
+
+### Phase 6: Tool Display UI
+- Enhance AgentActivity or create ToolActivityBlock
+- Show collapsible arguments/results (like reasoning)
+- Add status indicators and timing
+
+### Phase 7: Approval Flow
+- Implement approval pause/resume in chat API
+- Build ToolApprovalDialog component
+- Wire up approve/reject actions
+- Test full approval flow
+
+### Phase 8: Polish
+- Error handling and recovery
+- Loading states throughout
+- Edge cases (server goes away mid-conversation, etc.)
+- Documentation for users
+
+---
+
+## 9. Dependencies
+
+**Installed:**
+- `ai` package v6.x (Vercel AI SDK) - provides `tool()`, `streamText()`, `stepCountIs()`
+- `@ai-sdk/mcp` - MCP client for HTTP/SSE transports (optional, using @modelcontextprotocol/sdk instead)
+- `@modelcontextprotocol/sdk` - Official MCP SDK with stdio + SSE support
+- `zod` v4 - Schema validation for tool parameters
+
+**Stdio Transport:**
+- Uses `@modelcontextprotocol/sdk/client/stdio.js`
+- Spawns child process via `cross-spawn`
+- Works in Next.js API routes (server-side only)
+
+**HTTP/SSE Transport:**
+- Uses `@modelcontextprotocol/sdk/client/sse.js`
+- Standard fetch-based communication
+
+---
+
+## 10. Implementation Status
+
+### Completed (v1)
+- MCP server configuration storage and CRUD
+- Settings UI for managing MCP servers
+- Per-server approval toggle
+- MCP client connection pool (stdio + HTTP/SSE)
+- Session-level MCP server selection
+- MCP selector dropdown in chat input
+- Tool execution via AI SDK with multi-step support
+- Tool call/result display in activity blocks
+- Database schema for tool_call status (including pending_approval)
+
+### Simplified in v1
+- **Approval Flow**: Currently logs a warning when approval is required but executes anyway. Full blocking approval flow requires complex streaming state management and is deferred.
+
+### Future Enhancements
+
+1. **Full Approval Flow**: Implement blocking approval with UI dialog before tool execution
+
+2. **Tool Usage Analytics**: Track which tools are used most, success rates, etc.
+
+3. **Tool Shortcuts**: Allow users to trigger specific tools directly (not just via agent)
+
+4. **Per-Tool Approval**: Currently approval is per-server. Could add per-tool granularity later.
+
+5. **MCP Server Health Monitoring**: Background pings to check server availability
+
+6. **Import/Export**: Allow exporting server configs for backup or sharing
+
+---
+
+## Appendix: AI SDK MCP Reference
+
+Key functions from AI SDK for implementer reference:
+
+```typescript
+import { createMCPClient } from "ai";
+
+// Create client with stdio transport
+const client = await createMCPClient({
+  transport: {
+    type: "stdio",
+    command: "npx",
+    args: ["-y", "@some/mcp-server"],
+    env: { API_KEY: "..." }
+  }
+});
+
+// Create client with HTTP transport
+const client = await createMCPClient({
+  transport: {
+    type: "http",
+    url: "https://mcp.example.com",
+    headers: { Authorization: "Bearer ..." }
+  }
+});
+
+// Discover tools (returns object compatible with streamText tools param)
+const tools = await client.tools();
+
+// Use with streamText
+const result = streamText({
+  model: yourModel,
+  messages: [...],
+  tools: tools,
+  maxSteps: 10, // Allow multi-turn tool use
+  onFinish: async () => {
+    await client.close(); // Clean up when done
+  }
+});
+
+// Close client when done
+await client.close();
+```
+
+Refer to https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools for latest API details.

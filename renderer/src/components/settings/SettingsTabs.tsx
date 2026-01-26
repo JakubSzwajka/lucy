@@ -1,6 +1,6 @@
 "use client";
 
-export type SettingsTab = "general" | "models" | "prompts";
+export type SettingsTab = "general" | "models" | "prompts" | "mcp";
 
 interface SettingsTabsProps {
   activeTab: SettingsTab;
@@ -11,6 +11,7 @@ const TABS: { id: SettingsTab; label: string }[] = [
   { id: "general", label: "General" },
   { id: "models", label: "Models" },
   { id: "prompts", label: "System Prompts" },
+  { id: "mcp", label: "MCP Servers" },
 ];
 
 export function SettingsTabs({ activeTab, onTabChange }: SettingsTabsProps) {
