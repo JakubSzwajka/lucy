@@ -1,26 +1,178 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core colors - Architect/Terminal aesthetic */
+  --background: #0a0a0a;
+  --background-secondary: #121212;
+  --background-tertiary: #0d0d0d;
+  --foreground: #f5f5f5;
+  --muted: #888888;
+  --muted-dark: #555555;
+  --muted-darker: #444444;
+  --muted-darkest: #333333;
+  --border: #262626;
+  --card: #121212;
+
+  /* Accent - Monochrome with subtle highlights */
+  --accent: #ffffff;
+  --accent-hover: #f5f5f5;
+  --accent-muted: #444444;
+
+  /* Message bubbles - Border focused */
+  --user-bubble: #1a1a1a;
+  --user-bubble-border: #444444;
+  --assistant-bubble: #121212;
+  --assistant-bubble-border: #262626;
+
+  /* Status colors */
+  --status-online: #22c55e;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-tertiary: var(--background-tertiary);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-muted: var(--muted);
+  --color-muted-dark: var(--muted-dark);
+  --color-muted-darker: var(--muted-darker);
+  --color-muted-darkest: var(--muted-darkest);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-user-bubble: var(--user-bubble);
+  --color-user-bubble-border: var(--user-bubble-border);
+  --color-assistant-bubble: var(--assistant-bubble);
+  --color-assistant-bubble-border: var(--assistant-bubble-border);
+  --color-status-online: var(--status-online);
+  --font-sans: var(--font-inter), var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), var(--font-geist-mono), monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Utility classes for the architect aesthetic */
+.mono {
+  font-family: var(--font-mono);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.label-dark {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-dark);
+}
+
+.label-sm {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-darker);
+}
+
+/* Custom scrollbar - Minimal */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-darker);
+}
+
+/* Textarea auto-resize support */
+textarea {
+  field-sizing: content;
+}
+
+/* Ship button style */
+.btn-ship {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 500;
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--foreground);
+  transition: all 0.2s ease;
+}
+
+.btn-ship:hover {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.btn-ship:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ship:disabled:hover {
+  background: transparent;
+  color: var(--foreground);
+}
+
+/* Message bubble base styles */
+.message-bubble {
+  max-width: 80%;
+  border: 1px solid var(--assistant-bubble-border);
+  background: var(--assistant-bubble);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.message-bubble.sent {
+  border-color: var(--user-bubble-border);
+  background: var(--user-bubble);
+}
+
+/* Session divider */
+.session-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.session-divider::before,
+.session-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.session-divider span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--muted-darker);
 }

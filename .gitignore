@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+.playwright/
 
 # next.js
 /.next/
@@ -19,10 +20,12 @@
 
 # production
 /build
+dist/
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -39,3 +42,26 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# database (SQLite)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sentry
+.sentryclirc
+
+# Storybook
+storybook-static/
+
+# Turbo
+.turbo/
