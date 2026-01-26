@@ -95,7 +95,7 @@ export function ToolsSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-1 z-50 min-w-[280px] bg-background border border-border rounded-lg shadow-xl py-2">
+        <div className="absolute bottom-full right-0 mb-1 z-50 min-w-[280px] bg-background border border-border rounded-lg shadow-xl py-2">
           <div className="px-3 py-1.5 border-b border-border mb-1">
             <span className="text-xs text-muted-dark uppercase tracking-wide">
               Available MCP Servers

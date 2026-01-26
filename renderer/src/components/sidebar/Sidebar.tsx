@@ -25,8 +25,11 @@ export function Sidebar({
   const isOnSettings = pathname?.startsWith("/settings");
   return (
     <aside className="w-80 border-r border-border flex flex-col bg-background-tertiary">
+      {/* Title bar region for macOS traffic lights */}
+      <div className="h-10 flex-shrink-0 drag-region" />
+
       {/* Header */}
-      <div className="p-6 border-b border-border">
+      <div className="px-6 pb-6 border-b border-border">
         <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <Image
             src="/logo.png"

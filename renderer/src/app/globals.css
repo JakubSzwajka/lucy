@@ -295,3 +295,12 @@ textarea {
   background: var(--background);
   font-weight: 600;
 }
+
+/* macOS window drag region */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
