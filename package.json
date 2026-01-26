@@ -32,6 +32,7 @@
     "electron-store": "^11.0.2",
     "langfuse": "^3.38.6",
     "langfuse-vercel": "^3.38.6",
+    "lucide-react": "^0.563.0",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
