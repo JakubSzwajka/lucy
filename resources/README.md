@@ -1,0 +1,4 @@
+# Add app icons here
+# - icon.icns (macOS)
+# - icon.ico (Windows)
+# - icon.png (Linux)

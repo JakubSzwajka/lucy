@@ -65,3 +65,15 @@ storybook-static/
 
 # Turbo
 .turbo/
+
+# Electron
+/app
+/dist
+*.dmg
+*.AppImage
+*.exe
+*.snap
+
+# Renderer Next.js
+/renderer/.next/
+/renderer/out/
