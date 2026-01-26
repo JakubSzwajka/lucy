@@ -1,13 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { ChatOptionsPanel } from "./ChatOptionsPanel";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading?: boolean;
+  thinkingEnabled?: boolean;
+  onThinkingChange?: (enabled: boolean) => void;
+  supportsThinking?: boolean;
 }
 
-export function ChatInput({ onSend, isLoading }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  isLoading,
+  thinkingEnabled = false,
+  onThinkingChange,
+  supportsThinking = false,
+}: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -36,6 +46,11 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
 
   return (
     <div className="p-6 border-t border-border bg-background">
+      <ChatOptionsPanel
+        thinkingEnabled={thinkingEnabled}
+        onThinkingChange={onThinkingChange ?? (() => {})}
+        supportsThinking={supportsThinking}
+      />
       <div className="relative flex items-end gap-3 border border-border rounded-lg p-2 focus-within:border-muted-darker transition-all bg-background-secondary/20">
         <textarea
           ref={textareaRef}

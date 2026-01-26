@@ -64,7 +64,7 @@ export function Sidebar({
             <SessionItem
               key={session.id}
               session={session}
-              index={index}
+              sessionNumber={sessions.length - index}
               isActive={session.id === activeSessionId}
               onSelect={() => onSelectSession(session.id)}
               onDelete={() => onDeleteSession(session.id)}

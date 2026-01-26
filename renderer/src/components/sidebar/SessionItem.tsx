@@ -5,14 +5,14 @@ import type { Session } from "@/types";
 
 interface SessionItemProps {
   session: Session;
-  index: number;
+  sessionNumber: number;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
 }
 
-function formatLogNumber(index: number): string {
-  return String(index + 1).padStart(3, "0");
+function formatLogNumber(num: number): string {
+  return String(num).padStart(3, "0");
 }
 
 function formatTime(date: Date): string {
@@ -37,7 +37,7 @@ function formatTime(date: Date): string {
 
 export function SessionItem({
   session,
-  index,
+  sessionNumber,
   isActive,
   onSelect,
   onDelete,
@@ -53,7 +53,7 @@ export function SessionItem({
       onClick={onSelect}
     >
       <div className="flex justify-between items-start mb-1">
-        <span className="label text-muted">// SESSION.{formatLogNumber(index)}</span>
+        <span className="label text-muted">// SESSION.{formatLogNumber(sessionNumber)}</span>
         <span className="label-sm text-muted-dark">
           {formatTime(new Date(session.updatedAt))}
         </span>

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { ModelSelector } from "./ModelSelector";
 import { useAgentChat } from "@/hooks/useAgentChat";
+import { getModelConfig } from "@/lib/ai/models";
 import type { AvailableProviders } from "@/types";
 
 interface ChatContainerProps {
@@ -28,6 +30,26 @@ export function ChatContainer({
     agentId,
     model: selectedModel,
   });
+
+  // Get model config to check thinking support
+  const modelConfig = getModelConfig(selectedModel);
+  const supportsThinking = modelConfig?.supportsReasoning ?? false;
+
+  // Thinking toggle state - default to true if model supports it
+  const [thinkingEnabled, setThinkingEnabled] = useState(supportsThinking);
+
+  // Update thinking state when model changes
+  useEffect(() => {
+    setThinkingEnabled(supportsThinking);
+  }, [supportsThinking]);
+
+  // Wrap sendMessage to include thinking preference
+  const handleSendMessage = useCallback(
+    (content: string) => {
+      sendMessage(content, { thinkingEnabled });
+    },
+    [sendMessage, thinkingEnabled]
+  );
 
   // Get agent status indicator
   const getStatusIndicator = () => {
@@ -80,7 +102,13 @@ export function ChatContainer({
       <MessageList messages={messages} isLoading={isLoading} />
 
       {/* Input */}
-      <ChatInput onSend={sendMessage} isLoading={isLoading} />
+      <ChatInput
+        onSend={handleSendMessage}
+        isLoading={isLoading}
+        thinkingEnabled={thinkingEnabled}
+        onThinkingChange={setThinkingEnabled}
+        supportsThinking={supportsThinking}
+      />
     </div>
   );
 }

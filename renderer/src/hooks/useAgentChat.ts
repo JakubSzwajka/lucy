@@ -19,11 +19,15 @@ interface UseAgentChatOptions {
   model: string;
 }
 
+interface SendMessageOptions {
+  thinkingEnabled?: boolean;
+}
+
 interface UseAgentChatReturn {
   messages: ChatMessage[];
   items: Item[];
   agent: Agent | null;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
 }
@@ -185,6 +189,7 @@ export function useAgentChat({
   const prevAgentIdRef = useRef<string | null>(null);
   const modelRef = useRef(model);
   const agentIdRef = useRef(agentId);
+  const thinkingEnabledRef = useRef(true);
 
   // Keep refs updated
   modelRef.current = model;
@@ -197,6 +202,7 @@ export function useAgentChat({
         body: () => ({
           model: modelRef.current,
           agentId: agentIdRef.current,
+          thinkingEnabled: thinkingEnabledRef.current,
         }),
       }),
     []
@@ -280,8 +286,11 @@ export function useAgentChat({
 
   // Save user message to database before sending
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, options?: SendMessageOptions) => {
       if (!agentId) return;
+
+      // Update thinking preference for this message
+      thinkingEnabledRef.current = options?.thinkingEnabled ?? true;
 
       // Save user message as an item (for persistence)
       // Note: Don't add to loadedItems here - chatSendMessage will add to rawMessages

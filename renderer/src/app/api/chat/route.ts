@@ -71,7 +71,7 @@ function convertToModelMessages(chatMessages: unknown[]): Array<{ role: "user" |
 }
 
 export async function POST(req: Request) {
-  const { messages: chatMessages, model: modelId, agentId } = await req.json();
+  const { messages: chatMessages, model: modelId, agentId, thinkingEnabled = true } = await req.json();
 
   if (!agentId) {
     return new Response(JSON.stringify({ error: "agentId is required" }), {
@@ -134,36 +134,41 @@ export async function POST(req: Request) {
 
   // Build provider-specific options for reasoning/thinking
   const getProviderOptions = () => {
-    if (!modelConfig.supportsReasoning) return undefined;
+    // Skip if model doesn't support reasoning or thinking is disabled
+    if (!modelConfig.supportsReasoning || !thinkingEnabled) return undefined;
 
     if (modelConfig.provider === "openai") {
       return {
         openai: {
-          reasoningEffort: "medium",
+          reasoningEffort: "medium" as const,
         },
-      };
+      } as const;
     }
 
     if (modelConfig.provider === "anthropic") {
       return {
         anthropic: {
           thinking: {
-            type: "enabled",
+            type: "enabled" as const,
             budgetTokens: 10000, // Allow up to 10k tokens for thinking
           },
         },
-      };
+      } as const;
     }
 
     return undefined;
   };
 
+  // Determine if thinking is active for this request
+  const isThinkingActive = modelConfig.supportsReasoning && thinkingEnabled;
+
   const result = streamText({
     model: languageModel,
     messages: modelMessages,
-    // Anthropic extended thinking requires sufficient maxTokens
-    maxTokens: modelConfig.provider === "anthropic" && modelConfig.supportsReasoning ? 16000 : undefined,
-    providerOptions: getProviderOptions(),
+    // Anthropic extended thinking requires sufficient maxOutputTokens
+    maxOutputTokens: modelConfig.provider === "anthropic" && isThinkingActive ? 16000 : undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    providerOptions: getProviderOptions() as any,
     onFinish: async ({ text, reasoning }) => {
       // Save reasoning as a separate item if present
       // reasoning is an array of ReasoningPart objects
