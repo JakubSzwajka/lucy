@@ -3,16 +3,22 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { InlineActivityList } from "./AgentActivity";
+import type { AgentActivity } from "@/types";
 
 interface MessageBubbleProps {
   role: "user" | "assistant" | "system";
   content: string;
   model?: string;
   timestamp?: Date;
+  activities?: AgentActivity[];
+  isStreaming?: boolean;
 }
 
-export function MessageBubble({ role, content, model, timestamp }: MessageBubbleProps) {
+export function MessageBubble({ role, content, model, timestamp, activities, isStreaming }: MessageBubbleProps) {
   const isUser = role === "user";
+  const hasActivities = activities && activities.length > 0;
+  const hasContent = content && content.trim().length > 0;
 
   const formatTime = (date?: Date) => {
     if (!date) return "";
@@ -41,9 +47,29 @@ export function MessageBubble({ role, content, model, timestamp }: MessageBubble
             : "bg-assistant-bubble border-assistant-bubble-border"
         )}
       >
-        <div className="markdown-content break-words">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-        </div>
+        {/* Inline activities (collapsed by default) */}
+        {!isUser && (hasActivities || (isStreaming && !hasContent)) && (
+          <InlineActivityList
+            activities={activities ?? []}
+            isStreaming={isStreaming && !hasContent}
+          />
+        )}
+
+        {/* Main content */}
+        {hasContent && (
+          <div className="markdown-content break-words">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+          </div>
+        )}
+
+        {/* Streaming indicator when no content and no activities */}
+        {isStreaming && !hasContent && !hasActivities && (
+          <div className="flex space-x-2">
+            <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" />
+            <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:100ms]" />
+            <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:200ms]" />
+          </div>
+        )}
       </div>
 
       {/* Timestamp and model */}

@@ -12,6 +12,8 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function Sidebar({
@@ -20,37 +22,112 @@ export function Sidebar({
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  collapsed = false,
+  onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
   const isOnSettings = pathname?.startsWith("/settings");
+
   return (
-    <aside className="w-80 border-r border-border flex flex-col bg-background-tertiary">
-      {/* Title bar region for macOS traffic lights */}
-      <div className="h-10 flex-shrink-0 drag-region" />
+    <aside
+      className={`pt-7 border-r border-border flex flex-col bg-background-tertiary transition-all duration-300 ease-in-out ${
+        collapsed ? "w-16" : "w-80"
+      }`}
+    >
+      {/* Small top spacing */}
+      <div className="h-4 flex-shrink-0" />
 
       {/* Header */}
-      <div className="px-6 pb-6 border-b border-border">
-        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <Image
-            src="/logo.png"
-            alt="Lucy"
-            width={32}
-            height={32}
-            className="rounded-sm"
-          />
-          <span className="label">lucy</span>
-        </Link>
+      <div className={`border-b border-border ${collapsed ? "px-3 pb-3" : "px-6 pb-6"}`}>
+        {collapsed ? (
+          // Collapsed header - logo centered with toggle below
+          <div className="flex flex-col items-center gap-2">
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <Image
+                src="/logo.png"
+                alt="Lucy"
+                width={32}
+                height={32}
+                className="rounded-sm"
+              />
+            </Link>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="p-1.5 rounded hover:bg-background transition-colors text-muted-dark hover:text-foreground"
+                title="Expand sidebar"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        ) : (
+          // Expanded header - logo left, toggle right
+          <div className="flex items-center justify-between">
+            <Link
+              href="/"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <Image
+                src="/logo.png"
+                alt="Lucy"
+                width={32}
+                height={32}
+                className="rounded-sm flex-shrink-0"
+              />
+              <span className="label">lucy</span>
+            </Link>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="p-1.5 rounded hover:bg-background transition-colors text-muted-dark hover:text-foreground"
+                title="Collapse sidebar"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* New Chat Button */}
-      <div className="p-4 border-b border-border">
+      <div className={`border-b border-border ${collapsed ? "p-2 flex justify-center" : "p-4"}`}>
         <button
           onClick={onNewChat}
-          className="w-full btn-ship flex items-center justify-center gap-2"
+          className={`btn-ship flex items-center justify-center ${
+            collapsed ? "w-10 h-10 p-0" : "w-full gap-2"
+          }`}
+          title={collapsed ? "New Session" : undefined}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
+            className="h-4 w-4 flex-shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -62,13 +139,47 @@ export function Sidebar({
               d="M12 4v16m8-8H4"
             />
           </svg>
-          New Session
+          {!collapsed && "New Session"}
         </button>
       </div>
 
       {/* Sessions List */}
-      <div className="flex-1 overflow-y-auto">
-        {sessions.length === 0 ? (
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        {collapsed ? (
+          // Collapsed view - show session indicators
+          <div className="flex flex-col items-center py-2 gap-1">
+            {sessions.slice(0, 10).map((session) => (
+              <button
+                key={session.id}
+                onClick={() => onSelectSession(session.id)}
+                className={`w-10 h-10 rounded flex items-center justify-center text-xs font-mono transition-colors ${
+                  session.id === activeSessionId
+                    ? "bg-background text-foreground"
+                    : "hover:bg-background/50 text-muted-dark hover:text-foreground"
+                }`}
+                title={session.title || "Untitled Session"}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </button>
+            ))}
+            {sessions.length > 10 && (
+              <span className="text-xs text-muted-darker">+{sessions.length - 10}</span>
+            )}
+          </div>
+        ) : sessions.length === 0 ? (
           <div className="p-4 text-center">
             <span className="label-dark">{"// NO_SESSIONS"}</span>
             <p className="text-sm text-muted-dark mt-2">Start a new conversation</p>
@@ -88,18 +199,21 @@ export function Sidebar({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border">
+      <div className={`border-t border-border ${collapsed ? "p-2 flex justify-center" : "p-4"}`}>
         <Link
           href="/settings"
-          className={`w-full flex items-center justify-center gap-2 py-2 text-xs transition-colors ${
+          className={`flex items-center justify-center py-2 text-xs transition-colors rounded ${
+            collapsed ? "w-10 h-10 hover:bg-background" : "w-full gap-2"
+          } ${
             isOnSettings
               ? "text-foreground"
               : "text-muted-dark hover:text-foreground"
           }`}
+          title={collapsed ? "Settings" : undefined}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
+            className="h-4 w-4 flex-shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -117,11 +231,13 @@ export function Sidebar({
               d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
             />
           </svg>
-          Settings
+          {!collapsed && "Settings"}
         </Link>
-        <span className="label-sm text-muted-darker block text-center mt-2">
-          POWERED BY AI // 2026
-        </span>
+        {!collapsed && (
+          <span className="label-sm text-muted-darker block text-center mt-2">
+            POWERED BY AI // 2026
+          </span>
+        )}
       </div>
     </aside>
   );

@@ -143,7 +143,7 @@ export interface ChatMessage {
 }
 
 // Agent Activity Types - for UI display
-export type AgentActivityType = "reasoning" | "tool_call" | "tool_result" | "status";
+export type AgentActivityType = "reasoning" | "tool_call" | "status";
 
 export interface AgentActivityBase {
   id: string;
@@ -157,17 +157,20 @@ export interface ReasoningActivity extends AgentActivityBase {
   summary?: string;
 }
 
+// Tool approval status for MCP tools requiring user approval
+export type ToolApprovalStatus = "pending_approval" | "approved" | "rejected";
+
 export interface ToolCallActivity extends AgentActivityBase {
   type: "tool_call";
   callId: string;
   toolName: string;
   args?: Record<string, unknown>;
   status: ToolCallStatus;
-}
-
-export interface ToolResultActivity extends AgentActivityBase {
-  type: "tool_result";
-  callId: string;
+  serverId?: string;
+  serverName?: string;
+  approvalStatus?: ToolApprovalStatus;
+  executionTimeMs?: number;
+  // Result fields (merged from tool_result)
   result?: string;
   error?: string;
 }
@@ -178,7 +181,7 @@ export interface StatusActivity extends AgentActivityBase {
   status: "info" | "success" | "warning" | "error";
 }
 
-export type AgentActivity = ReasoningActivity | ToolCallActivity | ToolResultActivity | StatusActivity;
+export type AgentActivity = ReasoningActivity | ToolCallActivity | StatusActivity;
 
 // ============================================================================
 // SESSION WITH AGENTS (for loading full session data)
@@ -345,19 +348,4 @@ export interface McpServerStatus {
 // Session MCP configuration response
 export interface SessionMcpConfig {
   enabledServers: McpServerStatus[];
-}
-
-// Tool call with pending approval
-export type ToolApprovalStatus = "pending_approval" | "approved" | "rejected";
-
-export interface ToolCallActivity extends AgentActivityBase {
-  type: "tool_call";
-  callId: string;
-  toolName: string;
-  args?: Record<string, unknown>;
-  status: ToolCallStatus;
-  serverId?: string;
-  serverName?: string;
-  approvalStatus?: ToolApprovalStatus;
-  executionTimeMs?: number;
 }

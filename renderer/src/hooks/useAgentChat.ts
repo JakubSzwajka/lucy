@@ -8,7 +8,6 @@ import type {
   AgentActivity,
   ReasoningActivity,
   ToolCallActivity,
-  ToolResultActivity,
   Item,
   Agent,
 } from "@/types";
@@ -94,39 +93,38 @@ function extractActivitiesFromParts(message: Record<string, unknown>): AgentActi
           toolName: toolName,
           args: part.input as Record<string, unknown>, // AI SDK uses "input" not "args"
           status,
+          // Include result/error directly in tool call activity
+          result: state === "output-available" && part.output
+            ? JSON.stringify(part.output)
+            : undefined,
+          error: state === "output-error" && part.errorText
+            ? (part.errorText as string)
+            : undefined,
         };
         activities.push(toolActivity);
-
-        // If tool has output, add result activity
-        if (state === "output-available" && part.output) {
-          const resultActivity: ToolResultActivity = {
-            id: `${message.id}-tool-result-${index}`,
-            type: "tool_result",
-            callId: part.toolCallId as string,
-            result: JSON.stringify(part.output), // AI SDK uses "output" not "result"
-          };
-          activities.push(resultActivity);
-        }
-
-        // If tool has error, add result activity with error
-        if (state === "output-error" && part.errorText) {
-          const resultActivity: ToolResultActivity = {
-            id: `${message.id}-tool-result-${index}`,
-            type: "tool_result",
-            callId: part.toolCallId as string,
-            error: part.errorText as string,
-          };
-          activities.push(resultActivity);
-        }
       });
   }
 
   return activities;
 }
 
-// Convert loaded items to activities
-function itemsToActivities(loadedItems: Item[], messageId: string): AgentActivity[] {
+// Convert loaded items to activities (merging tool_call and tool_result by callId)
+function itemsToActivities(
+  loadedItems: Item[],
+  messageId: string,
+  toolResultsByCallId?: Map<string, Item>
+): AgentActivity[] {
   const activities: AgentActivity[] = [];
+
+  // Use provided map or build one from loadedItems
+  const resultsMap = toolResultsByCallId ?? new Map<string, Item>();
+  if (!toolResultsByCallId) {
+    for (const item of loadedItems) {
+      if (item.type === "tool_result") {
+        resultsMap.set(item.callId, item);
+      }
+    }
+  }
 
   for (const item of loadedItems) {
     switch (item.type) {
@@ -140,7 +138,9 @@ function itemsToActivities(loadedItems: Item[], messageId: string): AgentActivit
         });
         break;
 
-      case "tool_call":
+      case "tool_call": {
+        // Find matching tool_result and merge
+        const resultItem = resultsMap.get(item.callId);
         activities.push({
           id: item.id,
           type: "tool_call",
@@ -149,18 +149,15 @@ function itemsToActivities(loadedItems: Item[], messageId: string): AgentActivit
           args: item.toolArgs || undefined,
           status: item.toolStatus,
           timestamp: item.createdAt,
+          // Merge result/error from tool_result item
+          result: resultItem?.type === "tool_result" ? (resultItem.toolOutput || undefined) : undefined,
+          error: resultItem?.type === "tool_result" ? (resultItem.toolError || undefined) : undefined,
         });
         break;
+      }
 
+      // Skip tool_result - it's merged into tool_call above
       case "tool_result":
-        activities.push({
-          id: item.id,
-          type: "tool_result",
-          callId: item.callId,
-          result: item.toolOutput || undefined,
-          error: item.toolError || undefined,
-          timestamp: item.createdAt,
-        });
         break;
     }
   }
@@ -173,6 +170,14 @@ function itemsToChatMessages(loadedItems: Item[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let currentActivities: AgentActivity[] = [];
 
+  // Build tool_results map upfront for merging with tool_calls
+  const toolResultsByCallId = new Map<string, Item>();
+  for (const item of loadedItems) {
+    if (item.type === "tool_result") {
+      toolResultsByCallId.set(item.callId, item);
+    }
+  }
+
   for (const item of loadedItems) {
     if (item.type === "message") {
       // Attach any preceding activities to this message
@@ -184,9 +189,12 @@ function itemsToChatMessages(loadedItems: Item[]): ChatMessage[] {
         activities: currentActivities.length > 0 ? [...currentActivities] : undefined,
       });
       currentActivities = [];
+    } else if (item.type === "tool_result") {
+      // Skip tool_result - it's merged into tool_call
+      continue;
     } else {
       // Accumulate activities until next message
-      const activity = itemsToActivities([item], item.id);
+      const activity = itemsToActivities([item], item.id, toolResultsByCallId);
       currentActivities.push(...activity);
     }
   }

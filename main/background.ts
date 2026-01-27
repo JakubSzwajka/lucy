@@ -74,7 +74,7 @@ async function createMainWindow() {
       contextIsolation: true,
     },
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    trafficLightPosition: { x: 16, y: 16 },
+    trafficLightPosition: { x: 14, y: 14 },
     backgroundColor: "#0a0a0a",
   });
 

@@ -13,8 +13,10 @@ interface MainContextType {
   selectedModel: string;
   availableProviders?: AvailableProviders;
   settings: ReturnType<typeof useSettings>["settings"];
+  sidebarCollapsed: boolean;
   setActiveSessionId: (id: string | null) => void;
   setSelectedModel: (model: string) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   handleNewChat: () => Promise<void>;
 }
 
@@ -37,6 +39,7 @@ export default function MainLayout({
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { settings } = useSettings();
 
@@ -141,15 +144,17 @@ export default function MainLayout({
     selectedModel,
     availableProviders,
     settings,
+    sidebarCollapsed,
     setActiveSessionId,
     setSelectedModel,
+    setSidebarCollapsed,
     handleNewChat,
   };
 
   return (
     <MainContext.Provider value={contextValue}>
-      <div className="h-screen bg-background p-5">
-        <div className="flex w-full h-[calc(100vh-40px)] border border-border overflow-hidden">
+      <div className="h-screen bg-background flex flex-col">
+        <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           <Sidebar
             sessions={sessions}
@@ -157,6 +162,8 @@ export default function MainLayout({
             onSelectSession={handleSelectSession}
             onNewChat={handleNewChat}
             onDeleteSession={handleDeleteSession}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
 
           {/* Main Content Area */}
