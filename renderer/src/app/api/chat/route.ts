@@ -1,33 +1,15 @@
-import { streamText, tool, stepCountIs } from "ai";
-import { z } from "zod";
+import { streamText, stepCountIs } from "ai";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
-import { db, agents, items, settings, systemPrompts, sessions, mcpServers, NewItem } from "@/lib/db";
-import { eq, sql } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
-import { getGlobalPool, ensureServersConnected, executeToolCall } from "@/lib/mcp";
+import { db, agents, settings, systemPrompts, sessions } from "@/lib/db";
+import { eq } from "drizzle-orm";
 import { langfuseSpanProcessor } from "@/instrumentation";
-import type { McpServer } from "@/types";
-
-// Parse JSON fields from MCP server record
-function parseServerRecord(record: typeof mcpServers.$inferSelect): McpServer {
-  return {
-    id: record.id,
-    name: record.name,
-    description: record.description,
-    transportType: record.transportType,
-    command: record.command,
-    args: record.args ? JSON.parse(record.args) : null,
-    env: record.env ? JSON.parse(record.env) : null,
-    url: record.url,
-    headers: record.headers ? JSON.parse(record.headers) : null,
-    requireApproval: record.requireApproval,
-    enabled: record.enabled,
-    iconUrl: record.iconUrl,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-  };
-}
+import {
+  getToolRegistry,
+  initializeToolRegistry,
+  getMcpProvider,
+  insertItem,
+} from "@/lib/tools";
 
 // Fetch the default system prompt content if configured
 async function getDefaultSystemPrompt(): Promise<string | null> {
@@ -50,31 +32,6 @@ async function getDefaultSystemPrompt(): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-// Get next sequence number for an agent
-async function getNextSequence(agentId: string): Promise<number> {
-  const [maxSeq] = await db
-    .select({ max: sql<number>`MAX(${items.sequence})` })
-    .from(items)
-    .where(eq(items.agentId, agentId));
-
-  return (maxSeq?.max ?? -1) + 1;
-}
-
-// Insert an item with auto-incrementing sequence
-async function insertItem(agentId: string, itemData: Omit<NewItem, "id" | "agentId" | "sequence">) {
-  const sequence = await getNextSequence(agentId);
-  const id = uuidv4();
-
-  await db.insert(items).values({
-    id,
-    agentId,
-    sequence,
-    ...itemData,
-  } as NewItem);
-
-  return { id, sequence };
 }
 
 // Convert UIMessage format (with parts) to simple messages
@@ -186,103 +143,28 @@ export async function POST(req: Request) {
   // Determine if thinking is active for this request
   const isThinkingActive = modelConfig.supportsReasoning && thinkingEnabled;
 
-  // Fetch all enabled MCP servers and ensure they're connected
-  const enabledServerRecords = await db
-    .select()
-    .from(mcpServers)
-    .where(eq(mcpServers.enabled, true));
-
-  const enabledServers = enabledServerRecords.map(parseServerRecord);
-  await ensureServersConnected(enabledServers);
-
-  // Build MCP tools from global pool
-  const mcpPool = getGlobalPool();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mcpTools: Record<string, any> = {};
-
-  // Convert MCP tools to AI SDK tool format
-  for (const wrapper of Array.from(mcpPool.getConnectedServerIds()).map(id => mcpPool.getClient(id)).filter(Boolean)) {
-    if (!wrapper) continue;
-
-    for (const mcpTool of wrapper.tools) {
-      const toolKey = `${wrapper.serverId}__${mcpTool.name}`;
-      const serverConfig = mcpPool.getServerConfig(wrapper.serverId);
-
-      mcpTools[toolKey] = tool({
-        description: mcpTool.description || `Tool: ${mcpTool.name}`,
-        inputSchema: z.object({}).passthrough(),
-        execute: async (args) => {
-          const callId = uuidv4();
-          const startTime = Date.now();
-
-          // Save tool_call item
-          await insertItem(agentId, {
-            type: "tool_call",
-            callId,
-            toolName: mcpTool.name,
-            toolArgs: args as Record<string, unknown>,
-            toolStatus: "running",
-          });
-
-          try {
-            // Check if approval is required (for now, we skip approval and execute directly)
-            // TODO: Implement approval flow in Phase 7
-            if (serverConfig?.requireApproval) {
-              // For now, just log that approval would be required
-              console.log(`[MCP] Tool ${mcpTool.name} requires approval (not implemented yet)`);
-            }
-
-            const result = await executeToolCall(wrapper, mcpTool.name, args as Record<string, unknown>);
-            const executionTime = Date.now() - startTime;
-
-            // Save tool_result item
-            await insertItem(agentId, {
-              type: "tool_result",
-              callId,
-              toolOutput: result.success ? JSON.stringify(result.result) : undefined,
-              toolError: result.error,
-            });
-
-            // Update tool_call status
-            await db
-              .update(items)
-              .set({ toolStatus: result.success ? "completed" : "failed" })
-              .where(eq(items.callId, callId));
-
-            console.log(`[MCP] Tool ${mcpTool.name} executed in ${executionTime}ms`);
-
-            if (!result.success) {
-              return { error: result.error };
-            }
-            return result.result;
-          } catch (error) {
-            // Save error result
-            await insertItem(agentId, {
-              type: "tool_result",
-              callId,
-              toolError: error instanceof Error ? error.message : "Unknown error",
-            });
-
-            // Update tool_call status
-            await db
-              .update(items)
-              .set({ toolStatus: "failed" })
-              .where(eq(items.callId, callId));
-
-            return { error: error instanceof Error ? error.message : "Tool execution failed" };
-          }
-        },
-      });
-    }
+  // Initialize tool registry and refresh MCP servers
+  await initializeToolRegistry();
+  const mcpProvider = getMcpProvider();
+  if (mcpProvider) {
+    await mcpProvider.refreshServers();
   }
 
-  const hasTools = Object.keys(mcpTools).length > 0;
+  // Get all tools from the registry (MCP + builtin + any registered)
+  const registry = getToolRegistry();
+  const tools = await registry.toAiSdkTools({
+    agentId,
+    sessionId: agent.sessionId,
+    // TODO: Add createChildAgent callback when implementing agent spawning
+  });
+
+  const hasTools = Object.keys(tools).length > 0;
 
   const result = streamText({
     model: languageModel,
     messages: modelMessages,
-    // Include MCP tools if any are available
-    tools: hasTools ? mcpTools : undefined,
+    // Include tools from registry (MCP + builtin)
+    tools: hasTools ? tools : undefined,
     // Allow multi-step tool use (default is 1 step, increase if tools are available)
     stopWhen: hasTools ? stepCountIs(10) : stepCountIs(1),
     // Anthropic extended thinking requires sufficient maxOutputTokens
