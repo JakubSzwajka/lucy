@@ -268,33 +268,90 @@ interface InlineActivityListProps {
 }
 
 export function InlineActivityList({ activities, isStreaming }: InlineActivityListProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (activities.length === 0 && !isStreaming) return null;
 
+  const isDone = !isStreaming && isAllCompleted(activities);
+  const latestLabel = isDone ? "Done" : getLatestActivityLabel(activities);
+
+  // Get icon color based on latest activity type
+  const getIconColor = () => {
+    if (isDone) return "text-emerald-400";
+    if (activities.length === 0) return "text-purple-400";
+    const latest = activities[activities.length - 1];
+    if (latest.type === "tool_call") {
+      const toolCall = latest as ToolCallActivity;
+      if (toolCall.status === "failed") return "text-red-400";
+      if (toolCall.status === "completed") {
+        // Check for error in result
+        const hasError = !!toolCall.error || (() => {
+          if (!toolCall.result) return false;
+          try {
+            const parsed = typeof toolCall.result === "string" ? JSON.parse(toolCall.result) : toolCall.result;
+            return parsed && typeof parsed === "object" && "error" in parsed;
+          } catch { return false; }
+        })();
+        return hasError ? "text-red-400" : "text-emerald-400";
+      }
+      return "text-blue-400";
+    }
+    return "text-purple-400";
+  };
+
   return (
-    <div className="space-y-2 mb-3">
-      {activities.map((activity) => {
-        switch (activity.type) {
-          case "reasoning":
-            return <ReasoningActivityView key={activity.id} activity={activity} />;
-          case "tool_call":
-            return <ToolCallActivityView key={activity.id} activity={activity} />;
-          case "status":
-            return <StatusActivityView key={activity.id} activity={activity} />;
-          default:
-            return null;
-        }
-      })}
-      {isStreaming && activities.length === 0 && (
-        <div className="flex items-center gap-2 text-xs text-muted-dark py-1">
-          <Brain className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-          <span>Thinking...</span>
-          <div className="flex space-x-1">
-            <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" />
-            <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce [animation-delay:100ms]" />
-            <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce [animation-delay:200ms]" />
+    <div className="mb-3">
+      <div className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-background/50 transition-colors"
+        >
+          <ChevronRight className={cn(
+            "w-3 h-3 transform transition-transform text-muted",
+            isExpanded && "rotate-90"
+          )} />
+          <Brain className={cn(
+            "w-4 h-4",
+            getIconColor(),
+            !isDone && "animate-pulse"
+          )} />
+          <span className={cn(
+            "flex-1 text-left label-dark",
+            isDone && "text-emerald-400"
+          )}>
+            {latestLabel}
+          </span>
+          {isDone && (
+            <span className="flex items-center gap-1 text-emerald-400">
+              <Check className="w-3.5 h-3.5" />
+            </span>
+          )}
+          {!isDone && isStreaming && (
+            <div className="flex space-x-1">
+              <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" />
+              <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce [animation-delay:100ms]" />
+              <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce [animation-delay:200ms]" />
+            </div>
+          )}
+        </button>
+
+        {isExpanded && (
+          <div className="px-3 py-2 border-t border-border/30 space-y-2">
+            {activities.map((activity) => {
+              switch (activity.type) {
+                case "reasoning":
+                  return <ReasoningActivityView key={activity.id} activity={activity} />;
+                case "tool_call":
+                  return <ToolCallActivityView key={activity.id} activity={activity} />;
+                case "status":
+                  return <StatusActivityView key={activity.id} activity={activity} />;
+                default:
+                  return null;
+              }
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
