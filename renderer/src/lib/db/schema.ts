@@ -239,3 +239,25 @@ export type McpServerRecord = typeof mcpServers.$inferSelect;
 export type NewMcpServer = typeof mcpServers.$inferInsert;
 export type SessionMcpServerRecord = typeof sessionMcpServers.$inferSelect;
 export type NewSessionMcpServer = typeof sessionMcpServers.$inferInsert;
+
+// ============================================================================
+// INTEGRATIONS - Third-party service integrations (Todoist, Notion, etc.)
+// ============================================================================
+
+export const integrations = sqliteTable("integrations", {
+  id: text("id").primaryKey(), // e.g., "todoist", "notion"
+  name: text("name").notNull(), // Display name
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  credentials: text("credentials"), // JSON: { "apiKey": "..." }
+  config: text("config"), // JSON: integration-specific config
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+// Integration Types
+export type IntegrationRecord = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;

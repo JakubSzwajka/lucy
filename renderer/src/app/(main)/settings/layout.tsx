@@ -8,6 +8,7 @@ const TABS = [
   { href: "/settings/models", label: "Models" },
   { href: "/settings/prompts", label: "System Prompts" },
   { href: "/settings/mcp", label: "MCP Servers" },
+  { href: "/settings/integrations", label: "Integrations" },
 ];
 
 export default function SettingsLayout({

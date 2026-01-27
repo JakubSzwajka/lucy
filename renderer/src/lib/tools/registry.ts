@@ -259,6 +259,8 @@ export class ToolRegistry {
         return `builtin__${source.category}__${name}`;
       case "agent":
         return `agent__${source.agentId}__${name}`;
+      case "integration":
+        return `integration__${source.integrationId}__${name}`;
     }
   }
 

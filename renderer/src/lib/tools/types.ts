@@ -20,7 +20,12 @@ export interface AgentToolSource {
   agentId: string;
 }
 
-export type ToolSource = McpToolSource | BuiltinToolSource | AgentToolSource;
+export interface IntegrationToolSource {
+  type: "integration";
+  integrationId: string;
+}
+
+export type ToolSource = McpToolSource | BuiltinToolSource | AgentToolSource | IntegrationToolSource;
 
 // ============================================================================
 // Tool Execution Context
