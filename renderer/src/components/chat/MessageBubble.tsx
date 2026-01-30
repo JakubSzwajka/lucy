@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
@@ -11,6 +11,40 @@ import {
   validateInlineUIProps,
 } from "@/lib/generative-ui/inline";
 import type { AgentActivity } from "@/types";
+import { Copy, Check } from "lucide-react";
+
+/**
+ * Code block with copy button
+ */
+function CodeBlockWithCopy({ className, children }: { className?: string; children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    const text = String(children).trim();
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [children]);
+
+  return (
+    <div className="relative group">
+      <button
+        onClick={handleCopy}
+        className="absolute top-2 right-2 p-1.5 rounded bg-background/80 border border-border opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+        aria-label="Copy code"
+      >
+        {copied ? (
+          <Check className="w-3.5 h-3.5 text-green-500" />
+        ) : (
+          <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+        )}
+      </button>
+      <pre className={className}>
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+}
 
 interface MessageBubbleProps {
   role: "user" | "assistant" | "system";
@@ -80,12 +114,8 @@ function createCodeComponent(
       return <code className={className} {...props}>{children}</code>;
     }
 
-    // Block code - render in pre
-    return (
-      <pre className={className}>
-        <code {...props}>{children}</code>
-      </pre>
-    );
+    // Block code - render with copy button
+    return <CodeBlockWithCopy className={className}>{children}</CodeBlockWithCopy>;
   };
 }
 
