@@ -5,10 +5,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Enable instrumentation hook for Langfuse tracing
-  experimental: {
-    instrumentationHook: true,
-  },
   // Silence Turbopack warning - we need webpack for native module handling
   turbopack: {},
   webpack: (config) => {

@@ -59,6 +59,12 @@ export function ChatContainer({
     [sendMessage, thinkingEnabled]
   );
 
+  // Handle inline UI component actions
+  const handleUIAction = useCallback((action: string, payload: unknown) => {
+    console.log("[ChatContainer] UI Action:", { action, payload });
+    // TODO: Implement action handling (e.g., API calls, state updates)
+  }, []);
+
   // Get agent status indicator
   const getStatusIndicator = () => {
     if (!agent) return "bg-muted-dark";
@@ -101,7 +107,11 @@ export function ChatContainer({
       </header>
 
       {/* Messages */}
-      <MessageList messages={messages} isLoading={isLoading} />
+      <MessageList
+        messages={messages}
+        isLoading={isLoading}
+        onUIAction={handleUIAction}
+      />
 
       {/* Input */}
       <ChatInput

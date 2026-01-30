@@ -3,7 +3,6 @@ import { getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
 import { db, agents, settings, systemPrompts, sessions } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { langfuseSpanProcessor } from "@/instrumentation";
 import {
   getToolRegistry,
   initializeToolRegistry,
@@ -171,18 +170,6 @@ export async function POST(req: Request) {
     maxOutputTokens: modelConfig.provider === "anthropic" && isThinkingActive ? 16000 : undefined,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     providerOptions: getProviderOptions() as any,
-    // Enable Langfuse telemetry for LLM observability
-    experimental_telemetry: {
-      isEnabled: true,
-      metadata: {
-        agentId,
-        sessionId: agent.sessionId,
-        modelId: effectiveModelId,
-        provider: modelConfig.provider,
-        thinkingEnabled,
-        hasTools,
-      },
-    },
     onFinish: async ({ text, reasoning }) => {
       // Save reasoning as a separate item if present
       if (reasoning && reasoning.length > 0) {
@@ -218,12 +205,10 @@ export async function POST(req: Request) {
           turnCount: agent.turnCount + 1,
         })
         .where(eq(agents.id, agentId));
-
-      // Flush Langfuse traces to ensure they're sent
-      if (langfuseSpanProcessor) {
-        await langfuseSpanProcessor.forceFlush();
-      }
     },
+    experimental_telemetry: {
+      isEnabled: true,
+    }
   });
 
   return result.toUIMessageStreamResponse({

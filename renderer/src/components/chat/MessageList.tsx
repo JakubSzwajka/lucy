@@ -8,6 +8,8 @@ import type { ChatMessage } from "@/types";
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading?: boolean;
+  /** Callback for inline UI component actions */
+  onUIAction?: (action: string, payload: unknown) => void;
 }
 
 function SessionDivider() {
@@ -24,7 +26,7 @@ function SessionDivider() {
   );
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+export function MessageList({ messages, isLoading, onUIAction }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
             timestamp={message.createdAt ? new Date(message.createdAt) : undefined}
             activities={message.role === "assistant" ? message.activities : undefined}
             isStreaming={isAssistantStreaming}
+            onUIAction={message.role === "assistant" ? onUIAction : undefined}
           />
         );
       })}
