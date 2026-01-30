@@ -3,14 +3,12 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import type {
-  ChatMessage,
-  AgentActivity,
-  ReasoningActivity,
-  ToolCallActivity,
-  Item,
-  Agent,
-} from "@/types";
+import {
+  ItemTransformer,
+  itemsToChatMessages,
+  mergeWithStreaming,
+} from "@/lib/services/item/item.transformer";
+import type { ChatMessage, Item, Agent } from "@/types";
 
 interface UseAgentChatOptions {
   sessionId: string | null;
@@ -29,186 +27,6 @@ interface UseAgentChatReturn {
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
-}
-
-// Helper to extract text content from UIMessage parts
-function extractContent(message: Record<string, unknown>): string {
-  if (typeof message.content === "string") {
-    return message.content;
-  }
-  if (Array.isArray(message.parts)) {
-    return (message.parts as Record<string, unknown>[])
-      .filter((part) => part.type === "text")
-      .map((part) => part.text as string)
-      .join("");
-  }
-  return "";
-}
-
-// Helper to extract activities from UIMessage parts (streaming)
-// AI SDK uses part.type = "tool-${toolName}" format (e.g., "tool-getWeather")
-// States: "input-streaming", "input-available", "output-available", "output-error"
-function extractActivitiesFromParts(message: Record<string, unknown>): AgentActivity[] {
-  const activities: AgentActivity[] = [];
-
-  if (Array.isArray(message.parts)) {
-    const parts = message.parts as Record<string, unknown>[];
-
-    // Extract reasoning
-    const reasoningText = parts
-      .filter((part) => part.type === "reasoning")
-      .map((part) => part.text as string)
-      .join("");
-
-    if (reasoningText) {
-      const reasoningActivity: ReasoningActivity = {
-        id: `${message.id}-reasoning`,
-        type: "reasoning",
-        content: reasoningText,
-      };
-      activities.push(reasoningActivity);
-    }
-
-    // Extract tool calls - AI SDK uses "tool-${toolName}" format for part.type
-    parts
-      .filter((part) => typeof part.type === "string" && (part.type as string).startsWith("tool-"))
-      .forEach((part, index) => {
-        const partType = part.type as string;
-        // Extract tool name from "tool-${toolName}" format
-        const toolName = partType.slice(5); // Remove "tool-" prefix
-        const state = part.state as string;
-
-        // Determine status based on AI SDK state values
-        let status: "running" | "completed" | "failed" = "running";
-        if (state === "output-available") {
-          status = "completed";
-        } else if (state === "output-error") {
-          status = "failed";
-        }
-
-        const toolActivity: ToolCallActivity = {
-          id: `${message.id}-tool-${index}`,
-          type: "tool_call",
-          callId: part.toolCallId as string,
-          toolName: toolName,
-          args: part.input as Record<string, unknown>, // AI SDK uses "input" not "args"
-          status,
-          // Include result/error directly in tool call activity
-          result: state === "output-available" && part.output
-            ? JSON.stringify(part.output)
-            : undefined,
-          error: state === "output-error" && part.errorText
-            ? (part.errorText as string)
-            : undefined,
-        };
-        activities.push(toolActivity);
-      });
-  }
-
-  return activities;
-}
-
-// Convert loaded items to activities (merging tool_call and tool_result by callId)
-function itemsToActivities(
-  loadedItems: Item[],
-  messageId: string,
-  toolResultsByCallId?: Map<string, Item>
-): AgentActivity[] {
-  const activities: AgentActivity[] = [];
-
-  // Use provided map or build one from loadedItems
-  const resultsMap = toolResultsByCallId ?? new Map<string, Item>();
-  if (!toolResultsByCallId) {
-    for (const item of loadedItems) {
-      if (item.type === "tool_result") {
-        resultsMap.set(item.callId, item);
-      }
-    }
-  }
-
-  for (const item of loadedItems) {
-    switch (item.type) {
-      case "reasoning":
-        activities.push({
-          id: item.id,
-          type: "reasoning",
-          content: item.reasoningContent,
-          summary: item.reasoningSummary || undefined,
-          timestamp: item.createdAt,
-        });
-        break;
-
-      case "tool_call": {
-        // Find matching tool_result and merge
-        const resultItem = resultsMap.get(item.callId);
-        activities.push({
-          id: item.id,
-          type: "tool_call",
-          callId: item.callId,
-          toolName: item.toolName,
-          args: item.toolArgs || undefined,
-          status: item.toolStatus,
-          timestamp: item.createdAt,
-          // Merge result/error from tool_result item
-          result: resultItem?.type === "tool_result" ? (resultItem.toolOutput || undefined) : undefined,
-          error: resultItem?.type === "tool_result" ? (resultItem.toolError || undefined) : undefined,
-        });
-        break;
-      }
-
-      // Skip tool_result - it's merged into tool_call above
-      case "tool_result":
-        break;
-    }
-  }
-
-  return activities;
-}
-
-// Convert items to ChatMessages for display
-function itemsToChatMessages(loadedItems: Item[]): ChatMessage[] {
-  const messages: ChatMessage[] = [];
-  let currentActivities: AgentActivity[] = [];
-
-  // Build tool_results map upfront for merging with tool_calls
-  const toolResultsByCallId = new Map<string, Item>();
-  for (const item of loadedItems) {
-    if (item.type === "tool_result") {
-      toolResultsByCallId.set(item.callId, item);
-    }
-  }
-
-  for (const item of loadedItems) {
-    if (item.type === "message") {
-      // Attach any preceding activities to this message
-      messages.push({
-        id: item.id,
-        role: item.role,
-        content: item.content,
-        createdAt: item.createdAt,
-        activities: currentActivities.length > 0 ? [...currentActivities] : undefined,
-      });
-      currentActivities = [];
-    } else if (item.type === "tool_result") {
-      // Skip tool_result - it's merged into tool_call
-      continue;
-    } else {
-      // Accumulate activities until next message
-      const activity = itemsToActivities([item], item.id, toolResultsByCallId);
-      currentActivities.push(...activity);
-    }
-  }
-
-  // If there are trailing activities without a message, attach to last message
-  if (currentActivities.length > 0 && messages.length > 0) {
-    const lastMessage = messages[messages.length - 1];
-    lastMessage.activities = [
-      ...(lastMessage.activities || []),
-      ...currentActivities,
-    ];
-  }
-
-  return messages;
 }
 
 export function useAgentChat({
@@ -291,26 +109,12 @@ export function useAgentChat({
     }
   }, [agentId, setMessages]);
 
-  // Combine loaded items with streaming messages
+  // Combine loaded items with streaming messages using ItemTransformer
   const messages: ChatMessage[] = useMemo(() => {
-    // Start with loaded items converted to messages
-    const fromItems = itemsToChatMessages(loadedItems);
-
-    // Find new messages from streaming that aren't in loaded items
-    const loadedMessageIds = new Set(
-      loadedItems.filter((i) => i.type === "message").map((i) => i.id)
+    return mergeWithStreaming(
+      loadedItems,
+      rawMessages as unknown as Record<string, unknown>[]
     );
-
-    const streamingMessages = rawMessages
-      .filter((msg) => !loadedMessageIds.has(msg.id))
-      .map((msg) => ({
-        id: msg.id,
-        role: msg.role as "user" | "assistant" | "system",
-        content: extractContent(msg as unknown as Record<string, unknown>),
-        activities: extractActivitiesFromParts(msg as unknown as Record<string, unknown>),
-      }));
-
-    return [...fromItems, ...streamingMessages];
   }, [loadedItems, rawMessages]);
 
   // All items (loaded + inferred from streaming)

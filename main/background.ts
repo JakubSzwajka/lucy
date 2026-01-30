@@ -95,10 +95,6 @@ async function createMainWindow() {
     }, 2000);
   }
 
-  if (!isProd) {
-    mainWindow.webContents.openDevTools();
-  }
-
   mainWindow.on("closed", () => {
     mainWindow = null;
   });

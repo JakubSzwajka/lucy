@@ -1,61 +1,29 @@
 import { NextResponse } from "next/server";
-import { db, agents, sessions } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { getAgentService } from "@/lib/services";
 
 // POST /api/agents - Create a new agent (usually a child agent)
 export async function POST(req: Request) {
   const body = await req.json();
-  const {
-    sessionId,
-    parentId,
-    sourceCallId,
-    name,
-    task,
-    systemPrompt,
-    model,
-    config,
-  } = body;
+  const agentService = getAgentService();
 
-  if (!sessionId || !name) {
-    return NextResponse.json(
-      { error: "sessionId and name are required" },
-      { status: 400 }
-    );
-  }
-
-  // Verify session exists
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, sessionId));
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Session not found" },
-      { status: 404 }
-    );
-  }
-
-  const agentId = uuidv4();
-
-  await db.insert(agents).values({
-    id: agentId,
-    sessionId,
-    parentId: parentId || null,
-    sourceCallId: sourceCallId || null,
-    name,
-    task: task || null,
-    systemPrompt: systemPrompt || null,
-    model: model || null,
-    config: config || null,
-    status: "pending",
+  const result = agentService.create({
+    sessionId: body.sessionId,
+    parentId: body.parentId,
+    sourceCallId: body.sourceCallId,
+    name: body.name,
+    task: body.task,
+    systemPrompt: body.systemPrompt,
+    model: body.model,
+    config: body.config,
   });
 
-  const [created] = await db
-    .select()
-    .from(agents)
-    .where(eq(agents.id, agentId));
+  if (result.notFound) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
 
-  return NextResponse.json(created, { status: 201 });
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
+
+  return NextResponse.json(result.agent, { status: 201 });
 }

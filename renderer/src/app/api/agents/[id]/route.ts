@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, agents, items } from "@/lib/db";
-import { eq, asc } from "drizzle-orm";
+import { getAgentService } from "@/lib/services";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -9,79 +8,41 @@ interface RouteParams {
 // GET /api/agents/[id] - Get agent with its items
 export async function GET(req: Request, { params }: RouteParams) {
   const { id } = await params;
+  const agentService = getAgentService();
 
-  const [agent] = await db
-    .select()
-    .from(agents)
-    .where(eq(agents.id, id));
+  const agent = agentService.getByIdWithItems(id);
 
   if (!agent) {
-    return NextResponse.json(
-      { error: "Agent not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
 
-  const agentItems = await db
-    .select()
-    .from(items)
-    .where(eq(items.agentId, id))
-    .orderBy(asc(items.sequence));
-
-  return NextResponse.json({
-    ...agent,
-    items: agentItems,
-  });
+  return NextResponse.json(agent);
 }
 
 // PATCH /api/agents/[id] - Update agent status, result, etc.
 export async function PATCH(req: Request, { params }: RouteParams) {
   const { id } = await params;
   const updates = await req.json();
+  const agentService = getAgentService();
 
-  const allowedFields = [
-    "status",
-    "waitingForCallId",
-    "result",
-    "error",
-    "turnCount",
-    "startedAt",
-    "completedAt",
-  ];
+  const result = agentService.update(id, updates);
 
-  const filteredUpdates: Record<string, unknown> = {};
-
-  for (const field of allowedFields) {
-    if (updates[field] !== undefined) {
-      filteredUpdates[field] = updates[field];
-    }
+  if (result.notFound) {
+    return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
 
-  if (Object.keys(filteredUpdates).length === 0) {
-    return NextResponse.json(
-      { error: "No valid fields to update" },
-      { status: 400 }
-    );
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  await db
-    .update(agents)
-    .set(filteredUpdates)
-    .where(eq(agents.id, id));
-
-  const [updated] = await db
-    .select()
-    .from(agents)
-    .where(eq(agents.id, id));
-
-  return NextResponse.json(updated);
+  return NextResponse.json(result.agent);
 }
 
 // DELETE /api/agents/[id] - Delete an agent (cascades to items)
 export async function DELETE(req: Request, { params }: RouteParams) {
   const { id } = await params;
+  const agentService = getAgentService();
 
-  await db.delete(agents).where(eq(agents.id, id));
-
+  agentService.delete(id);
   return new NextResponse(null, { status: 204 });
 }

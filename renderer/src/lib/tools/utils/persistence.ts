@@ -1,74 +1,74 @@
-import { db, items, NewItem } from "@/lib/db";
-import { eq, sql } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { getItemService } from "@/lib/services";
+import type { CreateItemData } from "@/lib/services";
+import type { ToolCallStatus } from "@/types";
 
-// Get next sequence number for an agent
-async function getNextSequence(agentId: string): Promise<number> {
-  const [maxSeq] = await db
-    .select({ max: sql<number>`MAX(${items.sequence})` })
-    .from(items)
-    .where(eq(items.agentId, agentId));
-
-  return (maxSeq?.max ?? -1) + 1;
-}
-
-// Insert an item with auto-incrementing sequence
+/**
+ * Insert an item into the database.
+ * Wraps ItemService.create for backward compatibility.
+ */
 export async function insertItem(
   agentId: string,
-  itemData: Omit<NewItem, "id" | "agentId" | "sequence">
+  itemData: CreateItemData
 ): Promise<{ id: string; sequence: number }> {
-  const sequence = await getNextSequence(agentId);
-  const id = uuidv4();
+  const itemService = getItemService();
+  const result = itemService.create(agentId, itemData);
 
-  await db.insert(items).values({
-    id,
-    agentId,
-    sequence,
-    ...itemData,
-  } as NewItem);
+  if (result.error || !result.item) {
+    throw new Error(result.error || "Failed to insert item");
+  }
 
-  return { id, sequence };
+  return { id: result.item.id, sequence: result.item.sequence };
 }
 
-// Save a tool call to the database
+/**
+ * Save a tool call to the database.
+ * Wraps ItemService.createToolCall for backward compatibility.
+ */
 export async function saveToolCall(
   agentId: string,
   callId: string,
   toolName: string,
   toolArgs: Record<string, unknown>,
-  status: "pending" | "pending_approval" | "running" | "completed" | "failed" = "running"
+  status: ToolCallStatus = "running"
 ): Promise<{ id: string; sequence: number }> {
-  return insertItem(agentId, {
-    type: "tool_call",
-    callId,
-    toolName,
-    toolArgs,
-    toolStatus: status,
-  });
+  const itemService = getItemService();
+  const result = itemService.createToolCall(agentId, callId, toolName, toolArgs, status);
+
+  if (result.error || !result.item) {
+    throw new Error(result.error || "Failed to save tool call");
+  }
+
+  return { id: result.item.id, sequence: result.item.sequence };
 }
 
-// Save a tool result to the database
+/**
+ * Save a tool result to the database.
+ * Wraps ItemService.createToolResult for backward compatibility.
+ */
 export async function saveToolResult(
   agentId: string,
   callId: string,
   result?: unknown,
   error?: string
 ): Promise<{ id: string; sequence: number }> {
-  return insertItem(agentId, {
-    type: "tool_result",
-    callId,
-    toolOutput: result !== undefined ? JSON.stringify(result) : undefined,
-    toolError: error,
-  });
+  const itemService = getItemService();
+  const itemResult = itemService.createToolResult(agentId, callId, result, error);
+
+  if (itemResult.error || !itemResult.item) {
+    throw new Error(itemResult.error || "Failed to save tool result");
+  }
+
+  return { id: itemResult.item.id, sequence: itemResult.item.sequence };
 }
 
-// Update tool call status
+/**
+ * Update tool call status.
+ * Wraps ItemService.updateToolCallStatus for backward compatibility.
+ */
 export async function updateToolCallStatus(
   callId: string,
-  status: "pending" | "pending_approval" | "running" | "completed" | "failed"
+  status: ToolCallStatus
 ): Promise<void> {
-  await db
-    .update(items)
-    .set({ toolStatus: status })
-    .where(eq(items.callId, callId));
+  const itemService = getItemService();
+  itemService.updateToolCallStatus(callId, status);
 }

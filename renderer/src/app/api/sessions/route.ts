@@ -1,47 +1,28 @@
 import { NextResponse } from "next/server";
-import { db, sessions, agents } from "@/lib/db";
-import { desc, eq } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { getSessionService } from "@/lib/services";
 
 // GET /api/sessions - List all sessions
 export async function GET() {
-  const results = await db
-    .select()
-    .from(sessions)
-    .orderBy(desc(sessions.updatedAt));
-
-  return NextResponse.json(results);
+  const sessionService = getSessionService();
+  const sessions = sessionService.getAll();
+  return NextResponse.json(sessions);
 }
 
 // POST /api/sessions - Create a new session with root agent
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { title, agentName, systemPrompt, model } = body;
+  const sessionService = getSessionService();
 
-  const sessionId = uuidv4();
-  const agentId = uuidv4();
-
-  // Create session
-  await db.insert(sessions).values({
-    id: sessionId,
-    title: title || "New Chat",
-    rootAgentId: agentId,
+  const result = sessionService.create({
+    title: body.title,
+    agentName: body.agentName,
+    systemPrompt: body.systemPrompt,
+    model: body.model,
   });
 
-  // Create root agent for the session
-  await db.insert(agents).values({
-    id: agentId,
-    sessionId,
-    name: agentName || "assistant",
-    systemPrompt: systemPrompt || null,
-    model: model || null,
-    status: "pending",
-  });
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
 
-  const [created] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, sessionId));
-
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json(result.session, { status: 201 });
 }
