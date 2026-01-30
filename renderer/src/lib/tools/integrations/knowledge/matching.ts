@@ -1,55 +1,9 @@
+/**
+ * Entity matching and fuzzy search
+ */
+
 import type { Entity, EntityMatch, EntitySearchResult } from "./types";
-
-/**
- * Calculate Levenshtein distance between two strings
- */
-function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-
-  return matrix[b.length][a.length];
-}
-
-/**
- * Calculate normalized Levenshtein similarity (0-1)
- */
-function levenshteinSimilarity(a: string, b: string): number {
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1;
-  const distance = levenshteinDistance(a, b);
-  return 1 - distance / maxLen;
-}
-
-/**
- * Tokenize a string into words
- */
-function tokenize(str: string): string[] {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 0);
-}
+import { levenshteinSimilarity, tokenize } from "./utils";
 
 /**
  * Calculate Jaccard similarity between two token sets
@@ -86,7 +40,7 @@ function calculateSimilarity(query: string, target: string): number {
   const levenshtein = levenshteinSimilarity(queryLower, targetLower);
   const tokenOverlap = tokenOverlapSimilarity(query, target);
 
-  // Weighted combination (favor token overlap for name matching)
+  // Weighted combination
   return Math.max(
     levenshtein * 0.7 + tokenOverlap * 0.3,
     tokenOverlap * 0.7 + levenshtein * 0.3
@@ -123,13 +77,11 @@ export function searchEntities(
 ): EntitySearchResult {
   const { type, limit = 10, minScore = 0.3 } = options;
 
-  // Filter by type if specified
   let filtered = entities;
   if (type) {
     filtered = entities.filter((e) => e.type === type);
   }
 
-  // Calculate scores and filter
   const scored: EntityMatch[] = filtered
     .map((entity) => ({
       id: entity.id,
@@ -172,11 +124,3 @@ export function findDuplicateEntity(
   }
   return null;
 }
-
-export {
-  levenshteinDistance,
-  levenshteinSimilarity,
-  tokenOverlapSimilarity,
-  calculateSimilarity,
-  tokenize,
-};

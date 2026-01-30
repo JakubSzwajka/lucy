@@ -1,167 +1,103 @@
 /**
- * Knowledge Graph Tools - Unified Entity Model
+ * Knowledge Tools - Facts & People
  *
- * Everything is an entity:
- * - Facts: Quick key-value information (type: "fact")
- * - Notes: Longer-form content (type: "note")
- * - People, Places, Organizations, etc.: Named entities for linking
- *
- * All entities can have tags and relations to other entities.
+ * Two entity types:
+ * - Facts: Key-value memories (preferences, context, details)
+ * - People: Named individuals with aliases and descriptions
  */
 
 import { z } from "zod";
 import { defineTool } from "../../types";
 import type { ToolDefinition } from "../../types";
-import { createFilesystemService } from "@/lib/services/filesystem";
-import yaml from "yaml";
-import type { Entity, EntityType, TagCategory } from "./types";
-import { CONTENT_ENTITY_TYPES } from "./types";
+import type { Entity } from "./types";
+import { getEntityStorage } from "./storage";
 import { getKnowledgeConfigService } from "./config.service";
-import { getIndexManager } from "./index-manager";
 import { searchEntities, nameToId, findDuplicateEntity } from "./matching";
 import { validateTags } from "./validation";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyToolDefinition = ToolDefinition<any, any>;
 
-const ENTITIES_SUBDIR = "entities";
+const storage = getEntityStorage();
+const configService = getKnowledgeConfigService();
 
 /**
- * Load all entities from filesystem
+ * Normalize tags using config validation
  */
-async function loadAllEntities(
-  fs: ReturnType<typeof createFilesystemService>
-): Promise<Entity[]> {
-  const files = await fs.listFiles("", /\.yaml$/);
-  const entities: Entity[] = [];
-
-  for (const file of files) {
-    try {
-      const content = await fs.readFile(file);
-      const entity = yaml.parse(content) as Entity;
-      // Ensure arrays exist (migration from old format)
-      if (!entity.tags) entity.tags = [];
-      if (!entity.relations) entity.relations = [];
-      if (!entity.aliases) entity.aliases = [];
-      entities.push(entity);
-    } catch {
-      // Skip invalid files
-    }
-  }
-
-  return entities;
+async function normalizeTags(tags: string[]): Promise<string[]> {
+  if (!tags || tags.length === 0) return [];
+  const config = await configService.getConfig();
+  const validation = validateTags(tags, config);
+  return validation.valid ? validation.normalizedTags : [];
 }
 
 /**
- * Save an entity and update index
+ * Create a new entity with timestamps
  */
-async function saveEntity(
-  fs: ReturnType<typeof createFilesystemService>,
-  entity: Entity,
-  indexManager: ReturnType<typeof getIndexManager>
-): Promise<void> {
-  await fs.writeFile(`${entity.id}.yaml`, yaml.stringify(entity));
-  await indexManager.updateEntityTags(entity.id, entity.tags);
-  if (entity.relations.length > 0) {
-    await indexManager.updateEntityRelations(entity.id, entity.relations);
-  }
+function createEntity(
+  id: string,
+  type: string,
+  name: string,
+  data: Partial<Entity> = {}
+): Entity {
+  const now = new Date().toISOString();
+  return {
+    id,
+    type,
+    name,
+    aliases: data.aliases || [],
+    description: data.description,
+    content: data.content,
+    tags: data.tags || [],
+    relations: data.relations || [],
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 /**
- * Create knowledge graph tools
+ * Create knowledge tools
  */
 export function createKnowledgeTools(): AnyToolDefinition[] {
-  const fs = createFilesystemService(ENTITIES_SUBDIR);
-  const configService = getKnowledgeConfigService();
-  const indexManager = getIndexManager();
-
   return [
     // =========================================================================
-    // FACT TOOLS (Quick key-value information)
+    // FACT TOOLS
     // =========================================================================
 
     defineTool({
       name: "save_fact",
       description:
-        "Save a piece of information as a fact. Facts are quick, key-value style pieces of information like preferences, context, or important details.",
+        "Save a memory/fact. Use for preferences, context, details, or any information worth remembering.",
 
       inputSchema: z.object({
         key: z
           .string()
           .regex(/^[a-z0-9_-]+$/i, "Key must be alphanumeric with underscores/dashes")
-          .describe("Unique key for this fact (e.g., 'user_name', 'project_deadline')"),
-        content: z.string().describe("The information to save"),
-        tags: z
-          .array(z.string())
-          .optional()
-          .default([])
-          .describe("Tags for categorization (e.g., 'topic:personal', 'project:lucy')"),
-        relations: z
-          .array(z.string())
-          .optional()
-          .default([])
-          .describe("IDs of related entities (e.g., person or project IDs)"),
+          .describe("Unique key (e.g., 'user_name', 'favorite_color')"),
+        content: z.string().describe("The information to remember"),
+        tags: z.array(z.string()).optional().default([]).describe("Optional tags"),
+        relations: z.array(z.string()).optional().default([]).describe("Related entity IDs"),
       }),
 
       source: { type: "integration", integrationId: "knowledge" },
 
       execute: async ({ key, content, tags, relations }) => {
         const id = `fact-${key}`;
-        const now = new Date().toISOString();
+        const normalizedTags = await normalizeTags(tags);
 
-        // Validate tags
-        let normalizedTags: string[] = [];
-        if (tags && tags.length > 0) {
-          const config = await configService.getConfig();
-          const validation = validateTags(tags, config);
-          if (!validation.valid) {
-            return {
-              success: false,
-              error: "Invalid tags",
-              validationErrors: validation.errors,
-            };
-          }
-          normalizedTags = validation.normalizedTags;
-        }
+        const existing = await storage.get(id);
+        const entity = existing
+          ? { ...existing, content, tags: normalizedTags, relations: relations || existing.relations, updatedAt: new Date().toISOString() }
+          : createEntity(id, "fact", key, { content, tags: normalizedTags, relations });
 
-        // Check if exists (update) or new (create)
-        let entity: Entity;
-        if (fs.exists(`${id}.yaml`)) {
-          const existing = yaml.parse(await fs.readFile(`${id}.yaml`)) as Entity;
-          entity = {
-            ...existing,
-            content,
-            tags: normalizedTags,
-            relations: relations || existing.relations || [],
-            updatedAt: now,
-          };
-        } else {
-          entity = {
-            id,
-            type: "fact",
-            name: key,
-            aliases: [],
-            content,
-            tags: normalizedTags,
-            relations: relations || [],
-            createdAt: now,
-            updatedAt: now,
-          };
-        }
-
-        await saveEntity(fs, entity, indexManager);
-
-        return {
-          success: true,
-          id,
-          message: `Fact "${key}" saved.`,
-        };
+        await storage.save(entity);
+        return { success: true, id, message: `Fact "${key}" saved.` };
       },
     }),
 
     defineTool({
       name: "recall_fact",
-      description: "Retrieve a specific fact by its key.",
+      description: "Retrieve a specific fact/memory by its key.",
 
       inputSchema: z.object({
         key: z.string().describe("The fact key to retrieve"),
@@ -170,17 +106,10 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
       source: { type: "integration", integrationId: "knowledge" },
 
       execute: async ({ key }) => {
-        const id = `fact-${key}`;
-        const filename = `${id}.yaml`;
-
-        if (!fs.exists(filename)) {
-          return {
-            success: false,
-            error: `Fact "${key}" not found.`,
-          };
+        const entity = await storage.get(`fact-${key}`);
+        if (!entity) {
+          return { success: false, error: `Fact "${key}" not found.` };
         }
-
-        const entity = yaml.parse(await fs.readFile(filename)) as Entity;
 
         return {
           success: true,
@@ -197,10 +126,10 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
 
     defineTool({
       name: "search_facts",
-      description: "Search through saved facts by content or tags.",
+      description: "Search through saved facts/memories.",
 
       inputSchema: z.object({
-        query: z.string().optional().describe("Text to search in fact content"),
+        query: z.string().optional().describe("Text to search for"),
         tag: z.string().optional().describe("Filter by tag"),
         limit: z.number().optional().default(20).describe("Max results"),
       }),
@@ -208,19 +137,16 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
       source: { type: "integration", integrationId: "knowledge" },
 
       execute: async ({ query, tag, limit }) => {
-        const entities = await loadAllEntities(fs);
-        let facts = entities.filter((e) => e.type === "fact");
+        let facts = await storage.getByType("fact");
 
         if (tag) {
           facts = facts.filter((f) => f.tags.includes(tag));
         }
 
         if (query) {
-          const lowerQuery = query.toLowerCase();
+          const q = query.toLowerCase();
           facts = facts.filter(
-            (f) =>
-              f.content?.toLowerCase().includes(lowerQuery) ||
-              f.name.toLowerCase().includes(lowerQuery)
+            (f) => f.content?.toLowerCase().includes(q) || f.name.toLowerCase().includes(q)
           );
         }
 
@@ -239,141 +165,147 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
     }),
 
     defineTool({
+      name: "update_fact",
+      description: "Update an existing fact. Use to append tags/relations or modify content.",
+
+      inputSchema: z.object({
+        key: z.string().describe("The fact key to update"),
+        content: z.string().optional().describe("New content (replaces existing)"),
+        addTags: z.array(z.string()).optional().describe("Tags to add"),
+        addRelations: z.array(z.string()).optional().describe("Relations to add"),
+      }),
+
+      source: { type: "integration", integrationId: "knowledge" },
+
+      execute: async ({ key, content, addTags, addRelations }) => {
+        const entity = await storage.get(`fact-${key}`);
+        if (!entity) {
+          return { success: false, error: `Fact "${key}" not found.` };
+        }
+
+        if (content !== undefined) {
+          entity.content = content;
+        }
+
+        if (addTags && addTags.length > 0) {
+          const normalizedTags = await normalizeTags(addTags);
+          const existingTags = new Set(entity.tags);
+          for (const tag of normalizedTags) {
+            if (!existingTags.has(tag)) {
+              entity.tags.push(tag);
+            }
+          }
+        }
+
+        if (addRelations) {
+          const existingRels = new Set(entity.relations);
+          for (const rel of addRelations) {
+            if (!existingRels.has(rel)) {
+              entity.relations.push(rel);
+            }
+          }
+        }
+
+        entity.updatedAt = new Date().toISOString();
+        await storage.save(entity);
+
+        return { success: true, message: `Fact "${key}" updated.` };
+      },
+    }),
+
+    defineTool({
       name: "delete_fact",
-      description: "Delete a fact by its key.",
+      description: "Delete a fact/memory.",
 
       inputSchema: z.object({
         key: z.string().describe("The fact key to delete"),
       }),
 
       source: { type: "integration", integrationId: "knowledge" },
-
       requiresApproval: true,
 
       execute: async ({ key }) => {
-        const id = `fact-${key}`;
-        const filename = `${id}.yaml`;
-
-        if (!fs.exists(filename)) {
+        const deleted = await storage.delete(`fact-${key}`);
+        if (!deleted) {
           return { success: false, error: `Fact "${key}" not found.` };
         }
-
-        await fs.deleteFile(filename);
-        await indexManager.removeEntity(id);
-
         return { success: true, message: `Fact "${key}" deleted.` };
       },
     }),
 
     // =========================================================================
-    // NOTE TOOLS (Longer-form content)
+    // PEOPLE TOOLS
     // =========================================================================
 
     defineTool({
-      name: "save_note",
-      description:
-        "Save a note for longer-form content like documentation, summaries, or drafts. Notes support markdown.",
+      name: "remember_person",
+      description: "Remember a person. Use when you learn about someone the user knows.",
 
       inputSchema: z.object({
-        title: z.string().min(1).describe("Title of the note"),
-        content: z.string().describe("Note content (supports markdown)"),
-        tags: z
-          .array(z.string())
-          .optional()
-          .default([])
-          .describe("Tags for categorization"),
-        relations: z
-          .array(z.string())
-          .optional()
-          .default([])
-          .describe("IDs of related entities"),
+        name: z.string().describe("Person's full name"),
+        aliases: z.array(z.string()).optional().default([]).describe("Nicknames, alternative names"),
+        description: z.string().optional().describe("Who they are, relationship to user"),
+        tags: z.array(z.string()).optional().default([]).describe("Optional tags"),
+        relations: z.array(z.string()).optional().default([]).describe("Related entity IDs"),
       }),
 
       source: { type: "integration", integrationId: "knowledge" },
 
-      execute: async ({ title, content, tags, relations }) => {
-        const baseId = nameToId(title);
-        const id = `note-${baseId}`;
-        const now = new Date().toISOString();
+      execute: async ({ name, aliases, description, tags, relations }) => {
+        const allEntities = await storage.getAll();
+        const duplicate = findDuplicateEntity(name, allEntities, 0.9);
 
-        // Validate tags
-        let normalizedTags: string[] = [];
-        if (tags && tags.length > 0) {
-          const config = await configService.getConfig();
-          const validation = validateTags(tags, config);
-          if (!validation.valid) {
-            return {
-              success: false,
-              error: "Invalid tags",
-              validationErrors: validation.errors,
-            };
-          }
-          normalizedTags = validation.normalizedTags;
-        }
-
-        // Check if exists (update) or new (create)
-        let entity: Entity;
-        if (fs.exists(`${id}.yaml`)) {
-          const existing = yaml.parse(await fs.readFile(`${id}.yaml`)) as Entity;
-          entity = {
-            ...existing,
-            name: title,
-            content,
-            tags: normalizedTags,
-            relations: relations || existing.relations || [],
-            updatedAt: now,
-          };
-        } else {
-          entity = {
-            id,
-            type: "note",
-            name: title,
-            aliases: [],
-            content,
-            tags: normalizedTags,
-            relations: relations || [],
-            createdAt: now,
-            updatedAt: now,
+        if (duplicate) {
+          return {
+            success: false,
+            error: `Person already exists: "${duplicate.name}" (${duplicate.id})`,
+            existingPerson: { id: duplicate.id, name: duplicate.name },
           };
         }
 
-        await saveEntity(fs, entity, indexManager);
+        const id = `person-${nameToId(name)}`;
+        if (storage.exists(id)) {
+          return { success: false, error: `Person ID "${id}" already exists.` };
+        }
 
-        return {
-          success: true,
-          id,
-          message: `Note "${title}" saved.`,
-        };
+        const normalizedTags = await normalizeTags(tags);
+        const entity = createEntity(id, "person", name, {
+          aliases,
+          description,
+          tags: normalizedTags,
+          relations,
+        });
+
+        await storage.save(entity);
+        return { success: true, id, message: `Remembered "${name}".` };
       },
     }),
 
     defineTool({
-      name: "read_note",
-      description: "Read a note by its ID or search by title.",
+      name: "get_person",
+      description: "Get details about a remembered person.",
 
       inputSchema: z.object({
-        id: z.string().describe("The note ID (e.g., 'note-meeting-notes')"),
+        id: z.string().describe("Person ID (e.g., 'person-john-doe')"),
       }),
 
       source: { type: "integration", integrationId: "knowledge" },
 
       execute: async ({ id }) => {
-        // Handle both "note-xxx" and just "xxx" formats
-        const fullId = id.startsWith("note-") ? id : `note-${id}`;
-        const filename = `${fullId}.yaml`;
+        const fullId = id.startsWith("person-") ? id : `person-${id}`;
+        const entity = await storage.get(fullId);
 
-        if (!fs.exists(filename)) {
-          return { success: false, error: `Note "${id}" not found.` };
+        if (!entity) {
+          return { success: false, error: `Person "${id}" not found.` };
         }
-
-        const entity = yaml.parse(await fs.readFile(filename)) as Entity;
 
         return {
           success: true,
-          note: {
+          person: {
             id: entity.id,
-            title: entity.name,
-            content: entity.content,
+            name: entity.name,
+            aliases: entity.aliases,
+            description: entity.description,
             tags: entity.tags,
             relations: entity.relations,
             createdAt: entity.createdAt,
@@ -384,265 +316,11 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
     }),
 
     defineTool({
-      name: "search_notes",
-      description: "Search notes by title or content.",
+      name: "update_person",
+      description: "Update information about a person.",
 
       inputSchema: z.object({
-        query: z.string().optional().describe("Text to search in title and content"),
-        tag: z.string().optional().describe("Filter by tag"),
-        limit: z.number().optional().default(20).describe("Max results"),
-      }),
-
-      source: { type: "integration", integrationId: "knowledge" },
-
-      execute: async ({ query, tag, limit }) => {
-        const entities = await loadAllEntities(fs);
-        let notes = entities.filter((e) => e.type === "note");
-
-        if (tag) {
-          notes = notes.filter((n) => n.tags.includes(tag));
-        }
-
-        if (query) {
-          const lowerQuery = query.toLowerCase();
-          notes = notes.filter(
-            (n) =>
-              n.name.toLowerCase().includes(lowerQuery) ||
-              n.content?.toLowerCase().includes(lowerQuery)
-          );
-        }
-
-        notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-
-        return {
-          count: notes.length,
-          notes: notes.slice(0, limit).map((n) => ({
-            id: n.id,
-            title: n.name,
-            snippet: n.content?.substring(0, 150) + (n.content && n.content.length > 150 ? "..." : ""),
-            tags: n.tags,
-            updatedAt: n.updatedAt,
-          })),
-        };
-      },
-    }),
-
-    defineTool({
-      name: "list_notes",
-      description: "List all notes with optional tag filter.",
-
-      inputSchema: z.object({
-        tag: z.string().optional().describe("Filter by tag"),
-        limit: z.number().optional().default(50).describe("Max results"),
-      }),
-
-      source: { type: "integration", integrationId: "knowledge" },
-
-      execute: async ({ tag, limit }) => {
-        const entities = await loadAllEntities(fs);
-        let notes = entities.filter((e) => e.type === "note");
-
-        if (tag) {
-          notes = notes.filter((n) => n.tags.includes(tag));
-        }
-
-        notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-
-        return {
-          count: notes.length,
-          notes: notes.slice(0, limit).map((n) => ({
-            id: n.id,
-            title: n.name,
-            tags: n.tags,
-            updatedAt: n.updatedAt,
-          })),
-        };
-      },
-    }),
-
-    defineTool({
-      name: "delete_note",
-      description: "Delete a note by its ID.",
-
-      inputSchema: z.object({
-        id: z.string().describe("The note ID to delete"),
-      }),
-
-      source: { type: "integration", integrationId: "knowledge" },
-
-      requiresApproval: true,
-
-      execute: async ({ id }) => {
-        const fullId = id.startsWith("note-") ? id : `note-${id}`;
-        const filename = `${fullId}.yaml`;
-
-        if (!fs.exists(filename)) {
-          return { success: false, error: `Note "${id}" not found.` };
-        }
-
-        const entity = yaml.parse(await fs.readFile(filename)) as Entity;
-        await fs.deleteFile(filename);
-        await indexManager.removeEntity(fullId);
-
-        return { success: true, message: `Note "${entity.name}" deleted.` };
-      },
-    }),
-
-    // =========================================================================
-    // NAMED ENTITY TOOLS (People, Places, Organizations, etc.)
-    // =========================================================================
-
-    defineTool({
-      name: "search_entities",
-      description:
-        "Search for existing entities by name or alias. Use this before creating new entities to avoid duplicates.",
-
-      inputSchema: z.object({
-        query: z.string().describe("Search query"),
-        type: z.string().optional().describe("Filter by type (person, place, organization, etc.)"),
-        limit: z.number().optional().default(10).describe("Max results"),
-      }),
-
-      source: { type: "integration", integrationId: "knowledge" },
-
-      execute: async ({ query, type, limit }) => {
-        const entities = await loadAllEntities(fs);
-        // Exclude content entities from entity search (facts/notes have their own search)
-        const namedEntities = entities.filter((e) => !CONTENT_ENTITY_TYPES.includes(e.type));
-
-        const result = searchEntities(query, namedEntities, {
-          type,
-          limit,
-          minScore: 0.3,
-        });
-
-        return {
-          count: result.matches.length,
-          matches: result.matches.map((m) => ({
-            id: m.id,
-            name: m.name,
-            type: m.type,
-            aliases: m.aliases,
-            score: Math.round(m.score * 100) / 100,
-          })),
-        };
-      },
-    }),
-
-    defineTool({
-      name: "create_entity",
-      description:
-        "Create a named entity (person, place, organization, etc.). First use search_entities to check for duplicates.",
-
-      inputSchema: z.object({
-        type: z
-          .string()
-          .describe("Entity type: person, place, organization, project, concept, event"),
-        name: z.string().describe("Primary name"),
-        aliases: z.array(z.string()).optional().default([]).describe("Alternative names"),
-        description: z.string().optional().describe("Brief description"),
-        tags: z.array(z.string()).optional().default([]).describe("Tags"),
-        relations: z.array(z.string()).optional().default([]).describe("Related entity IDs"),
-      }),
-
-      source: { type: "integration", integrationId: "knowledge" },
-
-      execute: async ({ type, name, aliases, description, tags, relations }) => {
-        // Validate type
-        if (CONTENT_ENTITY_TYPES.includes(type)) {
-          return {
-            success: false,
-            error: `Use save_fact or save_note for content. "${type}" is a content type.`,
-          };
-        }
-
-        const config = await configService.getConfig();
-        const entityType = config.entityTypes.find(
-          (t: EntityType) => t.id === type && t.enabled
-        );
-
-        if (!entityType) {
-          const validTypes = config.entityTypes
-            .filter((t: EntityType) => t.enabled && !CONTENT_ENTITY_TYPES.includes(t.id))
-            .map((t: EntityType) => t.id);
-          return {
-            success: false,
-            error: `Invalid type "${type}". Valid: ${validTypes.join(", ")}`,
-          };
-        }
-
-        // Check for duplicates
-        const entities = await loadAllEntities(fs);
-        const duplicate = findDuplicateEntity(name, entities, 0.9);
-
-        if (duplicate) {
-          return {
-            success: false,
-            error: `Similar entity exists: "${duplicate.name}" (${duplicate.id})`,
-            existingEntity: { id: duplicate.id, name: duplicate.name },
-          };
-        }
-
-        // Validate tags
-        let normalizedTags: string[] = [];
-        if (tags && tags.length > 0) {
-          const validation = validateTags(tags, config);
-          if (!validation.valid) {
-            return { success: false, error: "Invalid tags", validationErrors: validation.errors };
-          }
-          normalizedTags = validation.normalizedTags;
-        }
-
-        const id = nameToId(name);
-        if (fs.exists(`${id}.yaml`)) {
-          return { success: false, error: `Entity ID "${id}" already exists.` };
-        }
-
-        const now = new Date().toISOString();
-        const entity: Entity = {
-          id,
-          type,
-          name,
-          aliases: aliases || [],
-          description,
-          tags: normalizedTags,
-          relations: relations || [],
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        await saveEntity(fs, entity, indexManager);
-
-        return { success: true, id, message: `Entity "${name}" created.` };
-      },
-    }),
-
-    defineTool({
-      name: "get_entity",
-      description: "Get full details of an entity by ID.",
-
-      inputSchema: z.object({
-        id: z.string().describe("Entity ID"),
-      }),
-
-      source: { type: "integration", integrationId: "knowledge" },
-
-      execute: async ({ id }) => {
-        if (!fs.exists(`${id}.yaml`)) {
-          return { success: false, error: `Entity "${id}" not found.` };
-        }
-
-        const entity = yaml.parse(await fs.readFile(`${id}.yaml`)) as Entity;
-        return { success: true, entity };
-      },
-    }),
-
-    defineTool({
-      name: "update_entity",
-      description: "Update an entity's details.",
-
-      inputSchema: z.object({
-        id: z.string().describe("Entity ID"),
+        id: z.string().describe("Person ID"),
         addAliases: z.array(z.string()).optional().describe("Aliases to add"),
         description: z.string().optional().describe("New description"),
         addTags: z.array(z.string()).optional().describe("Tags to add"),
@@ -652,11 +330,12 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
       source: { type: "integration", integrationId: "knowledge" },
 
       execute: async ({ id, addAliases, description, addTags, addRelations }) => {
-        if (!fs.exists(`${id}.yaml`)) {
-          return { success: false, error: `Entity "${id}" not found.` };
-        }
+        const fullId = id.startsWith("person-") ? id : `person-${id}`;
+        const entity = await storage.get(fullId);
 
-        const entity = yaml.parse(await fs.readFile(`${id}.yaml`)) as Entity;
+        if (!entity) {
+          return { success: false, error: `Person "${id}" not found.` };
+        }
 
         if (addAliases) {
           const existing = new Set(entity.aliases.map((a) => a.toLowerCase()));
@@ -672,14 +351,11 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
         }
 
         if (addTags && addTags.length > 0) {
-          const config = await configService.getConfig();
-          const validation = validateTags(addTags, config);
-          if (validation.valid) {
-            const existingTags = new Set(entity.tags);
-            for (const tag of validation.normalizedTags) {
-              if (!existingTags.has(tag)) {
-                entity.tags.push(tag);
-              }
+          const normalizedTags = await normalizeTags(addTags);
+          const existingTags = new Set(entity.tags);
+          for (const tag of normalizedTags) {
+            if (!existingTags.has(tag)) {
+              entity.tags.push(tag);
             }
           }
         }
@@ -694,166 +370,140 @@ export function createKnowledgeTools(): AnyToolDefinition[] {
         }
 
         entity.updatedAt = new Date().toISOString();
-        await saveEntity(fs, entity, indexManager);
+        await storage.save(entity);
 
-        return { success: true, entity, message: `Entity "${entity.name}" updated.` };
+        return { success: true, message: `Updated "${entity.name}".` };
       },
     }),
 
     defineTool({
-      name: "list_entities",
-      description: "List all named entities (not facts/notes).",
+      name: "search_people",
+      description: "Search for remembered people by name or alias.",
 
       inputSchema: z.object({
-        type: z.string().optional().describe("Filter by type"),
+        query: z.string().describe("Name to search for"),
+        limit: z.number().optional().default(10).describe("Max results"),
+      }),
+
+      source: { type: "integration", integrationId: "knowledge" },
+
+      execute: async ({ query, limit }) => {
+        const people = await storage.getByType("person");
+        const result = searchEntities(query, people, { limit, minScore: 0.3 });
+
+        return {
+          count: result.matches.length,
+          people: result.matches.map((m) => ({
+            id: m.id,
+            name: m.name,
+            aliases: m.aliases,
+            score: Math.round(m.score * 100) / 100,
+          })),
+        };
+      },
+    }),
+
+    defineTool({
+      name: "list_people",
+      description: "List all remembered people.",
+
+      inputSchema: z.object({
         limit: z.number().optional().default(50).describe("Max results"),
       }),
 
       source: { type: "integration", integrationId: "knowledge" },
 
-      execute: async ({ type, limit }) => {
-        const entities = await loadAllEntities(fs);
-        let filtered = entities.filter((e) => !CONTENT_ENTITY_TYPES.includes(e.type));
-
-        if (type) {
-          filtered = filtered.filter((e) => e.type === type);
-        }
-
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
+      execute: async ({ limit }) => {
+        const people = await storage.getByType("person");
+        people.sort((a, b) => a.name.localeCompare(b.name));
 
         return {
-          count: filtered.length,
-          entities: filtered.slice(0, limit).map((e) => ({
-            id: e.id,
-            type: e.type,
-            name: e.name,
-            aliases: e.aliases,
-            description: e.description,
+          count: people.length,
+          people: people.slice(0, limit).map((p) => ({
+            id: p.id,
+            name: p.name,
+            aliases: p.aliases,
+            description: p.description,
           })),
         };
       },
     }),
 
     defineTool({
-      name: "delete_entity",
-      description: "Delete an entity from the knowledge graph.",
+      name: "forget_person",
+      description: "Remove a person from memory.",
 
       inputSchema: z.object({
-        id: z.string().describe("Entity ID to delete"),
+        id: z.string().describe("Person ID to delete"),
       }),
 
       source: { type: "integration", integrationId: "knowledge" },
-
       requiresApproval: true,
 
       execute: async ({ id }) => {
-        if (!fs.exists(`${id}.yaml`)) {
-          return { success: false, error: `Entity "${id}" not found.` };
+        const fullId = id.startsWith("person-") ? id : `person-${id}`;
+        const entity = await storage.get(fullId);
+
+        if (!entity) {
+          return { success: false, error: `Person "${id}" not found.` };
         }
 
-        const entity = yaml.parse(await fs.readFile(`${id}.yaml`)) as Entity;
-        await fs.deleteFile(`${id}.yaml`);
-        await indexManager.removeEntity(id);
-
-        return { success: true, message: `Entity "${entity.name}" deleted.` };
+        await storage.delete(fullId);
+        return { success: true, message: `Forgot "${entity.name}".` };
       },
     }),
 
     // =========================================================================
-    // GRAPH QUERY TOOLS
+    // GRAPH TOOLS
     // =========================================================================
-
-    defineTool({
-      name: "get_knowledge_config",
-      description: "Get tag vocabulary and entity types configuration.",
-
-      inputSchema: z.object({}),
-
-      source: { type: "integration", integrationId: "knowledge" },
-
-      execute: async () => {
-        const config = await configService.getConfig();
-
-        return {
-          tagCategories: config.tagCategories.map((cat: TagCategory) => ({
-            id: cat.id,
-            name: cat.name,
-            description: cat.description,
-            allowCustom: cat.allowCustom,
-            values: cat.values.map((v) => v.id),
-          })),
-          entityTypes: config.entityTypes
-            .filter((t: EntityType) => t.enabled)
-            .map((t: EntityType) => ({ id: t.id, name: t.name })),
-        };
-      },
-    }),
 
     defineTool({
       name: "find_related",
-      description: "Find entities related to a given entity or tag.",
+      description: "Find entities related to a person or fact.",
 
       inputSchema: z.object({
-        entityId: z.string().optional().describe("Find entities related to this ID"),
-        tag: z.string().optional().describe("Find entities with this tag"),
+        entityId: z.string().describe("Entity ID to find relations for"),
         limit: z.number().optional().default(20).describe("Max results"),
       }),
 
       source: { type: "integration", integrationId: "knowledge" },
 
-      execute: async ({ entityId, tag, limit }) => {
-        if (!entityId && !tag) {
-          return { success: false, error: "Provide entityId or tag." };
-        }
+      execute: async ({ entityId, limit }) => {
+        const { getIndexManager } = await import("./index-manager");
+        const indexManager = getIndexManager();
 
         const entityLoader = async (id: string) => {
-          if (!fs.exists(`${id}.yaml`)) return null;
-          const e = yaml.parse(await fs.readFile(`${id}.yaml`)) as Entity;
+          const e = await storage.get(id);
+          if (!e) return null;
           return { name: e.name, type: e.type, content: e.content };
         };
 
-        if (entityId) {
-          const result = await indexManager.findRelated(entityId, entityLoader);
-          return { success: true, related: result.entities.slice(0, limit) };
-        }
-
-        if (tag) {
-          const result = await indexManager.findByTag(tag, entityLoader);
-          return { success: true, related: result.entities.slice(0, limit) };
-        }
-
-        return { success: false, error: "Unexpected error" };
+        const result = await indexManager.findRelated(entityId, entityLoader);
+        return { success: true, related: result.entities.slice(0, limit) };
       },
     }),
 
     defineTool({
-      name: "get_graph_stats",
-      description: "Get statistics about the knowledge graph.",
+      name: "get_memory_stats",
+      description: "Get statistics about stored memories.",
 
       inputSchema: z.object({}),
 
       source: { type: "integration", integrationId: "knowledge" },
 
       execute: async () => {
-        const entityLoader = async () => {
-          const entities = await loadAllEntities(fs);
-          return entities.map((e) => ({
-            id: e.id,
-            type: e.type,
-            tags: e.tags,
-            name: e.name,
-          }));
-        };
-
-        const stats = await indexManager.getStats(entityLoader);
+        const [facts, people] = await Promise.all([
+          storage.getByType("fact"),
+          storage.getByType("person"),
+        ]);
 
         return {
-          totalEntities: stats.totalEntities,
-          byType: stats.byType,
-          totalTags: stats.totalTags,
-          topTags: stats.topTags,
-          topEntities: stats.topEntities,
-          untaggedEntities: stats.untaggedEntities,
+          totalFacts: facts.length,
+          totalPeople: people.length,
+          recentFacts: facts
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+            .slice(0, 5)
+            .map((f) => ({ key: f.name, updatedAt: f.updatedAt })),
         };
       },
     }),

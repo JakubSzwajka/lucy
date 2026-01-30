@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SessionItem } from "./SessionItem";
 import type { Session } from "@/types";
 
@@ -26,7 +26,24 @@ export function Sidebar({
   onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const isOnSettings = pathname?.startsWith("/settings");
+
+  const handleSessionClick = (id: string) => {
+    onSelectSession(id);
+    // Navigate to chat view if currently on settings
+    if (isOnSettings) {
+      router.push("/");
+    }
+  };
+
+  const handleNewChatClick = () => {
+    onNewChat();
+    // Navigate to chat view if currently on settings
+    if (isOnSettings) {
+      router.push("/");
+    }
+  };
 
   return (
     <aside
@@ -119,7 +136,7 @@ export function Sidebar({
       {/* New Chat Button */}
       <div className={`border-b border-border ${collapsed ? "p-2 flex justify-center" : "p-4"}`}>
         <button
-          onClick={onNewChat}
+          onClick={handleNewChatClick}
           className={`btn-ship flex items-center justify-center ${
             collapsed ? "w-10 h-10 p-0" : "w-full gap-2"
           }`}
@@ -151,7 +168,7 @@ export function Sidebar({
             {sessions.slice(0, 10).map((session) => (
               <button
                 key={session.id}
-                onClick={() => onSelectSession(session.id)}
+                onClick={() => handleSessionClick(session.id)}
                 className={`w-10 h-10 rounded flex items-center justify-center text-xs font-mono transition-colors ${
                   session.id === activeSessionId
                     ? "bg-background text-foreground"
@@ -191,7 +208,7 @@ export function Sidebar({
               session={session}
               sessionNumber={sessions.length - index}
               isActive={session.id === activeSessionId}
-              onSelect={() => onSelectSession(session.id)}
+              onSelect={() => handleSessionClick(session.id)}
               onDelete={() => onDeleteSession(session.id)}
             />
           ))

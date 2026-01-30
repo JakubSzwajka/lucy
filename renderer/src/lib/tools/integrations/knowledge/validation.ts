@@ -1,39 +1,14 @@
+/**
+ * Tag validation and normalization
+ */
+
 import type {
   KnowledgeConfig,
   TagCategory,
   TagValidationResult,
   TagValidationError,
 } from "./types";
-
-/**
- * Calculate Levenshtein distance between two strings
- */
-function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-
-  return matrix[b.length][a.length];
-}
+import { levenshteinDistance } from "./utils";
 
 /**
  * Find similar tags based on Levenshtein distance
@@ -59,7 +34,7 @@ function findSimilarTags(
   return allTags
     .sort((a, b) => a.distance - b.distance)
     .slice(0, limit)
-    .filter((t) => t.distance <= 3) // Only suggest if reasonably close
+    .filter((t) => t.distance <= 3)
     .map((t) => t.tag);
 }
 
@@ -100,7 +75,6 @@ function validateSingleTag(
   const { category, value } = parseTag(tag);
 
   if (category) {
-    // Full format: "category:value"
     const categoryDef = config.tagCategories.find(
       (c) => c.id.toLowerCase() === category
     );
@@ -123,16 +97,13 @@ function validateSingleTag(
     );
 
     if (valueDef) {
-      // Exact match
       return { normalized: `${categoryDef.id}:${valueDef.id}`, error: null };
     }
 
     if (categoryDef.allowCustom) {
-      // Allow custom value - add it normalized
       return { normalized: `${categoryDef.id}:${value}`, error: null };
     }
 
-    // Unknown value in strict category
     return {
       normalized: null,
       error: {
@@ -142,7 +113,6 @@ function validateSingleTag(
       },
     };
   } else {
-    // Value only format: "finance"
     const matchingCategory = findCategoryForValue(value, config);
 
     if (matchingCategory) {
@@ -155,14 +125,11 @@ function validateSingleTag(
       };
     }
 
-    // Check if it matches any category with allowCustom
     const customCategories = config.tagCategories.filter((c) => c.allowCustom);
     if (customCategories.length === 1) {
-      // Only one custom category, assume it belongs there
       return { normalized: `${customCategories[0].id}:${value}`, error: null };
     }
 
-    // Ambiguous - could not resolve
     return {
       normalized: null,
       error: {
@@ -188,7 +155,6 @@ export function validateTags(
     const result = validateSingleTag(tag.trim(), config);
 
     if (result.normalized) {
-      // Avoid duplicates
       if (!normalizedTags.includes(result.normalized)) {
         normalizedTags.push(result.normalized);
       }
@@ -218,5 +184,3 @@ export function getAllValidTags(config: KnowledgeConfig): string[] {
   }
   return tags;
 }
-
-export { levenshteinDistance, parseTag, findSimilarTags };

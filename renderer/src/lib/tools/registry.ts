@@ -173,8 +173,20 @@ export class ToolRegistry {
       setState: <T>(stateKey: string, value: T) => this.setToolState(sessionId, stateKey, value),
     };
 
+    // Preprocess args: AI models sometimes send arrays/objects as JSON strings
+    const preprocessedArgs = this.preprocessArgs(args as Record<string, unknown>);
+
+    // Parse and validate args with the tool's input schema
+    let parsedArgs: unknown;
+    try {
+      parsedArgs = definition.inputSchema.parse(preprocessedArgs);
+    } catch (parseError) {
+      console.error(`[ToolRegistry] Schema validation failed for ${key}:`, parseError);
+      parsedArgs = preprocessedArgs; // Fall back to preprocessed args if schema parsing fails
+    }
+
     // Determine if approval is required
-    const requiresApproval = this.checkRequiresApproval(definition, args);
+    const requiresApproval = this.checkRequiresApproval(definition, parsedArgs);
     const initialStatus = requiresApproval ? "pending_approval" : "running";
 
     // Save tool_call item
@@ -182,7 +194,7 @@ export class ToolRegistry {
       agentId,
       callId,
       definition.name,
-      args as Record<string, unknown>,
+      parsedArgs as Record<string, unknown>,
       initialStatus
     );
 
@@ -196,14 +208,14 @@ export class ToolRegistry {
     try {
       // Run custom validation if provided
       if (definition.validate) {
-        const validation = await definition.validate(args as never, context);
+        const validation = await definition.validate(parsedArgs as never, context);
         if (!validation.valid) {
           throw new Error(validation.error || "Validation failed");
         }
       }
 
-      // Execute the tool
-      const result = await definition.execute(args as never, context);
+      // Execute the tool with parsed args
+      const result = await definition.execute(parsedArgs as never, context);
       const executionTime = Date.now() - startTime;
 
       // Format output if transformer provided
@@ -245,6 +257,39 @@ export class ToolRegistry {
     }
 
     return definition.requiresApproval;
+  }
+
+  // -------------------------------------------------------------------------
+  // Args Preprocessing
+  // -------------------------------------------------------------------------
+
+  /**
+   * Preprocess tool arguments to handle JSON strings that should be arrays/objects.
+   * AI models sometimes send arrays as stringified JSON like '["a","b"]' instead of actual arrays.
+   */
+  private preprocessArgs(args: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(args)) {
+      if (typeof value === "string") {
+        // Try to parse JSON strings that look like arrays or objects
+        const trimmed = value.trim();
+        if (
+          (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+          (trimmed.startsWith("{") && trimmed.endsWith("}"))
+        ) {
+          try {
+            result[key] = JSON.parse(trimmed);
+            continue;
+          } catch {
+            // Not valid JSON, keep as string
+          }
+        }
+      }
+      result[key] = value;
+    }
+
+    return result;
   }
 
   // -------------------------------------------------------------------------

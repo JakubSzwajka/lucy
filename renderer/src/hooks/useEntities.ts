@@ -29,7 +29,7 @@ export function useEntities() {
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
-      setEntities(data.entities || []);
+      setEntities(Array.isArray(data) ? data : []);
     }
     setIsLoading(false);
   }, [typeFilter]);
