@@ -11,8 +11,7 @@ export { IntegrationToolProvider } from "./provider";
 
 // Individual integrations
 export { todoistIntegration } from "./todoist";
-export { memoryIntegration } from "./memory";
-export { notesIntegration } from "./notes";
+export { knowledgeIntegration } from "./knowledge";
 
 // ============================================================================
 // All Integration Definitions
@@ -20,16 +19,20 @@ export { notesIntegration } from "./notes";
 
 import type { IntegrationDefinition } from "./types";
 import { todoistIntegration } from "./todoist";
-import { memoryIntegration } from "./memory";
-import { notesIntegration } from "./notes";
+import { knowledgeIntegration } from "./knowledge";
 
 /**
  * All available integration definitions.
- * Add new integrations here to make them available in the app.
+ *
+ * The "knowledge" integration provides unified entity management:
+ * - Facts (quick key-value info, replaces "memory")
+ * - Notes (longer documents, replaces "notes")
+ * - Named entities (people, places, organizations, etc.)
+ *
+ * All data lives in memory/entities/ as YAML files.
  */
 export const allIntegrations: IntegrationDefinition[] = [
-  memoryIntegration,
-  notesIntegration,
+  knowledgeIntegration,
   todoistIntegration,
 ];
 
