@@ -59,3 +59,7 @@ export type {
 // Config Services
 export { SettingsService, getSettingsService } from "./config";
 export { SystemPromptService, getSystemPromptService } from "./config";
+
+// Filesystem Service
+export { FilesystemService, createFilesystemService } from "./filesystem";
+export type { FileInfo, FilesystemServiceConfig } from "./filesystem";

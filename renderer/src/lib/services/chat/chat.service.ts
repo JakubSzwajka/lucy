@@ -39,6 +39,9 @@ export class ChatService {
 
     // Determine model config
     const effectiveModelId = modelId || agent.model;
+    if (!effectiveModelId) {
+      throw new Error("No model ID provided");
+    }
     const modelConfig = getModelConfig(effectiveModelId) || DEFAULT_MODEL;
     const languageModel = getLanguageModel(modelConfig);
 
@@ -46,7 +49,7 @@ export class ChatService {
     const systemPrompt = await this.resolveSystemPrompt(agent);
 
     // Calculate thinking state
-    const isThinkingActive = modelConfig.supportsReasoning && thinkingEnabled;
+    const isThinkingActive = (modelConfig.supportsReasoning && thinkingEnabled) ?? false;
 
     // Initialize tools
     await initializeToolRegistry();

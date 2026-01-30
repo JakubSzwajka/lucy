@@ -11,6 +11,8 @@ export { IntegrationToolProvider } from "./provider";
 
 // Individual integrations
 export { todoistIntegration } from "./todoist";
+export { memoryIntegration } from "./memory";
+export { notesIntegration } from "./notes";
 
 // ============================================================================
 // All Integration Definitions
@@ -18,12 +20,16 @@ export { todoistIntegration } from "./todoist";
 
 import type { IntegrationDefinition } from "./types";
 import { todoistIntegration } from "./todoist";
+import { memoryIntegration } from "./memory";
+import { notesIntegration } from "./notes";
 
 /**
  * All available integration definitions.
  * Add new integrations here to make them available in the app.
  */
 export const allIntegrations: IntegrationDefinition[] = [
+  memoryIntegration,
+  notesIntegration,
   todoistIntegration,
 ];
 

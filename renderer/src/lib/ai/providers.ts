@@ -2,7 +2,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { ModelConfig, AvailableProviders } from "@/types";
-import { generateText } from "ai";
 
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -16,6 +15,7 @@ const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_API_KEY,
 });
 
+
 export function getAvailableProviders(): AvailableProviders {
   return {
     openai: !!process.env.OPENAI_API_KEY,
@@ -25,14 +25,22 @@ export function getAvailableProviders(): AvailableProviders {
 }
 
 export function getLanguageModel(config: ModelConfig) {
+  let model = undefined;
   switch (config.provider) {
     case "openai":
-      return openai(config.modelId);
+      model = openai(config.modelId);
+      break;
     case "anthropic":
-      return anthropic(config.modelId);
+      model = anthropic(config.modelId);
+      break;
     case "google":
-      return google(config.modelId);
+      model = google(config.modelId);
+      break;
     default:
       throw new Error(`Unknown provider: ${config.provider}`);
   }
+  if (!model) {
+    throw new Error(`Unknown provider: ${config.provider}`);
+  }
+  return model;
 }
