@@ -2,10 +2,22 @@
 // Service Layer Exports
 // ============================================================================
 
-// MCP Service
-export { McpService, getMcpService } from "./mcp";
-export { McpRepository, getMcpRepository } from "./mcp";
-export type { McpTestResult, McpStatusResult, ValidationResult } from "./mcp";
+// Repository Types
+export type {
+  Repository,
+  PaginatedRepository,
+  QueryOptions,
+  PaginatedResult,
+} from "./repository.types";
+
+// MCP Service (re-export from lib/mcp)
+export {
+  McpService,
+  getMcpService,
+  McpRepository,
+  getMcpRepository,
+} from "@/lib/mcp";
+export type { McpTestResult, McpStatusResult, ValidationResult } from "@/lib/mcp";
 
 // Item Service
 export { ItemService, getItemService } from "./item";
@@ -45,16 +57,6 @@ export type {
   ModelMessage,
   ChatFinishResult,
 } from "./chat";
-
-// Integration Service
-export { IntegrationService, getIntegrationService } from "./integration";
-export { IntegrationRepository, getIntegrationRepository } from "./integration";
-export type {
-  IntegrationState,
-  IntegrationListItem,
-  IntegrationDetail,
-  UpdateIntegrationResult,
-} from "./integration";
 
 // Config Services
 export { SettingsService, getSettingsService } from "./config";

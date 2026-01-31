@@ -6,10 +6,6 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { InlineActivityList } from "./AgentActivity";
-import {
-  getInlineUIRegistration,
-  validateInlineUIProps,
-} from "@/lib/generative-ui/inline";
 import type { AgentActivity } from "@/types";
 import { Copy, Check } from "lucide-react";
 
@@ -53,60 +49,13 @@ interface MessageBubbleProps {
   timestamp?: Date;
   activities?: AgentActivity[];
   isStreaming?: boolean;
-  /** Callback for inline UI component actions */
-  onUIAction?: (action: string, payload: unknown) => void;
 }
 
 /**
- * Custom code block renderer that handles lucy-ui components
+ * Custom code block renderer
  */
-function createCodeComponent(
-  onUIAction?: (action: string, payload: unknown) => void
-): Components["code"] {
+function createCodeComponent(): Components["code"] {
   return function CodeBlock({ className, children, ...props }) {
-    const content = String(children).trim();
-
-    // Check if this is a lucy-ui component code block
-    // Format: ```lucy-ui:component-name
-    const match = /^language-lucy-ui:(.+)$/.exec(className || "");
-
-    if (match) {
-      const componentName = match[1];
-      const registration = getInlineUIRegistration(componentName);
-
-      if (registration) {
-        // Try to parse and validate the JSON content
-        try {
-          const jsonData = JSON.parse(content);
-          const validation = validateInlineUIProps(componentName, jsonData);
-
-          if (validation.success) {
-            const Component = registration.component;
-            return <Component {...(validation.data as object)} onAction={onUIAction} />;
-          } else {
-            // Validation failed - show error
-            return (
-              <div className="my-2 p-3 rounded-lg border border-red-500/50 bg-red-500/10 text-sm">
-                <div className="text-red-400 font-medium">Invalid UI component</div>
-                <div className="text-muted text-xs mt-1">{validation.error}</div>
-              </div>
-            );
-          }
-        } catch (e) {
-          // JSON parse failed - show error
-          return (
-            <div className="my-2 p-3 rounded-lg border border-red-500/50 bg-red-500/10 text-sm">
-              <div className="text-red-400 font-medium">Failed to parse UI component</div>
-              <div className="text-muted text-xs mt-1">
-                {e instanceof Error ? e.message : "Invalid JSON"}
-              </div>
-            </div>
-          );
-        }
-      }
-    }
-
-    // Default code rendering (inline or block)
     // If there's no className, it's inline code
     const isInline = !className;
 
@@ -119,7 +68,7 @@ function createCodeComponent(
   };
 }
 
-export function MessageBubble({ role, content, model, timestamp, activities, isStreaming, onUIAction }: MessageBubbleProps) {
+export function MessageBubble({ role, content, model, timestamp, activities, isStreaming }: MessageBubbleProps) {
   const isUser = role === "user";
   const hasActivities = activities && activities.length > 0;
   const hasContent = content && content.trim().length > 0;
@@ -127,11 +76,11 @@ export function MessageBubble({ role, content, model, timestamp, activities, isS
   // Memoize the markdown components to avoid recreation on each render
   const markdownComponents = useMemo<Components>(
     () => ({
-      code: createCodeComponent(onUIAction),
+      code: createCodeComponent(),
       // Wrap pre to prevent double wrapping (code component handles blocks)
       pre: ({ children }) => <>{children}</>,
     }),
-    [onUIAction]
+    []
   );
 
   const formatTime = (date?: Date) => {

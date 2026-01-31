@@ -1,7 +1,7 @@
 import { db, sessions, agents, SessionRecord } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import type { Repository } from "@/lib/repositories";
+import type { Repository } from "../repository.types";
 import type { Session, SessionCreate, SessionUpdate, SessionStatus } from "@/types";
 
 // ============================================================================

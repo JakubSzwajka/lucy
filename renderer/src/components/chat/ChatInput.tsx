@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent, useMemo } from "react";
 import { ChatOptionsPanel } from "./ChatOptionsPanel";
-import type { AvailableProviders, McpServer, McpServerStatus } from "@/types";
+import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
+import type { AvailableProviders, McpServer, McpServerStatus, ChatMessage, ModelConfig } from "@/types";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -19,6 +20,9 @@ interface ChatInputProps {
   enabledMcpServers?: McpServerStatus[];
   onMcpToggle?: (serverId: string, enabled: boolean) => void;
   isMcpLoading?: boolean;
+  // Context tracking
+  messages?: ChatMessage[];
+  modelConfig?: ModelConfig;
 }
 
 export function ChatInput({
@@ -35,9 +39,18 @@ export function ChatInput({
   enabledMcpServers = [],
   onMcpToggle,
   isMcpLoading,
+  messages = [],
+  modelConfig,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Calculate context usage
+  const contextUsage = useMemo(() => {
+    if (!modelConfig) return null;
+    const tokens = estimateConversationTokens(messages);
+    return getContextUsage(tokens, modelConfig.maxContextTokens);
+  }, [messages, modelConfig]);
 
   const handleSubmit = () => {
     if (input.trim() && !isLoading) {
@@ -105,9 +118,24 @@ export function ChatInput({
         </div>
       </div>
 
-      <div className="mt-2 flex gap-4">
-        <span className="label-sm text-muted-darkest">SHORTCUTS: ENTER TO SHIP • SHIFT+ENTER FOR NEW LINE</span>
-        <span className="label-sm text-muted-darkest">MODE: CHAT_v1.0</span>
+      <div className="mt-2 flex gap-4 justify-between">
+        <div className="flex gap-4">
+          <span className="label-sm text-muted-darkest">SHORTCUTS: ENTER TO SHIP • SHIFT+ENTER FOR NEW LINE</span>
+          <span className="label-sm text-muted-darkest">MODE: CHAT_v1.0</span>
+        </div>
+        {contextUsage && (
+          <span
+            className={`label-sm ${
+              contextUsage.isOverLimit
+                ? "text-red-500"
+                : contextUsage.isNearLimit
+                  ? "text-yellow-500"
+                  : "text-muted-darkest"
+            }`}
+          >
+            CTX: {contextUsage.formatted} ({contextUsage.percentage}%)
+          </span>
+        )}
       </div>
     </div>
   );

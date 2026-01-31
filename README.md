@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lucy
 
-## Getting Started
+A desktop AI assistant built with Electron + Next.js (Nextron). Runs locally with SQLite and connects to AI providers (Anthropic, Google, OpenAI).
 
-First, run the development server:
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db:push          # Initialize database
+npm rebuild better-sqlite3  # Rebuild native module
+npm run dev              # Start development
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Architecture
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+lucy-nextjs/
+├── main/                    # Electron main process
+├── renderer/                # Next.js app (App Router)
+│   └── src/
+│       ├── app/             # Pages and API routes
+│       ├── components/      # React components
+│       ├── hooks/           # Custom hooks
+│       ├── lib/
+│       │   ├── db/          # Database (SQLite + Drizzle)
+│       │   ├── ai/          # AI provider integrations
+│       │   └── tools/       # Tool system
+│       └── types/           # TypeScript types
+├── scripts/                 # Build scripts
+└── docs/                    # Documentation
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Documentation
 
-## Learn More
+| Module | Description |
+|--------|-------------|
+| [Database](docs/database.md) | SQLite schema, multi-agent hierarchy, polymorphic items |
+| [Tools](docs/tools.md) | Tool registry, providers, execution pipeline |
+| [Knowledge](renderer/src/lib/tools/integrations/knowledge/README.md) | File-based knowledge graph with entities and relations |
 
-To learn more about Next.js, take a look at the following resources:
+## Commands
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development mode |
+| `npm run build` | Build production app (DMG/installer) |
+| `npm run db:push` | Push schema changes to database |
+| `npm run db:studio` | Open Drizzle Studio |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Key Concepts
 
-## Deploy on Vercel
+### Multi-Agent System
+Sessions contain a hierarchy of agents. Each agent has its own conversation thread (items) and can spawn child agents via tool calls.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Polymorphic Items
+Conversation entries are stored in a single `items` table with a `type` discriminator:
+- `message` - User/assistant/system messages
+- `tool_call` - Tool invocations with args
+- `tool_result` - Tool outputs linked via `callId`
+- `reasoning` - Model reasoning traces
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Tool Sources
+Tools come from multiple sources, unified through the registry:
+- `mcp` - Model Context Protocol servers
+- `builtin` - Built-in tools
+- `integration` - Third-party integrations (Todoist, Knowledge)
+- `agent` - Sub-agents as tools
+
+## Development
+
+See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
+
+## License
+
+MIT

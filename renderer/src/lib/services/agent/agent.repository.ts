@@ -1,7 +1,7 @@
 import { db, agents, items, sessions, AgentRecord, ItemRecord } from "@/lib/db";
 import { eq, asc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import type { Repository } from "@/lib/repositories";
+import type { Repository } from "../repository.types";
 import type {
   Agent,
   AgentCreate,

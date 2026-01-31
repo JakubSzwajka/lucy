@@ -10,22 +10,12 @@ export interface McpToolSource {
   serverName: string;
 }
 
-export interface BuiltinToolSource {
-  type: "builtin";
-  category: string;
-}
-
-export interface AgentToolSource {
-  type: "agent";
-  agentId: string;
-}
-
 export interface IntegrationToolSource {
   type: "integration";
   integrationId: string;
 }
 
-export type ToolSource = McpToolSource | BuiltinToolSource | AgentToolSource | IntegrationToolSource;
+export type ToolSource = McpToolSource | IntegrationToolSource;
 
 // ============================================================================
 // Tool Execution Context

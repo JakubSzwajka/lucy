@@ -136,10 +136,10 @@ service/
 | **AgentService** | Runtime agent instances. Supports parent-child hierarchy for sub-agents. | - |
 | **ItemService** | Polymorphic items (messages, tool calls, results, reasoning). Validates and persists. | - |
 | **ChatService** | Orchestrates AI chat streaming. Prepares context, resolves prompts, handles finish. | AgentService, ToolRegistry, AI providers |
-| **IntegrationService** | OAuth credentials and third-party service connections. | - |
-| **McpService** | CRUD for MCP server configurations. | McpClientPool |
 | **SettingsService** | App-wide settings (default model, system prompt, etc.) | - |
 | **SystemPromptService** | Reusable system prompt templates. | - |
+
+Note: **McpService** lives in `lib/mcp/` alongside the MCP client pool.
 
 ---
 
@@ -212,17 +212,6 @@ The pool is used by `McpToolProvider` to discover and execute tools from configu
 |------|---------|
 | `models.ts` | Model registry: defines available models with capabilities (supportsReasoning, etc.) |
 | `providers.ts` | Creates AI SDK language model instances for Anthropic/OpenAI/Google |
-
----
-
-### `generative-ui/` - Custom UI Components for Tools
-
-Optional system for rendering rich UI from tool results (e.g., Todoist task cards).
-
-| File | Purpose |
-|------|---------|
-| `registry.ts` | Maps tool names → React components |
-| `register-components.ts` | Registers all custom renderers |
 
 ---
 

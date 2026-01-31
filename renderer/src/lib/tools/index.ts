@@ -2,8 +2,6 @@
 export {
   type ToolSource,
   type McpToolSource,
-  type BuiltinToolSource,
-  type AgentToolSource,
   type IntegrationToolSource,
   type ToolExecutionContext,
   type ChildAgentConfig,
@@ -19,21 +17,7 @@ export {
 export { ToolRegistry, getToolRegistry, resetToolRegistry } from "./registry";
 
 // Providers
-export { McpToolProvider, BuiltinToolProvider } from "./providers";
-
-// Builtin tools
-export { builtinTools, BUILTIN_CATEGORIES, type BuiltinCategory } from "./builtin";
-
-// Integrations
-export {
-  type IntegrationDefinition,
-  type IntegrationState,
-  type IntegrationWithState,
-  defineIntegration,
-  IntegrationToolProvider,
-  allIntegrations,
-  getIntegrationDefinition,
-} from "./integrations";
+export { McpToolProvider, IntegrationToolProvider } from "./providers";
 
 // Persistence utilities
 export {
@@ -48,10 +32,8 @@ export {
 // ============================================================================
 
 import { getToolRegistry } from "./registry";
-import { McpToolProvider } from "./providers/mcp";
-import { BuiltinToolProvider } from "./providers/builtin";
-import { builtinTools } from "./builtin";
-import { IntegrationToolProvider, allIntegrations } from "./integrations";
+import { McpToolProvider, IntegrationToolProvider } from "./providers";
+import { allIntegrations } from "@/lib/integrations";
 
 let initialized = false;
 
@@ -68,10 +50,6 @@ export async function initializeToolRegistry(): Promise<void> {
   const mcpProvider = new McpToolProvider();
   registry.registerProvider(mcpProvider);
 
-  // Register builtin provider with default tools
-  const builtinProvider = new BuiltinToolProvider(builtinTools);
-  registry.registerProvider(builtinProvider);
-
   // Register integration provider with all defined integrations
   const integrationProvider = new IntegrationToolProvider(allIntegrations);
   registry.registerProvider(integrationProvider);
@@ -80,14 +58,6 @@ export async function initializeToolRegistry(): Promise<void> {
   await registry.initialize();
 
   initialized = true;
-}
-
-/**
- * Get the builtin provider to add custom tools at runtime.
- */
-export function getBuiltinProvider(): BuiltinToolProvider | undefined {
-  const registry = getToolRegistry();
-  return registry.getProvider("builtin") as BuiltinToolProvider | undefined;
 }
 
 /**

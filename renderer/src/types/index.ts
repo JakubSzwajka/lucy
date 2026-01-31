@@ -206,6 +206,7 @@ export interface ModelConfig {
   provider: "openai" | "anthropic" | "google";
   modelId: string;
   supportsReasoning?: boolean;
+  maxContextTokens: number;
 }
 
 export interface AvailableProviders {

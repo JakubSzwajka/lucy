@@ -68,7 +68,7 @@ export function ToolsSelector({
 
   return (
     <div className="flex items-center gap-2 relative" ref={dropdownRef}>
-      <span className="label-dark">TOOLS //</span>
+      <span className="label-dark">MCP //</span>
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoading}

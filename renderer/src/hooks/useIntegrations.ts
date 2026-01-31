@@ -1,7 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Integration, IntegrationUpdate, IntegrationTestResult } from "@/types";
+
+// Tool count per integration (keep in sync with actual tools)
+const TOOL_COUNTS: Record<string, number> = {
+  filesystem: 4, // fs_list_files, fs_read_file, fs_write_file, fs_delete_file
+  obsidian: 4,   // obsidian_list_notes, obsidian_read_note, obsidian_write_note, obsidian_delete_note
+  todoist: 2,    // todoist_list_tasks, todoist_list_projects
+};
+
+function estimateToolCount(integration: Integration): number {
+  if (!integration.isConfigured || !integration.enabled) return 0;
+  return TOOL_COUNTS[integration.id] ?? 0;
+}
 
 export function useIntegrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -24,6 +36,18 @@ export function useIntegrations() {
       setIsLoading(false);
     }
   }, []);
+
+  // Computed: enabled and configured integrations
+  const enabledIntegrations = useMemo(
+    () => integrations.filter((i) => i.isConfigured && i.enabled),
+    [integrations]
+  );
+
+  // Computed: total estimated tool count
+  const totalTools = useMemo(
+    () => enabledIntegrations.reduce((acc, i) => acc + estimateToolCount(i), 0),
+    [enabledIntegrations]
+  );
 
   useEffect(() => {
     fetchIntegrations();
@@ -97,13 +121,37 @@ export function useIntegrations() {
     []
   );
 
+  // Quick toggle for chat UI
+  const toggleIntegration = useCallback(
+    async (id: string, enabled: boolean) => {
+      // Optimistic update
+      setIntegrations((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, enabled } : i))
+      );
+
+      try {
+        await updateIntegration(id, { enabled });
+      } catch (err) {
+        // Revert on error
+        setIntegrations((prev) =>
+          prev.map((i) => (i.id === id ? { ...i, enabled: !enabled } : i))
+        );
+        throw err;
+      }
+    },
+    [updateIntegration]
+  );
+
   return {
     integrations,
+    enabledIntegrations,
+    totalTools,
     isLoading,
     error,
     updateIntegration,
     deleteIntegration,
     testConnection,
+    toggleIntegration,
     refreshIntegrations: fetchIntegrations,
   };
 }
