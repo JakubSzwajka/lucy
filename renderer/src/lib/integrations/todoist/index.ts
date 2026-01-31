@@ -1,46 +1,35 @@
-import { z } from "zod";
-import { defineIntegration } from "../types";
-import { TodoistClient } from "./client";
-import { createTodoistTools } from "./tools";
+/**
+ * Todoist Integration
+ *
+ * Connects to Todoist for task management.
+ * Reads API key from TODOIST_API_KEY environment variable.
+ */
 
-export const todoistIntegration = defineIntegration({
+import { TodoistClient } from "./client";
+
+// Re-export client and types
+export { TodoistClient } from "./client";
+export type { TodoistTask, TodoistProject, TodoistUser } from "./types";
+
+/**
+ * Todoist integration definition.
+ */
+export const todoistIntegration = {
   id: "todoist",
   name: "Todoist",
-  description: "Task management - list tasks and projects from Todoist",
-  iconUrl: "/icons/todoist.svg",
+  description: "Task management via Todoist",
 
-  credentialsSchema: z.object({
-    apiKey: z
-      .string()
-      .min(1)
-      .describe("Todoist API token (from Settings > Integrations > Developer)"),
-  }),
+  /**
+   * Check if the integration is configured (API key is set).
+   */
+  isConfigured: () => !!process.env.TODOIST_API_KEY,
 
-  configSchema: z.object({
-    defaultProject: z
-      .string()
-      .optional()
-      .describe("Default project ID for new tasks"),
-  }),
-
-  createTools: (credentials, config) => {
-    const client = new TodoistClient(credentials.apiKey);
-    return createTodoistTools(client, config);
+  /**
+   * Create a client instance. Returns null if not configured.
+   */
+  createClient: (): TodoistClient | null => {
+    const apiKey = process.env.TODOIST_API_KEY;
+    if (!apiKey) return null;
+    return new TodoistClient(apiKey);
   },
-
-  testConnection: async (credentials) => {
-    try {
-      const client = new TodoistClient(credentials.apiKey);
-      const user = await client.getUser();
-      return {
-        success: true,
-        info: `Connected as ${user.email}`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Connection failed",
-      };
-    }
-  },
-});
+};

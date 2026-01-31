@@ -16,8 +16,8 @@ export {
   getMcpService,
   McpRepository,
   getMcpRepository,
-} from "@/lib/mcp";
-export type { McpTestResult, McpStatusResult, ValidationResult } from "@/lib/mcp";
+} from "@/lib/integrations/mcp";
+export type { McpTestResult, McpStatusResult, ValidationResult } from "@/lib/integrations/mcp";
 
 // Item Service
 export { ItemService, getItemService } from "./item";

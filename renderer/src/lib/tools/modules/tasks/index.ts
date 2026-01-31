@@ -1,20 +1,30 @@
+/**
+ * Tasks Tool Module
+ *
+ * Abstract task management tools.
+ * Currently backed by Todoist integration.
+ */
+
 import { z } from "zod";
-import { defineTool } from "@/lib/tools/types";
-import type { ToolDefinition } from "@/lib/tools/types";
-import type { TodoistClient } from "./client";
+import { defineToolModule, defineTool } from "../../types";
+import type { TodoistClient } from "@/lib/integrations";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyToolDefinition = ToolDefinition<any, any>;
+/**
+ * Tasks module definition.
+ *
+ * Provides abstract task tools that work with the Todoist integration.
+ */
+export const tasksModule = defineToolModule<TodoistClient>({
+  id: "tasks",
+  name: "Tasks",
+  description: "Task management - list tasks and projects",
+  integrationId: "todoist",
 
-export function createTodoistTools(
-  client: TodoistClient,
-  _config: Record<string, unknown>
-): AnyToolDefinition[] {
-  return [
+  createTools: (client) => [
     defineTool({
-      name: "todoist_list_tasks",
+      name: "tasks_list",
       description:
-        "List tasks from Todoist. Can filter by project ID or using Todoist filter syntax (e.g., 'today', 'overdue', 'p1', '@label').",
+        "List tasks. Can filter by project ID or using filter syntax (e.g., 'today', 'overdue', 'p1' for priority 1).",
 
       inputSchema: z.object({
         projectId: z
@@ -25,11 +35,11 @@ export function createTodoistTools(
           .string()
           .optional()
           .describe(
-            "Todoist filter query (e.g., 'today', 'overdue', 'tomorrow', 'p1' for priority 1)"
+            "Filter query (e.g., 'today', 'overdue', 'tomorrow', 'p1' for priority 1)"
           ),
       }),
 
-      source: { type: "integration", integrationId: "todoist" },
+      source: { type: "builtin", moduleId: "tasks" },
 
       execute: async (args) => {
         const tasks = await client.getTasks({
@@ -57,12 +67,12 @@ export function createTodoistTools(
     }),
 
     defineTool({
-      name: "todoist_list_projects",
-      description: "List all projects in Todoist.",
+      name: "tasks_get_projects",
+      description: "List all task projects.",
 
       inputSchema: z.object({}),
 
-      source: { type: "integration", integrationId: "todoist" },
+      source: { type: "builtin", moduleId: "tasks" },
 
       execute: async () => {
         const projects = await client.getProjects();
@@ -77,5 +87,5 @@ export function createTodoistTools(
         }));
       },
     }),
-  ];
-}
+  ],
+});

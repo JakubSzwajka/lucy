@@ -10,12 +10,12 @@ export interface McpToolSource {
   serverName: string;
 }
 
-export interface IntegrationToolSource {
-  type: "integration";
-  integrationId: string;
+export interface BuiltinToolSource {
+  type: "builtin";
+  moduleId: string; // e.g., "todoist", "filesystem"
 }
 
-export type ToolSource = McpToolSource | IntegrationToolSource;
+export type ToolSource = McpToolSource | BuiltinToolSource;
 
 // ============================================================================
 // Tool Execution Context
@@ -129,3 +129,52 @@ export function defineTool<TInput, TOutput>(
 ): ToolDefinition<TInput, TOutput> {
   return definition;
 }
+
+// ============================================================================
+// Tool Module (references an integration for its client)
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyToolDefinition = ToolDefinition<any, any>;
+
+/**
+ * A ToolModule defines abstract tools that use a client from an integration.
+ *
+ * Tool modules:
+ * - Reference an integration by ID (e.g., "todoist", "obsidian")
+ * - Receive a client instance created by the integration
+ * - Create tools that use that client
+ *
+ * This separates tool definitions from service implementations,
+ * allowing the same tools to work with different backends.
+ *
+ * @template TClient - The type of client this module expects from its integration
+ */
+export interface ToolModule<TClient = unknown> {
+  // Identity
+  id: string; // e.g., "tasks", "notes", "files"
+  name: string; // e.g., "Tasks", "Notes", "Files"
+  description: string;
+
+  // Which integration provides the client
+  integrationId: string; // e.g., "todoist", "obsidian", "filesystem"
+
+  // Factory: client → tools
+  createTools: (client: TClient) => AnyToolDefinition[];
+}
+
+/**
+ * Helper function to define a tool module with type inference.
+ */
+export function defineToolModule<TClient>(
+  module: ToolModule<TClient>
+): ToolModule<TClient> {
+  return module;
+}
+
+/**
+ * Base tool module type that can be used in arrays and lookups.
+ * Uses `any` for the client type to allow heterogeneous collections.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AnyToolModule = ToolModule<any>;

@@ -1,2 +1,2 @@
 export { McpToolProvider } from "./mcp";
-export { IntegrationToolProvider } from "./integration";
+export { BuiltinToolProvider } from "./builtin";

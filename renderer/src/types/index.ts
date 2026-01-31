@@ -351,38 +351,3 @@ export interface SessionMcpConfig {
   enabledServers: McpServerStatus[];
 }
 
-// ============================================================================
-// INTEGRATION TYPES
-// ============================================================================
-
-export interface CredentialField {
-  name: string;
-  description?: string;
-}
-
-export interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  iconUrl?: string;
-  credentialFields: CredentialField[];
-  configFields: CredentialField[];
-  hasTestConnection: boolean;
-  enabled: boolean;
-  isConfigured: boolean;
-  config: Record<string, unknown> | null;
-  createdAt: Date | null;
-  updatedAt: Date | null;
-}
-
-export interface IntegrationUpdate {
-  enabled?: boolean;
-  credentials?: Record<string, string>;
-  config?: Record<string, unknown>;
-}
-
-export interface IntegrationTestResult {
-  success: boolean;
-  error?: string;
-  info?: string;
-}

@@ -1,3 +1,9 @@
+/**
+ * Todoist API Client
+ *
+ * Provides task and project management via Todoist REST API.
+ */
+
 import type {
   TodoistTask,
   TodoistProject,

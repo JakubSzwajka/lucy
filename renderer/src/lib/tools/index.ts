@@ -2,7 +2,7 @@
 export {
   type ToolSource,
   type McpToolSource,
-  type IntegrationToolSource,
+  type BuiltinToolSource,
   type ToolExecutionContext,
   type ChildAgentConfig,
   type ToolDefinition,
@@ -10,14 +10,27 @@ export {
   type ToolExecutionResult,
   type RegisteredTool,
   type ToolRegistryOptions,
+  type ToolModule,
+  type AnyToolModule,
   defineTool,
+  defineToolModule,
 } from "./types";
 
 // Registry
 export { ToolRegistry, getToolRegistry, resetToolRegistry } from "./registry";
 
 // Providers
-export { McpToolProvider, IntegrationToolProvider } from "./providers";
+export { McpToolProvider, BuiltinToolProvider } from "./providers";
+
+// Tool Modules (abstract tools that reference integrations)
+export {
+  allToolModules,
+  getToolModule,
+  getToolModuleByIntegration,
+  tasksModule,
+  notesModule,
+  filesModule,
+} from "./modules";
 
 // Persistence utilities
 export {
@@ -32,10 +45,10 @@ export {
 // ============================================================================
 
 import { getToolRegistry } from "./registry";
-import { McpToolProvider, IntegrationToolProvider } from "./providers";
-import { allIntegrations } from "@/lib/integrations";
+import { McpToolProvider, BuiltinToolProvider } from "./providers";
 
 let initialized = false;
+let builtinProvider: BuiltinToolProvider | null = null;
 
 /**
  * Initialize the global tool registry with default providers.
@@ -46,13 +59,13 @@ export async function initializeToolRegistry(): Promise<void> {
 
   const registry = getToolRegistry();
 
-  // Register MCP provider
+  // Register MCP provider (external tools from MCP servers)
   const mcpProvider = new McpToolProvider();
   registry.registerProvider(mcpProvider);
 
-  // Register integration provider with all defined integrations
-  const integrationProvider = new IntegrationToolProvider(allIntegrations);
-  registry.registerProvider(integrationProvider);
+  // Register builtin provider (tools from tool modules)
+  builtinProvider = new BuiltinToolProvider();
+  registry.registerProvider(builtinProvider);
 
   // Initialize all providers
   await registry.initialize();
@@ -69,9 +82,8 @@ export function getMcpProvider(): McpToolProvider | undefined {
 }
 
 /**
- * Get the integration provider to refresh integrations.
+ * Get the builtin provider to refresh tools.
  */
-export function getIntegrationProvider(): IntegrationToolProvider | undefined {
-  const registry = getToolRegistry();
-  return registry.getProvider("integration") as IntegrationToolProvider | undefined;
+export function getBuiltinProvider(): BuiltinToolProvider | undefined {
+  return builtinProvider || undefined;
 }

@@ -300,8 +300,8 @@ export class ToolRegistry {
     switch (source.type) {
       case "mcp":
         return `mcp__${source.serverId}__${name}`;
-      case "integration":
-        return `integration__${source.integrationId}__${name}`;
+      case "builtin":
+        return `builtin__${source.moduleId}__${name}`;
     }
   }
 

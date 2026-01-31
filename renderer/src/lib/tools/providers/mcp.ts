@@ -5,7 +5,7 @@ import {
   ensureServersConnected,
   executeToolCall,
   type McpClientWrapper,
-} from "@/lib/mcp";
+} from "@/lib/integrations/mcp";
 import { db, mcpServers } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import type { McpServer } from "@/types";
