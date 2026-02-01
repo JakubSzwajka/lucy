@@ -104,13 +104,6 @@ export function ChatContainer({
       {/* Options */}
       <div className="px-6 py-3 border-b border-border">
         <ChatOptionsPanel
-          thinkingEnabled={thinkingEnabled}
-          onThinkingChange={setThinkingEnabled}
-          supportsThinking={supportsThinking}
-          selectedModel={selectedModel}
-          onModelChange={onModelChange}
-          availableProviders={availableProviders}
-          enabledModels={enabledModels}
           mcpServers={mcpServers}
           enabledMcpServers={enabledMcpServers}
           onMcpToggle={toggleMcpServer}
@@ -130,6 +123,13 @@ export function ChatContainer({
         isLoading={isLoading}
         messages={messages}
         modelConfig={modelConfig}
+        selectedModel={selectedModel}
+        onModelChange={onModelChange}
+        availableProviders={availableProviders}
+        enabledModels={enabledModels}
+        thinkingEnabled={thinkingEnabled}
+        onThinkingChange={setThinkingEnabled}
+        supportsThinking={supportsThinking}
       />
     </div>
   );

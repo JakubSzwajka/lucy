@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ModelSelector } from "./ModelSelector";
 import { ToolsSelector } from "./ToolsSelector";
-import type { AvailableProviders, McpServer, McpServerStatus } from "@/types";
+import type { McpServer, McpServerStatus } from "@/types";
 
 interface RegisteredToolInfo {
   key: string;
@@ -18,14 +17,6 @@ interface RegisteredToolInfo {
 }
 
 interface ChatOptionsPanelProps {
-  thinkingEnabled: boolean;
-  onThinkingChange: (enabled: boolean) => void;
-  supportsThinking: boolean;
-  selectedModel?: string;
-  onModelChange?: (modelId: string) => void;
-  availableProviders?: AvailableProviders;
-  enabledModels?: string[];
-  // MCP props
   mcpServers?: McpServer[];
   enabledMcpServers?: McpServerStatus[];
   onMcpToggle?: (serverId: string, enabled: boolean) => void;
@@ -33,13 +24,6 @@ interface ChatOptionsPanelProps {
 }
 
 export function ChatOptionsPanel({
-  thinkingEnabled,
-  onThinkingChange,
-  supportsThinking,
-  selectedModel,
-  onModelChange,
-  availableProviders,
-  enabledModels,
   mcpServers = [],
   enabledMcpServers = [],
   onMcpToggle,
@@ -73,137 +57,103 @@ export function ChatOptionsPanel({
   const mcpTools = tools.filter((t) => t.source.type === "mcp");
 
   return (
-    <div className="flex items-center justify-between mb-2">
-      <div className="flex items-center gap-4">
-        {/* Tools Dropdown */}
-        <div className="flex items-center gap-2 relative" ref={toolsDropdownRef}>
-          <span className="label-dark">TOOLS //</span>
-          <button
-            onClick={() => setIsToolsOpen(!isToolsOpen)}
-            className="flex items-center gap-2 bg-transparent border border-border rounded px-3 py-1.5 text-xs mono uppercase tracking-wide text-foreground focus:outline-none focus:border-muted-darker cursor-pointer hover:border-muted-darker transition-colors"
+    <div className="flex items-center justify-between">
+      {/* Tools Dropdown */}
+      <div className="flex items-center gap-2 relative" ref={toolsDropdownRef}>
+        <span className="label-dark">TOOLS //</span>
+        <button
+          onClick={() => setIsToolsOpen(!isToolsOpen)}
+          className="flex items-center gap-2 bg-transparent border border-border rounded px-3 py-1.5 text-xs mono uppercase tracking-wide text-foreground focus:outline-none focus:border-muted-darker cursor-pointer hover:border-muted-darker transition-colors"
+        >
+          <span>
+            {tools.length > 0 ? (
+              <span>{tools.length} available</span>
+            ) : (
+              <span className="text-muted-dark">None</span>
+            )}
+          </span>
+          <svg
+            className={`w-3 h-3 transition-transform ${isToolsOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <span>
-              {tools.length > 0 ? (
-                <span>{tools.length} available</span>
-              ) : (
-                <span className="text-muted-dark">None</span>
-              )}
-            </span>
-            <svg
-              className={`w-3 h-3 transition-transform ${isToolsOpen ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
-          {isToolsOpen && (
-            <div className="absolute bottom-full left-0 mb-1 z-50 min-w-[320px] max-h-[400px] overflow-y-auto bg-background border border-border rounded-lg shadow-xl py-2">
-              {builtinTools.length > 0 && (
-                <>
-                  <div className="px-3 py-1.5 border-b border-border mb-1">
-                    <span className="text-xs text-muted-dark uppercase tracking-wide">
-                      Builtin Tools ({builtinTools.length})
-                    </span>
-                  </div>
-                  {builtinTools.map((tool) => (
-                    <div
-                      key={tool.key}
-                      className="px-3 py-2 hover:bg-background-secondary transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{tool.name}</span>
-                        <span className="text-xs text-muted-dark">
-                          ({tool.source.moduleId})
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-dark mt-0.5 line-clamp-1">
-                        {tool.description}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {mcpTools.length > 0 && (
-                <>
-                  <div className="px-3 py-1.5 border-b border-border mb-1 mt-2">
-                    <span className="text-xs text-muted-dark uppercase tracking-wide">
-                      MCP Tools ({mcpTools.length})
-                    </span>
-                  </div>
-                  {mcpTools.map((tool) => (
-                    <div
-                      key={tool.key}
-                      className="px-3 py-2 hover:bg-background-secondary transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{tool.name}</span>
-                        <span className="text-xs text-muted-dark">
-                          ({tool.source.serverName || tool.source.serverId})
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-dark mt-0.5 line-clamp-1">
-                        {tool.description}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {tools.length === 0 && (
-                <div className="px-3 py-4 text-center text-sm text-muted-dark">
-                  No tools registered
+        {isToolsOpen && (
+          <div className="absolute bottom-full left-0 mb-1 z-50 min-w-[320px] max-h-[400px] overflow-y-auto bg-background border border-border rounded-lg shadow-xl py-2">
+            {builtinTools.length > 0 && (
+              <>
+                <div className="px-3 py-1.5 border-b border-border mb-1">
+                  <span className="text-xs text-muted-dark uppercase tracking-wide">
+                    Builtin Tools ({builtinTools.length})
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                {builtinTools.map((tool) => (
+                  <div
+                    key={tool.key}
+                    className="px-3 py-2 hover:bg-background-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{tool.name}</span>
+                      <span className="text-xs text-muted-dark">
+                        ({tool.source.moduleId})
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-dark mt-0.5 line-clamp-1">
+                      {tool.description}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
 
-        {/* Thinking Toggle */}
-        {supportsThinking && (
-          <div className="flex items-center gap-2">
-            <span className="label-dark">THINKING //</span>
-            <button
-              type="button"
-              onClick={() => onThinkingChange(!thinkingEnabled)}
-              className="flex items-center gap-2 bg-transparent border border-border rounded px-3 py-1.5 text-xs mono uppercase tracking-wide text-foreground focus:outline-none focus:border-muted-darker cursor-pointer hover:border-muted-darker transition-colors"
-            >
-              <span className={thinkingEnabled ? "text-foreground" : "text-muted-dark"}>
-                {thinkingEnabled ? "On" : "Off"}
-              </span>
-              <span
-                className={`w-2 h-2 rounded-full transition-all ${
-                  thinkingEnabled
-                    ? "bg-emerald-400"
-                    : "bg-muted-dark"
-                }`}
-              />
-            </button>
+            {mcpTools.length > 0 && (
+              <>
+                <div className="px-3 py-1.5 border-b border-border mb-1 mt-2">
+                  <span className="text-xs text-muted-dark uppercase tracking-wide">
+                    MCP Tools ({mcpTools.length})
+                  </span>
+                </div>
+                {mcpTools.map((tool) => (
+                  <div
+                    key={tool.key}
+                    className="px-3 py-2 hover:bg-background-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{tool.name}</span>
+                      <span className="text-xs text-muted-dark">
+                        ({tool.source.serverName || tool.source.serverId})
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-dark mt-0.5 line-clamp-1">
+                      {tool.description}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {tools.length === 0 && (
+              <div className="px-3 py-4 text-center text-sm text-muted-dark">
+                No tools registered
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-4">
-        {mcpServers.length > 0 && onMcpToggle && (
-          <ToolsSelector
-            availableServers={mcpServers}
-            enabledServers={enabledMcpServers}
-            onToggle={onMcpToggle}
-            isLoading={isMcpLoading}
-          />
-        )}
-        {selectedModel && onModelChange && (
-          <ModelSelector
-            selectedModel={selectedModel}
-            onModelChange={onModelChange}
-            availableProviders={availableProviders}
-            enabledModels={enabledModels}
-          />
-        )}
-      </div>
+      {/* MCP Servers */}
+      {mcpServers.length > 0 && onMcpToggle && (
+        <ToolsSelector
+          availableServers={mcpServers}
+          enabledServers={enabledMcpServers}
+          onToggle={onMcpToggle}
+          isLoading={isMcpLoading}
+        />
+      )}
     </div>
   );
 }
