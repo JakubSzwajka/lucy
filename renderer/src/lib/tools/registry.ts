@@ -9,11 +9,6 @@ import type {
   RegisteredTool,
   ToolRegistryOptions,
 } from "./types";
-import {
-  saveToolCall,
-  saveToolResult,
-  updateToolCallStatus,
-} from "./utils/persistence";
 
 // ============================================================================
 // Tool Registry
@@ -115,7 +110,6 @@ export class ToolRegistry {
   // AI SDK Conversion
   // -------------------------------------------------------------------------
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async toAiSdkTools(
     contextPartial: Omit<ToolExecutionContext, "callId" | "getState" | "setState">
   ): Promise<Record<string, ReturnType<typeof tool>>> {
@@ -146,16 +140,20 @@ export class ToolRegistry {
       description: definition.description,
       inputSchema: passthroughSchema,
       execute: async (args: Record<string, unknown>) => {
-        return registry.executeWithPersistence(_key, definition, args, contextPartial);
+        return registry.executeWithContext(_key, definition, args, contextPartial);
       },
     });
   }
 
   // -------------------------------------------------------------------------
-  // Tool Execution with Persistence
+  // Tool Execution
   // -------------------------------------------------------------------------
 
-  private async executeWithPersistence(
+  /**
+   * Execute a tool with context.
+   * Note: Persistence is handled centrally by onStepFinish in the chat route.
+   */
+  private async executeWithContext(
     key: string,
     definition: ToolDefinition,
     args: unknown,
@@ -163,7 +161,7 @@ export class ToolRegistry {
   ): Promise<unknown> {
     const callId = uuidv4();
     const startTime = Date.now();
-    const { agentId, sessionId } = contextPartial;
+    const { sessionId } = contextPartial;
 
     // Build full execution context
     const context: ToolExecutionContext = {
@@ -185,24 +183,10 @@ export class ToolRegistry {
       parsedArgs = preprocessedArgs; // Fall back to preprocessed args if schema parsing fails
     }
 
-    // Determine if approval is required
+    // Log if approval would be required (approval flow not yet implemented)
     const requiresApproval = this.checkRequiresApproval(definition, parsedArgs);
-    const initialStatus = requiresApproval ? "pending_approval" : "running";
-
-    // Save tool_call item
-    await saveToolCall(
-      agentId,
-      callId,
-      definition.name,
-      parsedArgs as Record<string, unknown>,
-      initialStatus
-    );
-
-    // If approval required, we would pause here (TODO: implement approval flow)
     if (requiresApproval) {
       console.log(`[ToolRegistry] Tool ${definition.name} requires approval (not implemented yet)`);
-      // For now, continue executing - approval flow will be added later
-      await updateToolCallStatus(callId, "running");
     }
 
     try {
@@ -223,22 +207,12 @@ export class ToolRegistry {
         ? definition.formatOutput(result as never)
         : result;
 
-      // Save tool_result
-      await saveToolResult(agentId, callId, formattedResult);
-      await updateToolCallStatus(callId, "completed");
-
       console.log(`[ToolRegistry] Tool ${key} executed in ${executionTime}ms`);
 
       return formattedResult;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Tool execution failed";
-
-      // Save error result
-      await saveToolResult(agentId, callId, undefined, errorMessage);
-      await updateToolCallStatus(callId, "failed");
-
       console.error(`[ToolRegistry] Tool ${key} failed:`, errorMessage);
-
       return { error: errorMessage };
     }
   }

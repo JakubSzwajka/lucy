@@ -6,7 +6,6 @@ import {
   getToolRegistry,
   initializeToolRegistry,
   getMcpProvider,
-  insertItem,
 } from "@/lib/tools";
 import { getAgentService } from "../agent";
 import type { ChatContext, ChatPrepareOptions, ModelMessage, ChatFinishResult } from "./types";
@@ -209,39 +208,11 @@ export class ChatService {
   // -------------------------------------------------------------------------
 
   /**
-   * Handle the finish of a chat stream
+   * Finalize a chat stream by updating agent status.
+   * Item persistence is handled by onStepFinish in the route.
    */
-  async onFinish(
-    agentId: string,
-    text: string,
-    reasoning?: Array<{ text?: string }>
-  ): Promise<ChatFinishResult> {
+  async finalizeChat(agentId: string): Promise<ChatFinishResult> {
     try {
-      // Save reasoning as a separate item if present
-      if (reasoning && reasoning.length > 0) {
-        const reasoningText = reasoning
-          .filter((r) => r.text)
-          .map((r) => r.text)
-          .join("\n");
-
-        if (reasoningText) {
-          await insertItem(agentId, {
-            type: "reasoning",
-            reasoningContent: reasoningText,
-            reasoningSummary: reasoningText.slice(0, 200) + (reasoningText.length > 200 ? "..." : ""),
-          });
-        }
-      }
-
-      // Save assistant message (only if there's text content)
-      if (text) {
-        await insertItem(agentId, {
-          type: "message",
-          role: "assistant",
-          content: text,
-        });
-      }
-
       // Update agent status and turn count
       const agentService = getAgentService();
       const agent = agentService.getById(agentId);
@@ -256,7 +227,7 @@ export class ChatService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to save chat results",
+        error: error instanceof Error ? error.message : "Failed to finalize chat",
       };
     }
   }

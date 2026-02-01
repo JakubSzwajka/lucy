@@ -5,8 +5,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
-import { InlineActivityList } from "./AgentActivity";
-import type { AgentActivity } from "@/types";
+import { InlineActivityList, ReasoningPartView, ToolCallPartView } from "./AgentActivity";
+import type { AgentActivity, ContentPart } from "@/types";
 import { Copy, Check } from "lucide-react";
 
 /**
@@ -47,6 +47,7 @@ interface MessageBubbleProps {
   content: string;
   model?: string;
   timestamp?: Date;
+  parts?: ContentPart[];
   activities?: AgentActivity[];
   isStreaming?: boolean;
 }
@@ -68,8 +69,9 @@ function createCodeComponent(): Components["code"] {
   };
 }
 
-export function MessageBubble({ role, content, model, timestamp, activities, isStreaming }: MessageBubbleProps) {
+export function MessageBubble({ role, content, model, timestamp, parts, activities, isStreaming }: MessageBubbleProps) {
   const isUser = role === "user";
+  const hasParts = parts && parts.length > 0;
   const hasActivities = activities && activities.length > 0;
   const hasContent = content && content.trim().length > 0;
 
@@ -92,6 +94,81 @@ export function MessageBubble({ role, content, model, timestamp, activities, isS
     });
   };
 
+  // Render interleaved parts if available
+  const renderInterleavedContent = () => {
+    if (!hasParts) {
+      // Fallback to old behavior if no parts
+      return (
+        <>
+          {/* Inline activities (collapsed by default) - legacy */}
+          {!isUser && (hasActivities || (isStreaming && !hasContent)) && (
+            <InlineActivityList
+              activities={activities ?? []}
+              isStreaming={isStreaming && !hasContent}
+            />
+          )}
+
+          {/* Main content */}
+          {hasContent && (
+            <div className="markdown-content break-words">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    // Render parts in order
+    return (
+      <div className="space-y-3">
+        {parts.map((part) => {
+          switch (part.type) {
+            case "reasoning":
+              return (
+                <ReasoningPartView
+                  key={part.id}
+                  id={part.id}
+                  content={part.content}
+                  summary={part.summary}
+                />
+              );
+            case "tool_call":
+              return (
+                <ToolCallPartView
+                  key={part.id}
+                  id={part.id}
+                  callId={part.callId}
+                  toolName={part.toolName}
+                  args={part.args}
+                  status={part.status}
+                  result={part.result}
+                  error={part.error}
+                />
+              );
+            case "text":
+              return (
+                <div key={part.id} className="markdown-content break-words">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {part.text}
+                  </ReactMarkdown>
+                </div>
+              );
+            default:
+              return null;
+          }
+        })}
+      </div>
+    );
+  };
+
   return (
     <div
       className={cn("flex flex-col gap-1 w-full", isUser ? "items-end" : "items-start")}
@@ -110,28 +187,25 @@ export function MessageBubble({ role, content, model, timestamp, activities, isS
             : "bg-assistant-bubble border-assistant-bubble-border"
         )}
       >
-        {/* Inline activities (collapsed by default) */}
-        {!isUser && (hasActivities || (isStreaming && !hasContent)) && (
-          <InlineActivityList
-            activities={activities ?? []}
-            isStreaming={isStreaming && !hasContent}
-          />
+        {isUser ? (
+          // User messages - just show content
+          hasContent && (
+            <div className="markdown-content break-words">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {content}
+              </ReactMarkdown>
+            </div>
+          )
+        ) : (
+          // Assistant messages - show interleaved content
+          renderInterleavedContent()
         )}
 
-        {/* Main content */}
-        {hasContent && (
-          <div className="markdown-content break-words">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={markdownComponents}
-            >
-              {content}
-            </ReactMarkdown>
-          </div>
-        )}
-
-        {/* Streaming indicator when no content and no activities */}
-        {isStreaming && !hasContent && !hasActivities && (
+        {/* Streaming indicator when no content and no parts */}
+        {isStreaming && !hasContent && !hasParts && !hasActivities && (
           <div className="flex space-x-2">
             <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" />
             <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:100ms]" />

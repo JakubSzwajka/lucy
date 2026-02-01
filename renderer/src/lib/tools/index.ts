@@ -29,7 +29,7 @@ export {
   getToolModuleByIntegration,
   tasksModule,
   notesModule,
-  filesModule,
+  memoryModule,
 } from "./modules";
 
 // Persistence utilities

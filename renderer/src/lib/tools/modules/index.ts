@@ -12,10 +12,12 @@
 import type { AnyToolModule } from "../types";
 import { tasksModule } from "./tasks";
 import { notesModule } from "./notes";
+import { memoryModule } from "./memory";
 
 // Re-export individual modules
 export { tasksModule } from "./tasks";
 export { notesModule } from "./notes";
+export { memoryModule } from "./memory";
 
 /**
  * All available tool modules.
@@ -28,6 +30,7 @@ export { notesModule } from "./notes";
 export const allToolModules: AnyToolModule[] = [
   tasksModule,
   notesModule,
+  memoryModule,
 ];
 
 /**
@@ -43,4 +46,12 @@ export function getToolModule(id: string): AnyToolModule | undefined {
  */
 export function getToolModuleByIntegration(integrationId: string): AnyToolModule | undefined {
   return allToolModules.find((m) => m.integrationId === integrationId);
+}
+
+/**
+ * Get all tool modules that use a given integration.
+ * Returns all modules that reference the integration ID.
+ */
+export function getToolModulesByIntegration(integrationId: string): AnyToolModule[] {
+  return allToolModules.filter((m) => m.integrationId === integrationId);
 }

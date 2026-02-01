@@ -16,7 +16,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgentActivity, ReasoningActivity, ToolCallActivity, StatusActivity } from "@/types";
+import type { AgentActivity, ReasoningActivity, ToolCallActivity, StatusActivity, ToolCallStatus } from "@/types";
 
 interface AgentActivitySectionProps {
   title: string;
@@ -221,6 +221,144 @@ function StatusActivityView({ activity }: { activity: StatusActivity }) {
       variant={config.variant}
     >
       <div>{activity.message}</div>
+    </AgentActivitySection>
+  );
+}
+
+// ============================================================================
+// Standalone Part Views for Interleaved Rendering
+// ============================================================================
+
+interface ReasoningPartViewProps {
+  id: string;
+  content: string;
+  summary?: string;
+}
+
+export function ReasoningPartView({ content }: ReasoningPartViewProps) {
+  return (
+    <AgentActivitySection title="REASONING" icon={<Brain className="w-3.5 h-3.5" />}>
+      <div className="whitespace-pre-wrap break-words font-mono">
+        {content}
+      </div>
+    </AgentActivitySection>
+  );
+}
+
+interface ToolCallPartViewProps {
+  id: string;
+  callId: string;
+  toolName: string;
+  args?: Record<string, unknown>;
+  status: ToolCallStatus;
+  result?: string;
+  error?: string;
+}
+
+export function ToolCallPartView({ toolName, args, status, result, error }: ToolCallPartViewProps) {
+  const hasResult = result !== undefined && result !== null;
+
+  // Check if result contains an error (some tools return {"error": "..."} as output)
+  const resultContainsError = (() => {
+    if (!hasResult) return false;
+    try {
+      const parsed = typeof result === "string"
+        ? JSON.parse(result)
+        : result;
+      return parsed && typeof parsed === "object" && "error" in parsed;
+    } catch {
+      return false;
+    }
+  })();
+
+  const hasError = !!error || resultContainsError;
+
+  // Format result for display
+  const formatResult = (resultStr: string): string => {
+    try {
+      const parsed = JSON.parse(resultStr);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return resultStr;
+    }
+  };
+
+  const statusConfig: Record<string, { color: string; icon: React.ReactNode; variant: "default" | "success" | "error" }> = {
+    pending: {
+      color: "text-yellow-500",
+      icon: <Clock className="w-3 h-3" />,
+      variant: "default"
+    },
+    pending_approval: {
+      color: "text-orange-500 animate-pulse",
+      icon: <ShieldAlert className="w-3 h-3" />,
+      variant: "default"
+    },
+    running: {
+      color: "text-blue-400 animate-pulse",
+      icon: <Zap className="w-3 h-3" />,
+      variant: "default"
+    },
+    completed: {
+      color: "text-emerald-400",
+      icon: <Check className="w-3 h-3" />,
+      variant: hasError ? "error" : "success"
+    },
+    failed: {
+      color: "text-red-400",
+      icon: <X className="w-3 h-3" />,
+      variant: "error"
+    },
+  };
+
+  const config = statusConfig[status] || statusConfig.pending;
+
+  return (
+    <AgentActivitySection
+      title={`TOOL: ${toolName.toUpperCase()}`}
+      icon={<Wrench className="w-3.5 h-3.5" />}
+      variant={config.variant}
+    >
+      <div className="space-y-2">
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted">Status:</span>
+            <span className={cn("flex items-center gap-1", config.color)}>
+              {config.icon} {status}
+            </span>
+          </div>
+        </div>
+        {args && Object.keys(args).length > 0 && (
+          <div>
+            <span className="text-muted block mb-1">Arguments:</span>
+            <pre className="bg-background/50 rounded p-2 overflow-x-auto text-xs font-mono">
+              {JSON.stringify(args, null, 2)}
+            </pre>
+          </div>
+        )}
+        {/* Result/Error section */}
+        {error && (
+          <div>
+            <span className="text-muted block mb-1">Error:</span>
+            <div className="bg-red-500/10 border border-red-500/20 rounded p-2 text-red-400 text-xs">
+              {error}
+            </div>
+          </div>
+        )}
+        {hasResult && !error && (
+          <div>
+            <span className="text-muted block mb-1">{resultContainsError ? "Error:" : "Result:"}</span>
+            <pre className={cn(
+              "rounded p-2 overflow-x-auto whitespace-pre-wrap text-xs font-mono max-h-48",
+              resultContainsError
+                ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                : "bg-background/50"
+            )}>
+              {formatResult(result)}
+            </pre>
+          </div>
+        )}
+      </div>
     </AgentActivitySection>
   );
 }

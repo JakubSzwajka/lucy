@@ -12,7 +12,7 @@
  */
 
 import type { ToolProvider, ToolDefinition, AnyToolModule } from "../types";
-import { allToolModules, getToolModuleByIntegration } from "../modules";
+import { allToolModules, getToolModulesByIntegration } from "../modules";
 import { allIntegrations, getIntegration, type AnyIntegration } from "@/lib/integrations";
 
 export class BuiltinToolProvider implements ToolProvider {
@@ -75,9 +75,9 @@ export class BuiltinToolProvider implements ToolProvider {
         continue;
       }
 
-      // Find the tool module that uses this integration
-      const toolModule = getToolModuleByIntegration(integration.id);
-      if (!toolModule) {
+      // Find all tool modules that use this integration
+      const toolModules = getToolModulesByIntegration(integration.id);
+      if (toolModules.length === 0) {
         console.warn(`No tool module found for integration ${integration.id}`);
         continue;
       }
@@ -90,13 +90,15 @@ export class BuiltinToolProvider implements ToolProvider {
           continue;
         }
 
-        // Create tools using tool module's factory
-        const moduleTools = toolModule.createTools(client);
-        this.tools.push(...moduleTools);
+        // Create tools from all modules that use this integration
+        for (const toolModule of toolModules) {
+          const moduleTools = toolModule.createTools(client);
+          this.tools.push(...moduleTools);
 
-        console.log(
-          `Loaded ${moduleTools.length} tools from module: ${toolModule.name} (via ${integration.name})`
-        );
+          console.log(
+            `Loaded ${moduleTools.length} tools from module: ${toolModule.name} (via ${integration.name})`
+          );
+        }
       } catch (error) {
         console.error(`Failed to initialize integration ${integration.id}:`, error);
       }

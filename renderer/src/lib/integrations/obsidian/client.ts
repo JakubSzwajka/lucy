@@ -170,4 +170,26 @@ export class ObsidianClient {
 
     return { connected: true };
   }
+
+  /**
+   * Search notes using Obsidian's simple text search.
+   */
+  async searchNotes(
+    query: string,
+    contextLength: number = 100
+  ): Promise<Array<{ filename: string; score: number; matches: Array<{ context: string }> }>> {
+    const { data, error } = await this.request<
+      Array<{ filename: string; score: number; matches: Array<{ match: { start: number; end: number }; context: string }> }>
+    >("POST", `/search/simple/?query=${encodeURIComponent(query)}&contextLength=${contextLength}`);
+
+    if (error) {
+      throw new Error(error);
+    }
+
+    return (data || []).map((result) => ({
+      filename: result.filename,
+      score: result.score,
+      matches: result.matches.map((m) => ({ context: m.context })),
+    }));
+  }
 }

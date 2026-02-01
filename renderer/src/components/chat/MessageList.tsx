@@ -67,6 +67,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
             content={message.content}
             model={message.role === "assistant" ? message.model : undefined}
             timestamp={message.createdAt ? new Date(message.createdAt) : undefined}
+            parts={message.role === "assistant" ? message.parts : undefined}
             activities={message.role === "assistant" ? message.activities : undefined}
             isStreaming={isAssistantStreaming}
           />

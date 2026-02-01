@@ -1,5 +1,6 @@
 import { streamText, stepCountIs, ToolSet } from "ai";
 import { getChatService } from "@/lib/services";
+import { persistStepContent } from "@/lib/services/chat/step-persistence.service";
 
 export async function POST(req: Request) {
   const { messages: chatMessages, model: modelId, agentId, thinkingEnabled = true } = await req.json();
@@ -31,8 +32,14 @@ export async function POST(req: Request) {
     maxOutputTokens: context.maxOutputTokens,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     providerOptions: context.providerOptions as any,
-    onFinish: async ({ text, reasoning }) => {
-      await chatService.onFinish(agentId, text, reasoning);
+    // Persist each step's content in correct interleaved order
+    onStepFinish: async ({ content, reasoning }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await persistStepContent(agentId, content as any[], reasoning);
+    },
+    // Only update agent status on finish
+    onFinish: async () => {
+      await chatService.finalizeChat(agentId);
     },
     experimental_telemetry: {
       isEnabled: true,

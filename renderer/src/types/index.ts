@@ -132,13 +132,42 @@ export type ItemCreate = MessageItemCreate | ToolCallItemCreate | ToolResultItem
 // CHAT MESSAGE TYPE (for UI compatibility with useChat)
 // ============================================================================
 
+// Content part types for interleaved display
+export interface TextContentPart {
+  type: "text";
+  id: string;
+  text: string;
+}
+
+export interface ReasoningContentPart {
+  type: "reasoning";
+  id: string;
+  content: string;
+  summary?: string;
+}
+
+export interface ToolCallContentPart {
+  type: "tool_call";
+  id: string;
+  callId: string;
+  toolName: string;
+  args?: Record<string, unknown>;
+  status: ToolCallStatus;
+  result?: string;
+  error?: string;
+}
+
+export type ContentPart = TextContentPart | ReasoningContentPart | ToolCallContentPart;
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
   content: string;
   model?: string;
   createdAt?: Date;
-  // Activities extracted from items for display
+  // Interleaved content parts for display (reasoning, text, tool_call in order)
+  parts?: ContentPart[];
+  // Legacy: activities extracted from items for display (deprecated, use parts)
   activities?: AgentActivity[];
 }
 
