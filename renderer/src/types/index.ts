@@ -167,50 +167,7 @@ export interface ChatMessage {
   createdAt?: Date;
   // Interleaved content parts for display (reasoning, text, tool_call in order)
   parts?: ContentPart[];
-  // Legacy: activities extracted from items for display (deprecated, use parts)
-  activities?: AgentActivity[];
 }
-
-// Agent Activity Types - for UI display
-export type AgentActivityType = "reasoning" | "tool_call" | "status";
-
-export interface AgentActivityBase {
-  id: string;
-  type: AgentActivityType;
-  timestamp?: Date;
-}
-
-export interface ReasoningActivity extends AgentActivityBase {
-  type: "reasoning";
-  content: string;
-  summary?: string;
-}
-
-// Tool approval status for MCP tools requiring user approval
-export type ToolApprovalStatus = "pending_approval" | "approved" | "rejected";
-
-export interface ToolCallActivity extends AgentActivityBase {
-  type: "tool_call";
-  callId: string;
-  toolName: string;
-  args?: Record<string, unknown>;
-  status: ToolCallStatus;
-  serverId?: string;
-  serverName?: string;
-  approvalStatus?: ToolApprovalStatus;
-  executionTimeMs?: number;
-  // Result fields (merged from tool_result)
-  result?: string;
-  error?: string;
-}
-
-export interface StatusActivity extends AgentActivityBase {
-  type: "status";
-  message: string;
-  status: "info" | "success" | "warning" | "error";
-}
-
-export type AgentActivity = ReasoningActivity | ToolCallActivity | StatusActivity;
 
 // ============================================================================
 // SESSION WITH AGENTS (for loading full session data)

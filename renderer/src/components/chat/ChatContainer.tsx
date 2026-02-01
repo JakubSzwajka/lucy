@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
+import { ChatOptionsPanel } from "./ChatOptionsPanel";
 import { useAgentChat } from "@/hooks/useAgentChat";
 import { useMcpStatus } from "@/hooks/useMcpStatus";
 import { getModelConfig } from "@/lib/ai/models";
@@ -100,6 +101,23 @@ export function ChatContainer({
         </div>
       </header>
 
+      {/* Options */}
+      <div className="px-6 py-3 border-b border-border">
+        <ChatOptionsPanel
+          thinkingEnabled={thinkingEnabled}
+          onThinkingChange={setThinkingEnabled}
+          supportsThinking={supportsThinking}
+          selectedModel={selectedModel}
+          onModelChange={onModelChange}
+          availableProviders={availableProviders}
+          enabledModels={enabledModels}
+          mcpServers={mcpServers}
+          enabledMcpServers={enabledMcpServers}
+          onMcpToggle={toggleMcpServer}
+          isMcpLoading={isMcpLoading}
+        />
+      </div>
+
       {/* Messages */}
       <MessageList
         messages={messages}
@@ -110,17 +128,6 @@ export function ChatContainer({
       <ChatInput
         onSend={handleSendMessage}
         isLoading={isLoading}
-        thinkingEnabled={thinkingEnabled}
-        onThinkingChange={setThinkingEnabled}
-        supportsThinking={supportsThinking}
-        selectedModel={selectedModel}
-        onModelChange={onModelChange}
-        availableProviders={availableProviders}
-        enabledModels={enabledModels}
-        mcpServers={mcpServers}
-        enabledMcpServers={enabledMcpServers}
-        onMcpToggle={toggleMcpServer}
-        isMcpLoading={isMcpLoading}
         messages={messages}
         modelConfig={modelConfig}
       />

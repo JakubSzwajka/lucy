@@ -1,26 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect, KeyboardEvent, useMemo } from "react";
-import { ChatOptionsPanel } from "./ChatOptionsPanel";
 import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
-import type { AvailableProviders, McpServer, McpServerStatus, ChatMessage, ModelConfig } from "@/types";
+import type { ChatMessage, ModelConfig } from "@/types";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading?: boolean;
-  thinkingEnabled?: boolean;
-  onThinkingChange?: (enabled: boolean) => void;
-  supportsThinking?: boolean;
-  selectedModel?: string;
-  onModelChange?: (modelId: string) => void;
-  availableProviders?: AvailableProviders;
-  enabledModels?: string[];
-  // MCP props
-  mcpServers?: McpServer[];
-  enabledMcpServers?: McpServerStatus[];
-  onMcpToggle?: (serverId: string, enabled: boolean) => void;
-  isMcpLoading?: boolean;
-  // Context tracking
   messages?: ChatMessage[];
   modelConfig?: ModelConfig;
 }
@@ -28,17 +14,6 @@ interface ChatInputProps {
 export function ChatInput({
   onSend,
   isLoading,
-  thinkingEnabled = false,
-  onThinkingChange,
-  supportsThinking = false,
-  selectedModel,
-  onModelChange,
-  availableProviders,
-  enabledModels,
-  mcpServers = [],
-  enabledMcpServers = [],
-  onMcpToggle,
-  isMcpLoading,
   messages = [],
   modelConfig,
 }: ChatInputProps) {
@@ -82,19 +57,6 @@ export function ChatInput({
 
   return (
     <div className="p-6 border-t border-border bg-background">
-      <ChatOptionsPanel
-        thinkingEnabled={thinkingEnabled}
-        onThinkingChange={onThinkingChange ?? (() => {})}
-        supportsThinking={supportsThinking}
-        selectedModel={selectedModel}
-        onModelChange={onModelChange}
-        availableProviders={availableProviders}
-        enabledModels={enabledModels}
-        mcpServers={mcpServers}
-        enabledMcpServers={enabledMcpServers}
-        onMcpToggle={onMcpToggle}
-        isMcpLoading={isMcpLoading}
-      />
       <div className="relative flex items-end gap-3 border border-border rounded-lg p-2 focus-within:border-muted-darker transition-all bg-background-secondary/20">
         <textarea
           ref={textareaRef}

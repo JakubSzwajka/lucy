@@ -25,8 +25,8 @@ export { ItemRepository, getItemRepository } from "./item";
 export {
   ItemTransformer,
   extractContent,
-  extractActivitiesFromParts,
-  itemsToActivities,
+  extractContentPartsFromStreamingMessage,
+  itemsToContentParts,
   itemsToChatMessages,
   mergeWithStreaming,
 } from "./item";

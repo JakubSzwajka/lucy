@@ -13,8 +13,8 @@ export type { CreateItemResult } from "./item.service";
 export {
   ItemTransformer,
   extractContent,
-  extractActivitiesFromParts,
-  itemsToActivities,
+  extractContentPartsFromStreamingMessage,
+  itemsToContentParts,
   itemsToChatMessages,
   mergeWithStreaming,
 } from "./item.transformer";

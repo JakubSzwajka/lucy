@@ -150,12 +150,12 @@ This is a **critical complexity point**. It bridges three different message form
 | Format | Source | Shape |
 |--------|--------|-------|
 | **DB Items** | `items` table | `{type, role, content, callId, toolName, ...}` |
-| **ChatMessage** | Display layer | `{id, role, content, activities[]}` |
+| **ChatMessage** | Display layer | `{id, role, content, parts: ContentPart[]}` |
 | **AI SDK UIMessage** | Streaming | `{id, role, parts: [{type: "tool-*", state, ...}]}` |
 
 Key functions:
-- `itemsToChatMessages()` - DB → ChatMessage (groups activities with messages)
-- `extractActivitiesFromParts()` - AI SDK parts → AgentActivity[]
+- `itemsToChatMessages()` - DB → ChatMessage (groups interleaved parts)
+- `extractContentPartsFromStreamingMessage()` - AI SDK parts → ContentPart[]
 - `mergeWithStreaming()` - Combines DB items + live streaming messages
 
 ---

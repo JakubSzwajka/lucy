@@ -1,9 +1,6 @@
 import type {
   Item,
   ChatMessage,
-  AgentActivity,
-  ReasoningActivity,
-  ToolCallActivity,
   ContentPart,
   TextContentPart,
   ReasoningContentPart,
@@ -100,131 +97,6 @@ export class ItemTransformer {
   }
 
   /**
-   * Extract activities from AI SDK UIMessage parts (streaming format).
-   * AI SDK uses part.type = "tool-${toolName}" format (e.g., "tool-getWeather")
-   * States: "input-streaming", "input-available", "output-available", "output-error"
-   */
-  static extractActivitiesFromParts(message: Record<string, unknown>): AgentActivity[] {
-    const activities: AgentActivity[] = [];
-
-    if (!Array.isArray(message.parts)) {
-      return activities;
-    }
-
-    const parts = message.parts as Record<string, unknown>[];
-
-    // Extract reasoning
-    const reasoningText = parts
-      .filter((part) => part.type === "reasoning")
-      .map((part) => part.text as string)
-      .join("");
-
-    if (reasoningText) {
-      const reasoningActivity: ReasoningActivity = {
-        id: `${message.id}-reasoning`,
-        type: "reasoning",
-        content: reasoningText,
-      };
-      activities.push(reasoningActivity);
-    }
-
-    // Extract tool calls - AI SDK uses "tool-${toolName}" format for part.type
-    parts
-      .filter((part) => typeof part.type === "string" && (part.type as string).startsWith("tool-"))
-      .forEach((part, index) => {
-        const partType = part.type as string;
-        // Extract tool name from "tool-${toolName}" format
-        const toolName = partType.slice(5); // Remove "tool-" prefix
-        const state = part.state as string;
-
-        // Determine status based on AI SDK state values
-        let status: "running" | "completed" | "failed" = "running";
-        if (state === "output-available") {
-          status = "completed";
-        } else if (state === "output-error") {
-          status = "failed";
-        }
-
-        const toolActivity: ToolCallActivity = {
-          id: `${message.id}-tool-${index}`,
-          type: "tool_call",
-          callId: part.toolCallId as string,
-          toolName: toolName,
-          args: part.input as Record<string, unknown>, // AI SDK uses "input" not "args"
-          status,
-          result: state === "output-available" && part.output
-            ? JSON.stringify(part.output)
-            : undefined,
-          error: state === "output-error" && part.errorText
-            ? (part.errorText as string)
-            : undefined,
-        };
-        activities.push(toolActivity);
-      });
-
-    return activities;
-  }
-
-  /**
-   * Convert loaded items to activities (merging tool_call and tool_result by callId)
-   */
-  static itemsToActivities(
-    loadedItems: Item[],
-    messageId: string,
-    toolResultsByCallId?: Map<string, Item>
-  ): AgentActivity[] {
-    const activities: AgentActivity[] = [];
-
-    // Use provided map or build one from loadedItems
-    const resultsMap = toolResultsByCallId ?? new Map<string, Item>();
-    if (!toolResultsByCallId) {
-      for (const item of loadedItems) {
-        if (item.type === "tool_result") {
-          resultsMap.set(item.callId, item);
-        }
-      }
-    }
-
-    for (const item of loadedItems) {
-      switch (item.type) {
-        case "reasoning":
-          activities.push({
-            id: item.id,
-            type: "reasoning",
-            content: item.reasoningContent,
-            summary: item.reasoningSummary || undefined,
-            timestamp: item.createdAt,
-          });
-          break;
-
-        case "tool_call": {
-          // Find matching tool_result and merge
-          const resultItem = resultsMap.get(item.callId);
-          activities.push({
-            id: item.id,
-            type: "tool_call",
-            callId: item.callId,
-            toolName: item.toolName,
-            args: item.toolArgs || undefined,
-            status: item.toolStatus,
-            timestamp: item.createdAt,
-            // Merge result/error from tool_result item
-            result: resultItem?.type === "tool_result" ? (resultItem.toolOutput || undefined) : undefined,
-            error: resultItem?.type === "tool_result" ? (resultItem.toolError || undefined) : undefined,
-          });
-          break;
-        }
-
-        // Skip tool_result - it's merged into tool_call above
-        case "tool_result":
-          break;
-      }
-    }
-
-    return activities;
-  }
-
-  /**
    * Convert items to interleaved ContentParts for a single assistant turn
    */
   static itemsToContentParts(
@@ -284,7 +156,6 @@ export class ItemTransformer {
   static itemsToChatMessages(loadedItems: Item[]): ChatMessage[] {
     const messages: ChatMessage[] = [];
     let currentParts: ContentPart[] = [];
-    let currentActivities: AgentActivity[] = [];
 
     // Build tool_results map upfront for merging with tool_calls
     const toolResultsByCallId = new Map<string, Item>();
@@ -307,10 +178,8 @@ export class ItemTransformer {
               .map((p) => p.text)
               .join(""),
             parts: [...currentParts],
-            activities: currentActivities.length > 0 ? [...currentActivities] : undefined,
           });
           currentParts = [];
-          currentActivities = [];
         }
 
         // Add user message
@@ -328,23 +197,15 @@ export class ItemTransformer {
           text: item.content,
         } as TextContentPart);
       } else if (item.type === "reasoning") {
-        // Reasoning - add as part and activity
+        // Reasoning - add as part
         currentParts.push({
           type: "reasoning",
           id: item.id,
           content: item.reasoningContent,
           summary: item.reasoningSummary || undefined,
         } as ReasoningContentPart);
-
-        currentActivities.push({
-          id: item.id,
-          type: "reasoning",
-          content: item.reasoningContent,
-          summary: item.reasoningSummary || undefined,
-          timestamp: item.createdAt,
-        });
       } else if (item.type === "tool_call") {
-        // Tool call - add as part and activity
+        // Tool call - add as part
         const resultItem = toolResultsByCallId.get(item.callId);
         const toolPart: ToolCallContentPart = {
           type: "tool_call",
@@ -357,18 +218,6 @@ export class ItemTransformer {
           error: resultItem?.type === "tool_result" ? (resultItem.toolError || undefined) : undefined,
         };
         currentParts.push(toolPart);
-
-        currentActivities.push({
-          id: item.id,
-          type: "tool_call",
-          callId: item.callId,
-          toolName: item.toolName,
-          args: item.toolArgs || undefined,
-          status: item.toolStatus,
-          timestamp: item.createdAt,
-          result: toolPart.result,
-          error: toolPart.error,
-        });
       }
       // Skip tool_result - it's merged into tool_call
     }
@@ -383,7 +232,6 @@ export class ItemTransformer {
           .map((p) => p.text)
           .join(""),
         parts: [...currentParts],
-        activities: currentActivities.length > 0 ? [...currentActivities] : undefined,
       });
     }
 
@@ -412,7 +260,6 @@ export class ItemTransformer {
         role: msg.role as "user" | "assistant" | "system",
         content: ItemTransformer.extractContent(msg),
         parts: ItemTransformer.extractContentPartsFromStreamingMessage(msg),
-        activities: ItemTransformer.extractActivitiesFromParts(msg),
       }));
 
     return [...fromItems, ...streamingMessages];
@@ -421,9 +268,7 @@ export class ItemTransformer {
 
 // Export standalone functions for convenience
 export const extractContent = ItemTransformer.extractContent;
-export const extractActivitiesFromParts = ItemTransformer.extractActivitiesFromParts;
 export const extractContentPartsFromStreamingMessage = ItemTransformer.extractContentPartsFromStreamingMessage;
-export const itemsToActivities = ItemTransformer.itemsToActivities;
 export const itemsToContentParts = ItemTransformer.itemsToContentParts;
 export const itemsToChatMessages = ItemTransformer.itemsToChatMessages;
 export const mergeWithStreaming = ItemTransformer.mergeWithStreaming;
