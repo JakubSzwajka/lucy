@@ -1,14 +1,60 @@
+// Message components
 export {
   Message,
   MessageContent,
   MessageResponse,
   MessageActions,
+  MessageAction,
   MessageToolbar,
+  MessageBranch,
+  MessageBranchContent,
+  MessageBranchSelector,
+  MessageBranchPrevious,
+  MessageBranchNext,
+  MessageBranchPage,
 } from "./message";
-export type { MessageProps, MessageContentProps, MessageResponseProps } from "./message";
+export type {
+  MessageProps,
+  MessageContentProps,
+  MessageResponseProps,
+  MessageActionsProps,
+  MessageActionProps,
+  MessageToolbarProps,
+  MessageBranchProps,
+  MessageBranchContentProps,
+  MessageBranchSelectorProps,
+  MessageBranchPreviousProps,
+  MessageBranchNextProps,
+  MessageBranchPageProps,
+} from "./message";
 
-export { Reasoning } from "./reasoning";
-export type { ReasoningProps } from "./reasoning";
+// Reasoning components
+export {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent,
+  useReasoning,
+} from "./reasoning";
+export type {
+  ReasoningProps,
+  ReasoningTriggerProps,
+  ReasoningContentProps,
+} from "./reasoning";
 
-export { Tool } from "./tool";
-export type { ToolProps, ToolState } from "./tool";
+// Tool components
+export {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+  getStatusBadge,
+} from "./tool";
+export type {
+  ToolProps,
+  ToolPart,
+  ToolHeaderProps,
+  ToolContentProps,
+  ToolInputProps,
+  ToolOutputProps,
+} from "./tool";

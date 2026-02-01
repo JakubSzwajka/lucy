@@ -1,15 +1,30 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Image from "next/image";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
 import {
   Message,
   MessageContent,
   MessageResponse,
-  MessageToolbar,
 } from "@/components/ai-elements/message";
-import { Reasoning } from "@/components/ai-elements/reasoning";
-import { Tool, type ToolState } from "@/components/ai-elements/tool";
+import {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent,
+} from "@/components/ai-elements/reasoning";
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+  type ToolPart,
+} from "@/components/ai-elements/tool";
 import type { ChatMessage, ContentPart } from "@/types";
 
 interface MessageListProps {
@@ -32,7 +47,7 @@ function SessionDivider() {
 }
 
 // Map our ContentPart status to AI Elements ToolState
-function mapToolStatus(status: string): ToolState {
+function mapToolStatus(status: string): ToolPart["state"] {
   switch (status) {
     case "pending":
       return "input-streaming";
@@ -52,10 +67,10 @@ function mapToolStatus(status: string): ToolState {
 // Streaming indicator
 function StreamingIndicator() {
   return (
-    <div className="flex space-x-2">
-      <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" />
-      <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:100ms]" />
-      <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce [animation-delay:200ms]" />
+    <div className="flex space-x-2 py-2">
+      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" />
+      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:100ms]" />
+      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:200ms]" />
     </div>
   );
 }
@@ -91,20 +106,31 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
               isStreaming={isStreaming}
               defaultOpen={isStreaming}
             >
-              {part.content}
+              <ReasoningTrigger />
+              <ReasoningContent>{part.content}</ReasoningContent>
             </Reasoning>
           );
-        case "tool_call":
+        case "tool_call": {
+          const state = mapToolStatus(part.status);
           return (
-            <Tool
-              key={part.id}
-              name={part.toolName}
-              state={mapToolStatus(part.status)}
-              input={part.args}
-              output={part.result}
-              errorText={part.error}
-            />
+            <Tool key={part.id}>
+              <ToolHeader
+                type="dynamic-tool"
+                toolName={part.toolName}
+                state={state}
+              />
+              <ToolContent>
+                {part.args && Object.keys(part.args).length > 0 && (
+                  <ToolInput input={part.args} />
+                )}
+                <ToolOutput
+                  output={part.result ? JSON.parse(part.result) : undefined}
+                  errorText={part.error}
+                />
+              </ToolContent>
+            </Tool>
           );
+        }
         case "text":
           return (
             <MessageResponse key={part.id}>
@@ -120,12 +146,12 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
   if (isUser) {
     return (
       <Message from="user">
-        <MessageContent className="bg-user-bubble border-user-bubble-border">
+        <MessageContent>
           {hasContent && <MessageResponse>{message.content}</MessageResponse>}
         </MessageContent>
-        <MessageToolbar>
+        <div className="label-sm mr-1">
           SENT{message.createdAt && ` // ${formatTime(message.createdAt)}`}
-        </MessageToolbar>
+        </div>
       </Message>
     );
   }
@@ -133,7 +159,7 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
   // Assistant message
   return (
     <Message from="assistant">
-      <MessageContent className="bg-assistant-bubble border-assistant-bubble-border">
+      <MessageContent>
         {hasParts ? (
           <div className="space-y-3">
             {renderParts(message.parts!)}
@@ -144,69 +170,66 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
           <StreamingIndicator />
         ) : null}
       </MessageContent>
-      <MessageToolbar>
+      <div className="label-sm ml-1 flex items-center gap-2">
         DELIVERED{message.createdAt && ` // ${formatTime(message.createdAt)}`}
         {message.model && <span className="text-muted-darker">• {message.model}</span>}
-      </MessageToolbar>
+      </div>
     </Message>
   );
 }
 
 export function MessageList({ messages, isLoading }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted">
-        <div className="text-center">
-          <Image
-            src="/logo.png"
-            alt="Lucy"
-            width={80}
-            height={80}
-            className="mx-auto mb-4"
-          />
-          <span className="label block mb-2">// INIT.SEQUENCE</span>
-          <h2 className="text-xl font-medium mb-2 tracking-tight">Welcome to Lucy</h2>
-          <p className="text-sm text-muted-dark">Start a conversation by typing a message below.</p>
-        </div>
-      </div>
+      <ConversationEmptyState>
+        <Image
+          src="/logo.png"
+          alt="Lucy"
+          width={80}
+          height={80}
+          className="mb-4"
+        />
+        <span className="label block mb-2">// INIT.SEQUENCE</span>
+        <h2 className="text-xl font-medium mb-2 tracking-tight text-foreground">
+          Welcome to Lucy
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Start a conversation by typing a message below.
+        </p>
+      </ConversationEmptyState>
     );
   }
 
   const lastMessage = messages[messages.length - 1];
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-      <SessionDivider />
+    <Conversation>
+      <ConversationContent className="p-6 gap-6">
+        <SessionDivider />
 
-      {messages.map((message, index) => {
-        const isLastMessage = index === messages.length - 1;
-        const isAssistantStreaming = isLastMessage && isLoading && message.role === "assistant";
+        {messages.map((message, index) => {
+          const isLastMessage = index === messages.length - 1;
+          const isAssistantStreaming =
+            isLastMessage && isLoading && message.role === "assistant";
 
-        return (
-          <MessageItem
-            key={message.id}
-            message={message}
-            isStreaming={isAssistantStreaming}
-          />
-        );
-      })}
+          return (
+            <MessageItem
+              key={message.id}
+              message={message}
+              isStreaming={isAssistantStreaming}
+            />
+          );
+        })}
 
-      {/* Loading indicator when waiting for response (no assistant message yet) */}
-      {isLoading && (lastMessage?.role === "user" || messages.length === 0) && (
-        <Message from="assistant">
-          <MessageContent className="bg-assistant-bubble border-assistant-bubble-border">
-            <StreamingIndicator />
-          </MessageContent>
-        </Message>
-      )}
-
-      <div ref={bottomRef} />
-    </div>
+        {isLoading && (lastMessage?.role === "user" || messages.length === 0) && (
+          <Message from="assistant">
+            <MessageContent>
+              <StreamingIndicator />
+            </MessageContent>
+          </Message>
+        )}
+      </ConversationContent>
+      <ConversationScrollButton />
+    </Conversation>
   );
 }
