@@ -47,6 +47,9 @@ export type {
 export { filesystemIntegration, FilesystemService } from "./filesystem";
 export type { FileInfo, FilesystemServiceConfig } from "./filesystem";
 
+// Plan
+export { planIntegration } from "./plan";
+
 // ============================================================================
 // Integration Types
 // ============================================================================
@@ -73,6 +76,7 @@ import { todoistIntegration } from "./todoist";
 import { obsidianIntegration } from "./obsidian";
 import { conversationsIntegration } from "./conversations";
 import { filesystemIntegration } from "./filesystem";
+import { planIntegration } from "./plan";
 
 /**
  * All available integrations.
@@ -87,6 +91,7 @@ export const allIntegrations: AnyIntegration[] = [
   obsidianIntegration,
   conversationsIntegration,
   filesystemIntegration,
+  planIntegration,
 ];
 
 /**

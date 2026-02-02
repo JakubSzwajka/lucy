@@ -137,6 +137,84 @@ export const systemPrompts = sqliteTable("system_prompts", {
 });
 
 // ============================================================================
+// PLANS - Execution plans owned by orchestrator agents
+// ============================================================================
+
+export const planStatusEnum = ['pending', 'in_progress', 'completed', 'failed', 'cancelled'] as const;
+
+export const plans = sqliteTable("plans", {
+  id: text("id").primaryKey(),
+
+  // Ownership - one plan per session, owned by orchestrator agent
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  agentId: text("agent_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+
+  // Content
+  title: text("title").notNull(),
+  description: text("description"),
+
+  // Status
+  status: text("status", { enum: planStatusEnum }).notNull().default("pending"),
+
+  // Timestamps
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+}, (table) => [
+  index("plans_session_idx").on(table.sessionId),
+  index("plans_agent_idx").on(table.agentId),
+]);
+
+// ============================================================================
+// PLAN STEPS - Individual steps within a plan
+// ============================================================================
+
+export const planStepStatusEnum = ['pending', 'in_progress', 'completed', 'failed', 'skipped'] as const;
+
+export const planSteps = sqliteTable("plan_steps", {
+  id: text("id").primaryKey(),
+
+  // Belongs to plan
+  planId: text("plan_id")
+    .notNull()
+    .references(() => plans.id, { onDelete: "cascade" }),
+
+  // Ordering
+  sequence: integer("sequence").notNull(),
+
+  // Content
+  description: text("description").notNull(),
+
+  // Execution link (for future sub-agent support)
+  assignedAgentId: text("assigned_agent_id")
+    .references(() => agents.id, { onDelete: "set null" }),
+
+  // Status & result
+  status: text("status", { enum: planStepStatusEnum }).notNull().default("pending"),
+  result: text("result"),
+  error: text("error"),
+
+  // Timestamps
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+}, (table) => [
+  index("plan_steps_plan_idx").on(table.planId),
+  index("plan_steps_agent_idx").on(table.assignedAgentId),
+  index("plan_steps_plan_seq_idx").on(table.planId, table.sequence),
+]);
+
+// ============================================================================
 // SETTINGS - App-wide settings (single row)
 // ============================================================================
 
@@ -175,6 +253,14 @@ export type NewSystemPrompt = typeof systemPrompts.$inferInsert;
 
 export type SettingsRecord = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
+
+export type PlanRecord = typeof plans.$inferSelect;
+export type NewPlan = typeof plans.$inferInsert;
+export type PlanStatus = (typeof planStatusEnum)[number];
+
+export type PlanStepRecord = typeof planSteps.$inferSelect;
+export type NewPlanStep = typeof planSteps.$inferInsert;
+export type PlanStepStatus = (typeof planStepStatusEnum)[number];
 
 // ============================================================================
 // MCP SERVERS - External tool providers (Model Context Protocol)

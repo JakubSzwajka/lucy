@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
+import { PlanPanel } from "@/components/plan";
 import { useAgentChat } from "@/hooks/useAgentChat";
 import { useMcpStatus } from "@/hooks/useMcpStatus";
+import { usePlan } from "@/hooks/usePlan";
 import { getModelConfig } from "@/lib/ai/models";
 import type { AvailableProviders } from "@/types";
 
@@ -38,6 +40,12 @@ export function ChatContainer({
     toggleServer: toggleMcpServer,
     isLoading: isMcpLoading,
   } = useMcpStatus();
+
+  // Plan for current session (refreshes when agent finishes responding)
+  const { plan } = usePlan({
+    sessionId,
+    isAgentResponding: isLoading
+  });
 
   // Get model config to check thinking support
   const modelConfig = getModelConfig(selectedModel);
@@ -105,6 +113,9 @@ export function ChatContainer({
         messages={messages}
         isLoading={isLoading}
       />
+
+      {/* Plan Panel (shows above input when plan exists) */}
+      {plan && <PlanPanel plan={plan} />}
 
       {/* Input */}
       <ChatInput

@@ -62,6 +62,17 @@ export type {
 export { SettingsService, getSettingsService } from "./config";
 export { SystemPromptService, getSystemPromptService } from "./config";
 
+// Plan Service
+export { PlanService, getPlanService } from "./plan";
+export { PlanRepository, getPlanRepository } from "./plan";
+export type {
+  CreatePlanInput,
+  UpdatePlanInput,
+  CreatePlanResult,
+  UpdatePlanResult,
+  PlanWithSteps,
+} from "./plan";
+
 // Filesystem Service
 export { FilesystemService, createFilesystemService } from "./filesystem";
 export type { FileInfo, FilesystemServiceConfig } from "./filesystem";
