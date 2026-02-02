@@ -1,8 +1,22 @@
 /**
- * Memory Tool Module
+ * Memory Tool Module - Hybrid Entity/Fact Model
  *
- * Knowledge management with wiki-link based relationships.
- * Uses Obsidian as the storage backend with structured memory organization.
+ * Two types of memories:
+ * - ENTITIES: Brief profiles of people, projects, concepts (stable, hub-like)
+ * - FACTS: Specific pieces of knowledge about entities (evolve independently)
+ *
+ * Structure:
+ *   Memory/
+ *   ├── Kuba.md              <- Entity (brief profile)
+ *   ├── Kuba/
+ *   │   ├── tech stack.md    <- Fact (specific knowledge)
+ *   │   └── philosophy.md    <- Fact
+ *   ├── Lucy App.md          <- Entity
+ *   └── Lucy App/
+ *       └── architecture.md  <- Fact
+ *
+ * Obsidian's backlinks automatically aggregate all facts about an entity.
+ * The entity note stays brief - facts hold the detailed knowledge.
  */
 
 import { z } from "zod";
@@ -15,40 +29,17 @@ import type { ObsidianClient } from "@/lib/integrations";
 
 const MEMORY_ROOT = "Memory";
 
-const MEMORY_TYPES = [
-  "fact",
-  "decision",
-  "preference",
-  "project",
-  "person",
-  "concept",
-  "procedure",
-  "reference",
-] as const;
-
-type MemoryType = (typeof MEMORY_TYPES)[number];
-
-const TYPE_FOLDERS: Record<MemoryType, string> = {
-  fact: "Facts",
-  decision: "Decisions",
-  preference: "Preferences",
-  project: "Projects",
-  person: "People",
-  concept: "Concepts",
-  procedure: "Procedures",
-  reference: "References",
-};
-
 // ============================================================================
-// Helpers
+// Types
 // ============================================================================
 
 interface MemoryFrontmatter {
   created: string;
-  updated: string;
-  type: MemoryType;
+  kind: "entity" | "fact";
   tags: string[];
-  source: string;
+  aliases?: string[];
+  entity?: string; // For facts: which entity this is about
+  updates?: string; // Path to memory this supersedes
 }
 
 interface Memory {
@@ -56,23 +47,41 @@ interface Memory {
   title: string;
   content: string;
   frontmatter: MemoryFrontmatter;
-  links: string[];
 }
 
+// ============================================================================
+// Helpers
+// ============================================================================
+
 function generateFrontmatter(
-  type: MemoryType,
+  kind: "entity" | "fact",
   tags: string[],
-  existingCreated?: string
+  options?: {
+    aliases?: string[];
+    entity?: string;
+    updates?: string;
+  }
 ): string {
-  const now = new Date().toISOString();
-  return `---
-created: ${existingCreated || now}
-updated: ${now}
-type: ${type}
-tags:
-${tags.map((t) => `  - ${t}`).join("\n")}
-source: lucy-agent
----`;
+  const now = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  let yaml = `---
+created: ${now}
+kind: ${kind}
+tags: [${tags.join(", ")}]`;
+
+  if (options?.aliases && options.aliases.length > 0) {
+    yaml += `\naliases: [${options.aliases.join(", ")}]`;
+  }
+
+  if (options?.entity) {
+    yaml += `\nentity: "[[${options.entity}]]"`;
+  }
+
+  if (options?.updates) {
+    yaml += `\nupdates: ${options.updates}`;
+  }
+
+  yaml += `\n---`;
+  return yaml;
 }
 
 function parseFrontmatter(content: string): {
@@ -87,75 +96,54 @@ function parseFrontmatter(content: string): {
   const [, yaml, body] = match;
   const frontmatter: Partial<MemoryFrontmatter> = {};
 
-  // Simple YAML parsing for our known fields
-  const lines = yaml.split("\n");
-  let collectingTags = false;
-  const tags: string[] = [];
+  const parseInlineArray = (line: string, prefix: string): string[] | null => {
+    if (!line.startsWith(prefix)) return null;
+    const match = line.match(new RegExp(`${prefix}\\s*\\[([^\\]]*)\\]`));
+    if (match) {
+      return match[1]
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+    return null;
+  };
 
+  const lines = yaml.split("\n");
   for (const line of lines) {
     if (line.startsWith("created:")) {
       frontmatter.created = line.replace("created:", "").trim();
-      collectingTags = false;
-    } else if (line.startsWith("updated:")) {
-      frontmatter.updated = line.replace("updated:", "").trim();
-      collectingTags = false;
-    } else if (line.startsWith("type:")) {
-      frontmatter.type = line.replace("type:", "").trim() as MemoryType;
-      collectingTags = false;
-    } else if (line.startsWith("source:")) {
-      frontmatter.source = line.replace("source:", "").trim();
-      collectingTags = false;
+    } else if (line.startsWith("kind:")) {
+      frontmatter.kind = line.replace("kind:", "").trim() as "entity" | "fact";
+    } else if (line.startsWith("entity:")) {
+      // Extract entity name from "[[Name]]" format
+      const entityMatch = line.match(/entity:\s*"?\[\[([^\]]+)\]\]"?/);
+      if (entityMatch) {
+        frontmatter.entity = entityMatch[1];
+      }
+    } else if (line.startsWith("updates:")) {
+      frontmatter.updates = line.replace("updates:", "").trim();
     } else if (line.startsWith("tags:")) {
-      collectingTags = true;
-    } else if (collectingTags && line.trim().startsWith("- ")) {
-      tags.push(line.trim().replace("- ", ""));
+      const tags = parseInlineArray(line, "tags:");
+      if (tags) frontmatter.tags = tags;
+    } else if (line.startsWith("aliases:")) {
+      const aliases = parseInlineArray(line, "aliases:");
+      if (aliases) frontmatter.aliases = aliases;
     }
-  }
-
-  if (tags.length > 0) {
-    frontmatter.tags = tags;
   }
 
   return { frontmatter, body: body.trim() };
 }
 
-function extractWikiLinks(content: string): string[] {
-  const linkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
-  const links: string[] = [];
-  let match;
-
-  while ((match = linkPattern.exec(content)) !== null) {
-    links.push(match[1]);
-  }
-
-  return [...new Set(links)];
+function sanitizeForPath(text: string): string {
+  return text.replace(/[/\\:*?"<>|]/g, "-").trim();
 }
 
-function formatMemoryContent(
-  title: string,
-  content: string,
-  context?: string,
-  links?: string[]
-): string {
-  let body = `# ${title}\n\n## Content\n\n${content}`;
-
-  if (context) {
-    body += `\n\n## Context\n\n${context}`;
-  }
-
-  if (links && links.length > 0) {
-    body += `\n\n## Related\n\n${links.map((l) => `- [[${l}]]`).join("\n")}`;
-  }
-
-  body += `\n\n---\n*Memory managed by Lucy*`;
-
-  return body;
+function getEntityPath(title: string): string {
+  return `${MEMORY_ROOT}/${sanitizeForPath(title)}`;
 }
 
-function getMemoryPath(type: MemoryType, title: string): string {
-  const folder = TYPE_FOLDERS[type];
-  const sanitizedTitle = title.replace(/[/\\:*?"<>|]/g, "-");
-  return `${MEMORY_ROOT}/${folder}/${sanitizedTitle}`;
+function getFactPath(entity: string, topic: string): string {
+  return `${MEMORY_ROOT}/${sanitizeForPath(entity)}/${sanitizeForPath(topic)}`;
 }
 
 // ============================================================================
@@ -165,307 +153,422 @@ function getMemoryPath(type: MemoryType, title: string): string {
 export const memoryModule = defineToolModule<ObsidianClient>({
   id: "memory",
   name: "Memory",
-  description: "Knowledge management with wiki-link relationships",
+  description: "Knowledge management with entity/fact hybrid model",
   integrationId: "obsidian",
 
   createTools: (client) => [
     defineTool({
-      name: "memory_search",
-      description: `Search the knowledge base for relevant memories.
+      name: "memory",
+      description: `Store and recall knowledge using a hybrid entity/fact model.
 
-Use this to:
-- Recall past decisions and their rationale
-- Find user preferences before making suggestions
-- Look up project context and history
-- Discover related information via the link graph
+TWO TYPES OF MEMORIES:
 
-Returns memories with their content, tags, and wiki link connections.
-ALWAYS search before adding to avoid duplicates.`,
+1. ENTITIES - Brief profiles of people, projects, or concepts
+   - Stable, hub-like notes
+   - Just identity + key relationships
+   - Let backlinks aggregate the details
+   - Path: Memory/{name}.md
+
+2. FACTS - Specific pieces of knowledge about an entity
+   - Detailed, evolving information
+   - Can be superseded independently
+   - Linked to their entity
+   - Path: Memory/{entity}/{topic}.md
+
+STRUCTURE EXAMPLE:
+  Memory/
+  ├── Kuba.md                 <- Entity (brief)
+  ├── Kuba/
+  │   ├── tech stack.md       <- Fact
+  │   ├── work philosophy.md  <- Fact
+  │   └── side projects.md    <- Fact
+  ├── Dominika.md             <- Entity
+  ├── Lucy App.md             <- Entity
+  └── Lucy App/
+      └── architecture.md     <- Fact
+
+KEY INSIGHT: The entity note stays brief. Obsidian's backlinks automatically
+show all facts. You don't need to cram everything into one document.
+
+WIKI LINKS: Use [[Name]] to connect knowledge. Links to non-existent notes
+are fine - they become real when created. Be consistent with naming.
+
+ACTIONS:
+- "save": Store entity or fact
+- "find": Search memories
+- "update": Append to existing memory
+
+EXAMPLES:
+
+Save an entity (person):
+{
+  "action": "save",
+  "kind": "entity",
+  "title": "Kuba",
+  "content": "Software architect based in Wrocław. Engaged to [[Dominika]]. Building [[Lucy App]].",
+  "tags": ["person"],
+  "aliases": ["Jakub Szwajka", "Kuba Szwajka"]
+}
+
+Save an entity (project):
+{
+  "action": "save",
+  "kind": "entity",
+  "title": "Lucy App",
+  "content": "AI assistant with memory. Built with [[Electron]] + [[Next.js]]. Created by [[Kuba]].",
+  "tags": ["project", "ai"],
+  "aliases": ["Lucy", "Lucy Assistant"]
+}
+
+Save an entity (concept):
+{
+  "action": "save",
+  "kind": "entity",
+  "title": "Domain-Driven Design",
+  "content": "Software design approach focusing on the business domain. Core concepts: bounded contexts, aggregates, entities.",
+  "tags": ["concept", "architecture"],
+  "aliases": ["DDD"]
+}
+
+Save a fact about a person:
+{
+  "action": "save",
+  "kind": "fact",
+  "entity": "Kuba",
+  "topic": "tech stack",
+  "content": "Primary: [[Python]], [[FastAPI]], [[SQLAlchemy]], [[Pydantic]]. Has explored: [[Solidity]], [[HTMX]], [[Hono]], [[WebSockets]].",
+  "tags": ["tech", "skills"]
+}
+
+Save a fact about preferences:
+{
+  "action": "save",
+  "kind": "fact",
+  "entity": "Kuba",
+  "topic": "work philosophy",
+  "content": "Ship fast AND don't create a mess. Uses [[Domain-Driven Design]] for flexibility. AI-assisted workflows. 'Most technical decisions are business decisions in disguise.'",
+  "tags": ["philosophy", "work"]
+}
+
+Save a fact about a project:
+{
+  "action": "save",
+  "kind": "fact",
+  "entity": "Lucy App",
+  "topic": "architecture",
+  "content": "Desktop app using [[Electron]] + [[Next.js]] via Nextron. [[SQLite]] database with [[Drizzle ORM]]. Connects to [[Anthropic]], [[OpenAI]], [[Google]] APIs.",
+  "tags": ["architecture", "tech"]
+}
+
+Save a relationship fact:
+{
+  "action": "save",
+  "kind": "fact",
+  "entity": "Dominika",
+  "topic": "relationship",
+  "content": "Engaged to [[Kuba]]. Works as a designer. Loves [[hiking]] and [[photography]].",
+  "tags": ["relationship", "family"]
+}
+
+Supersede a fact (when something changes):
+{
+  "action": "save",
+  "kind": "fact",
+  "entity": "Kuba",
+  "topic": "tech stack",
+  "content": "Shifting to [[Go]] for performance-critical services. Still using [[Python]] for rapid prototyping.",
+  "tags": ["tech", "skills"],
+  "updates": "Memory/Kuba/tech stack"
+}
+
+SEARCH BEHAVIOR (critical for "find" action):
+- This is KEYWORD search, NOT semantic/AI search
+- Searches match literal text in memory content
+- Short, specific terms work best (1-3 words max)
+- Make MULTIPLE searches with different keywords rather than one long query
+
+BAD QUERY (will likely fail):
+  { "query": "what is the user's personal website URL" }
+  → Searches for that exact phrase literally
+
+GOOD STRATEGY - multiple focused searches:
+  { "query": "website" }
+  { "query": "URL" }
+  { "query": "personal site" }
+  { "query": "Kuba" }  ← entity names are reliable anchors
+
+SEARCH TIPS:
+1. Start with entity name if known (e.g., "Kuba", "Lucy App")
+2. Use 1-3 keywords max per search
+3. Try synonyms in separate calls (e.g., "website", "URL", "homepage")
+4. Combine results from multiple searches
+
+Find examples:
+{
+  "action": "find",
+  "query": "Kuba"
+}
+
+{
+  "action": "find",
+  "query": "tech stack"
+}
+
+{
+  "action": "find",
+  "query": "Lucy architecture"
+}
+
+Update a fact (append new information):
+{
+  "action": "update",
+  "path": "Memory/Kuba/side projects",
+  "append": "Started working on [[Tail Gazer]] - tool for tailing multiple service logs."
+}
+
+Add aliases to existing entity:
+{
+  "action": "update",
+  "path": "Memory/Dominika",
+  "newAliases": ["Dom"]
+}`,
 
       inputSchema: z.object({
-        query: z
+        action: z
+          .enum(["save", "find", "update"])
+          .describe("Action to perform"),
+
+        // For save
+        kind: z
+          .enum(["entity", "fact"])
+          .optional()
+          .describe("Type of memory: 'entity' (brief profile) or 'fact' (specific knowledge)"),
+        title: z
           .string()
-          .describe("Search query - keywords or natural language"),
-        tags: z
-          .array(z.string())
           .optional()
-          .describe("Filter by tags (e.g., ['project', 'decision'])"),
-        type: z
-          .enum(MEMORY_TYPES)
+          .describe("For entities: the name (e.g., 'Kuba', 'Lucy App')"),
+        entity: z
+          .string()
           .optional()
-          .describe("Filter by memory type"),
-        limit: z
-          .number()
+          .describe("For facts: which entity this fact is about"),
+        topic: z
+          .string()
           .optional()
-          .default(10)
-          .describe("Maximum results to return"),
-      }),
-
-      source: { type: "builtin", moduleId: "memory" },
-
-      execute: async (args) => {
-        const { query, tags, type, limit = 10 } = args;
-
-        // Search using Obsidian's search API
-        const searchResults = await client.searchNotes(query, 150);
-
-        // Filter to memory folder only
-        const memoryResults = searchResults.filter((r) =>
-          r.filename.startsWith(MEMORY_ROOT + "/")
-        );
-
-        // Read full content for matching notes and apply filters
-        const memories: Memory[] = [];
-
-        for (const result of memoryResults.slice(0, limit * 2)) {
-          const note = await client.readNote(result.filename);
-          if (!note) continue;
-
-          const { frontmatter, body } = parseFrontmatter(note.content);
-
-          // Filter by type if specified
-          if (type && frontmatter.type !== type) continue;
-
-          // Filter by tags if specified
-          if (tags && tags.length > 0) {
-            const memoryTags = frontmatter.tags || [];
-            const hasMatchingTag = tags.some((t) => memoryTags.includes(t));
-            if (!hasMatchingTag) continue;
-          }
-
-          memories.push({
-            path: note.path,
-            title: note.name,
-            content: body,
-            frontmatter: frontmatter as MemoryFrontmatter,
-            links: extractWikiLinks(note.content),
-          });
-
-          if (memories.length >= limit) break;
-        }
-
-        return {
-          memories,
-          count: memories.length,
-          query,
-        };
-      },
-    }),
-
-    defineTool({
-      name: "memory_add",
-      description: `Store a new memory in the knowledge base.
-
-REQUIRED STRUCTURE:
-- title: Clear, searchable title for the memory
-- content: The information to remember (markdown supported)
-- tags: At least 2-3 relevant tags for categorization
-- type: Classify appropriately (fact, decision, preference, project, person, concept, procedure, reference)
-
-WIKI LINK REQUIREMENTS - CRITICAL:
-Your content MUST include [[wiki links]] to build the knowledge graph:
-- Link to topics: [[Programming]], [[JavaScript]], [[API Design]]
-- Link to people: [[@Person Name]] (use @ prefix)
-- Link to projects: [[#Project Name]] (use # prefix)
-- Link to related memories when relevant
-
-EXAMPLE with proper linking:
-"Discussed [[API Design]] patterns with [[@Sarah]].
-Decided to use [[REST]] over [[GraphQL]] for [[#Lucy App]]
-due to simpler caching. See [[Decision - Tech Stack 2024]]."
-
-The wiki links create relationships in Obsidian's graph, enabling discovery of related knowledge.`,
-
-      inputSchema: z.object({
-        title: z.string().describe("Memory title (becomes the note filename)"),
+          .describe("For facts: the topic (e.g., 'tech stack', 'work philosophy')"),
         content: z
           .string()
-          .describe(
-            "Main content with [[wiki links]] to related topics, people, and concepts"
-          ),
+          .optional()
+          .describe("Memory content with [[wiki links]] to connect knowledge"),
         tags: z
           .array(z.string())
-          .min(1)
-          .describe("Tags for categorization (at least 1 required)"),
-        type: z.enum(MEMORY_TYPES).describe("Memory classification type"),
-        context: z
-          .string()
           .optional()
-          .describe("Optional context about when/why this was stored"),
-        links: z
+          .describe("Tags for categorization"),
+        aliases: z
           .array(z.string())
           .optional()
-          .describe(
-            "Additional explicit links to add in Related section (without [[ ]])"
-          ),
+          .describe("Alternative names for entities (e.g., ['Domi'] for Dominika)"),
+        updates: z
+          .string()
+          .optional()
+          .describe("Path to memory this supersedes"),
+
+        // For find
+        query: z.string().optional().describe("Search keywords (1-3 words). Use short terms, not full sentences. Make multiple searches with different keywords."),
+
+        // For update
+        path: z.string().optional().describe("Path to memory to update"),
+        append: z.string().optional().describe("Content to append"),
+        newTags: z.array(z.string()).optional().describe("Tags to add"),
+        newAliases: z.array(z.string()).optional().describe("Aliases to add"),
       }),
 
       source: { type: "builtin", moduleId: "memory" },
 
       execute: async (args) => {
-        const { title, content, tags, type, context, links } = args;
+        const { action } = args;
 
-        // Validate wiki links are present
-        const contentLinks = extractWikiLinks(content);
-        if (contentLinks.length === 0) {
+        // ========== SAVE ==========
+        if (action === "save") {
+          const { kind, title, entity, topic, content, tags = [], aliases, updates } = args;
+
+          if (!kind) {
+            return { error: "kind is required: 'entity' or 'fact'" };
+          }
+
+          if (!content) {
+            return { error: "content is required" };
+          }
+
+          // ENTITY
+          if (kind === "entity") {
+            if (!title) {
+              return { error: "title is required for entities" };
+            }
+
+            const path = getEntityPath(title);
+            const frontmatter = generateFrontmatter("entity", tags, { aliases, updates });
+            const fullContent = `${frontmatter}\n\n${content}`;
+
+            await client.writeNote(path, fullContent);
+
+            return {
+              success: true,
+              kind: "entity",
+              path: `${path}.md`,
+              title,
+              tags,
+              aliases: aliases || [],
+              message: `Entity saved: "${title}"`,
+            };
+          }
+
+          // FACT
+          if (kind === "fact") {
+            if (!entity) {
+              return { error: "entity is required for facts (which entity is this about?)" };
+            }
+            if (!topic) {
+              return { error: "topic is required for facts (what aspect?)" };
+            }
+
+            const path = getFactPath(entity, topic);
+            const frontmatter = generateFrontmatter("fact", tags, { entity, updates });
+            const fullContent = `${frontmatter}\n\n${content}`;
+
+            await client.writeNote(path, fullContent);
+
+            return {
+              success: true,
+              kind: "fact",
+              path: `${path}.md`,
+              entity,
+              topic,
+              tags,
+              message: `Fact saved: "${entity} / ${topic}"`,
+            };
+          }
+
+          return { error: `Unknown kind: ${kind}` };
+        }
+
+        // ========== FIND ==========
+        if (action === "find") {
+          const { query, tags } = args;
+
+          if (!query) {
+            return { error: "query is required for find action" };
+          }
+
+          const searchResults = await client.searchNotes(query, 150);
+
+          // Filter to memory folder only
+          const memoryResults = searchResults.filter((r) =>
+            r.filename.startsWith(MEMORY_ROOT + "/")
+          );
+
+          // Read full content for top results
+          const memories: Memory[] = [];
+          const limit = 10;
+
+          for (const result of memoryResults.slice(0, limit * 2)) {
+            const note = await client.readNote(result.filename);
+            if (!note) continue;
+
+            const { frontmatter, body } = parseFrontmatter(note.content);
+
+            // Filter by tags if specified
+            if (tags && tags.length > 0) {
+              const memoryTags = frontmatter.tags || [];
+              const hasMatchingTag = tags.some((t) => memoryTags.includes(t));
+              if (!hasMatchingTag) continue;
+            }
+
+            memories.push({
+              path: note.path,
+              title: note.name,
+              content: body,
+              frontmatter: frontmatter as MemoryFrontmatter,
+            });
+
+            if (memories.length >= limit) break;
+          }
+
           return {
-            error:
-              "Content must include at least one [[wiki link]] to build the knowledge graph. " +
-              "Link to topics like [[Programming]], people like [[@Name]], or projects like [[#Project]].",
+            memories,
+            count: memories.length,
+            query,
           };
         }
 
-        const path = getMemoryPath(type, title);
-        const frontmatter = generateFrontmatter(type, tags);
-        const body = formatMemoryContent(title, content, context, links);
-        const fullContent = `${frontmatter}\n\n${body}`;
+        // ========== UPDATE ==========
+        if (action === "update") {
+          const { path, append, newTags, newAliases } = args;
 
-        await client.writeNote(path, fullContent);
-
-        const allLinks = [...contentLinks, ...(links || [])];
-
-        return {
-          success: true,
-          path: `${path}.md`,
-          title,
-          type,
-          tags,
-          links: [...new Set(allLinks)],
-          message: `Memory "${title}" stored in ${TYPE_FOLDERS[type]}/`,
-        };
-      },
-    }),
-
-    defineTool({
-      name: "memory_update",
-      description: `Update an existing memory with new information or corrections.
-
-Use this to:
-- Append new learnings to existing knowledge
-- Correct outdated information
-- Add new [[wiki links]] as relationships are discovered
-- Update tags for better organization
-
-When appending, the new content is added under a dated section.
-Maintain wiki link conventions in any new content.`,
-
-      inputSchema: z.object({
-        path: z
-          .string()
-          .describe(
-            "Path to the memory (e.g., 'Memory/Decisions/API Choice' or full path)"
-          ),
-        updates: z.object({
-          content: z
-            .string()
-            .optional()
-            .describe("Replace entire content (must include [[wiki links]])"),
-          append: z
-            .string()
-            .optional()
-            .describe("Append to existing content (should include [[wiki links]])"),
-          tags: z
-            .object({
-              add: z.array(z.string()).optional(),
-              remove: z.array(z.string()).optional(),
-            })
-            .optional()
-            .describe("Tags to add or remove"),
-          links: z
-            .object({
-              add: z.array(z.string()).optional(),
-            })
-            .optional()
-            .describe("Links to add to Related section"),
-        }),
-      }),
-
-      source: { type: "builtin", moduleId: "memory" },
-
-      execute: async (args) => {
-        const { path, updates } = args;
-
-        // Normalize path
-        const normalizedPath = path.startsWith(MEMORY_ROOT)
-          ? path
-          : `${MEMORY_ROOT}/${path}`;
-
-        // Read existing note
-        const note = await client.readNote(normalizedPath);
-        if (!note) {
-          return { error: `Memory not found: ${normalizedPath}` };
-        }
-
-        const { frontmatter, body } = parseFrontmatter(note.content);
-
-        // Update tags
-        let newTags = frontmatter.tags || [];
-        if (updates.tags?.add) {
-          newTags = [...new Set([...newTags, ...updates.tags.add])];
-        }
-        if (updates.tags?.remove) {
-          newTags = newTags.filter((t) => !updates.tags!.remove!.includes(t));
-        }
-
-        // Update content
-        let newBody = body;
-        if (updates.content) {
-          // Validate wiki links
-          if (extractWikiLinks(updates.content).length === 0) {
-            return {
-              error:
-                "New content must include at least one [[wiki link]].",
-            };
+          if (!path) {
+            return { error: "path is required for update action" };
           }
-          newBody = updates.content;
-        } else if (updates.append) {
-          const date = new Date().toISOString().split("T")[0];
-          newBody = `${body}\n\n### Update (${date})\n\n${updates.append}`;
-        }
 
-        // Add new links to Related section
-        if (updates.links?.add && updates.links.add.length > 0) {
-          const existingLinks = extractWikiLinks(newBody);
-          const newLinks = updates.links.add.filter(
-            (l) => !existingLinks.includes(l)
+          // Normalize path
+          const normalizedPath = path.startsWith(MEMORY_ROOT)
+            ? path
+            : `${MEMORY_ROOT}/${path}`;
+
+          // Read existing note
+          const note = await client.readNote(normalizedPath);
+          if (!note) {
+            return { error: `Memory not found: ${normalizedPath}` };
+          }
+
+          const { frontmatter, body } = parseFrontmatter(note.content);
+
+          // Update tags
+          let updatedTags = frontmatter.tags || [];
+          if (newTags && newTags.length > 0) {
+            updatedTags = [...new Set([...updatedTags, ...newTags])];
+          }
+
+          // Update aliases
+          let updatedAliases = frontmatter.aliases || [];
+          if (newAliases && newAliases.length > 0) {
+            updatedAliases = [...new Set([...updatedAliases, ...newAliases])];
+          }
+
+          // Update content
+          let newBody = body;
+          if (append) {
+            const date = new Date().toISOString().split("T")[0];
+            newBody = `${body}\n\n---\n**Update (${date}):** ${append}`;
+          }
+
+          // Regenerate frontmatter
+          const newFrontmatter = generateFrontmatter(
+            frontmatter.kind || "entity",
+            updatedTags,
+            {
+              aliases: updatedAliases.length > 0 ? updatedAliases : undefined,
+              entity: frontmatter.entity,
+              updates: frontmatter.updates,
+            }
+          );
+          // Preserve original created date
+          const finalFrontmatter = newFrontmatter.replace(
+            /created: .*/,
+            `created: ${frontmatter.created}`
           );
 
-          if (newLinks.length > 0) {
-            if (newBody.includes("## Related")) {
-              // Append to existing Related section
-              newBody = newBody.replace(
-                /(## Related\n\n[\s\S]*?)(\n\n---|\n*$)/,
-                `$1\n${newLinks.map((l) => `- [[${l}]]`).join("\n")}$2`
-              );
-            } else {
-              // Add Related section before footer
-              newBody = newBody.replace(
-                /(\n\n---\n\*Memory managed by Lucy\*)?$/,
-                `\n\n## Related\n\n${newLinks.map((l) => `- [[${l}]]`).join("\n")}\n\n---\n*Memory managed by Lucy*`
-              );
-            }
-          }
+          const fullContent = `${finalFrontmatter}\n\n${newBody}`;
+          await client.writeNote(normalizedPath, fullContent);
+
+          return {
+            success: true,
+            path: note.path,
+            tags: updatedTags,
+            aliases: updatedAliases,
+            message: `Memory updated: "${note.name}"`,
+          };
         }
 
-        // Regenerate frontmatter with updated date
-        const newFrontmatter = generateFrontmatter(
-          frontmatter.type || "fact",
-          newTags,
-          frontmatter.created
-        );
-
-        const fullContent = `${newFrontmatter}\n\n${newBody}`;
-        await client.writeNote(normalizedPath, fullContent);
-
-        return {
-          success: true,
-          path: note.path,
-          updated: {
-            tags: newTags,
-            links: extractWikiLinks(fullContent),
-          },
-          message: `Memory "${note.name}" updated.`,
-        };
+        return { error: `Unknown action: ${action}` };
       },
     }),
   ],

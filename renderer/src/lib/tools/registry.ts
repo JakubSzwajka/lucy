@@ -1,5 +1,4 @@
 import { tool } from "ai";
-import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import type {
   ToolDefinition,
@@ -129,16 +128,15 @@ export class ToolRegistry {
     definition: ToolDefinition,
     contextPartial: Omit<ToolExecutionContext, "callId" | "getState" | "setState">
   ) {
-    // Use passthrough schema to allow any input structure from AI
-    const passthroughSchema = z.object({}).passthrough();
-
     // Capture 'this' for use in execute callback
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const registry = this;
 
     return tool({
       description: definition.description,
-      inputSchema: passthroughSchema,
+      // Use the tool's actual schema - this tells the AI model what parameters the tool expects
+      // For MCP tools, this is a jsonSchema(); for builtin tools, this is typically a Zod schema
+      inputSchema: definition.inputSchema,
       execute: async (args: Record<string, unknown>) => {
         return registry.executeWithContext(_key, definition, args, contextPartial);
       },

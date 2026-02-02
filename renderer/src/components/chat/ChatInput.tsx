@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   PromptInput,
   PromptInputTextarea,
@@ -21,10 +21,23 @@ import {
   ModelSelectorLogo,
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
 import { AVAILABLE_MODELS, getModelConfig } from "@/lib/ai/models";
-import type { ChatMessage, ModelConfig, AvailableProviders } from "@/types";
-import { ChevronDown, Lightbulb } from "lucide-react";
+import type { ChatMessage, ModelConfig, AvailableProviders, McpServer, McpServerStatus } from "@/types";
+import { ChevronDown, Lightbulb, Wrench, Server } from "lucide-react";
+
+interface RegisteredToolInfo {
+  key: string;
+  name: string;
+  description: string;
+  source: {
+    type: "mcp" | "builtin";
+    serverId?: string;
+    serverName?: string;
+    moduleId?: string;
+  };
+}
 
 type Provider = ModelConfig["provider"];
 
@@ -48,6 +61,11 @@ interface ChatInputProps {
   thinkingEnabled: boolean;
   onThinkingChange: (enabled: boolean) => void;
   supportsThinking: boolean;
+  // MCP props
+  mcpServers?: McpServer[];
+  enabledMcpServers?: McpServerStatus[];
+  onMcpToggle?: (serverId: string, enabled: boolean) => void;
+  isMcpLoading?: boolean;
 }
 
 export function ChatInput({
@@ -62,8 +80,39 @@ export function ChatInput({
   thinkingEnabled,
   onThinkingChange,
   supportsThinking,
+  mcpServers = [],
+  enabledMcpServers = [],
+  onMcpToggle,
+  isMcpLoading,
 }: ChatInputProps) {
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [mcpOpen, setMcpOpen] = useState(false);
+  const [tools, setTools] = useState<RegisteredToolInfo[]>([]);
+
+  // Fetch registered tools
+  useEffect(() => {
+    fetch("/api/tools")
+      .then((res) => res.json())
+      .then((data) => setTools(data.tools || []))
+      .catch(() => setTools([]));
+  }, []);
+
+  // MCP helpers
+  const enabledMcpIds = new Set(enabledMcpServers.map((s) => s.serverId));
+  const totalMcpTools = enabledMcpServers.reduce((acc, s) => acc + s.tools.length, 0);
+
+  const getMcpStatusDot = (serverId: string) => {
+    const status = enabledMcpServers.find((s) => s.serverId === serverId);
+    if (!status) return null;
+    if (status.connected) {
+      return <span className="size-1.5 rounded-full bg-emerald-500" title={`Connected - ${status.tools.length} tools`} />;
+    }
+    if (status.error) {
+      return <span className="size-1.5 rounded-full bg-red-500" title={status.error} />;
+    }
+    return <span className="size-1.5 rounded-full bg-yellow-500 animate-pulse" title="Connecting..." />;
+  };
 
   const contextUsage = useMemo(() => {
     if (!modelConfig) return null;
@@ -182,6 +231,126 @@ export function ChatInput({
                   }`}
                 />
               </PromptInputButton>
+            )}
+
+            {/* Tools Selector */}
+            <Popover open={toolsOpen} onOpenChange={setToolsOpen}>
+              <PopoverTrigger asChild>
+                <PromptInputButton className="gap-1.5 text-muted-foreground hover:text-foreground">
+                  <Wrench className="size-3.5" />
+                  <span className="text-xs">Tools</span>
+                  <span className="text-xs text-muted-dark">({tools.length})</span>
+                  <ChevronDown className={`size-3 opacity-50 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
+                </PromptInputButton>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-[300px] max-h-[320px] overflow-y-auto p-2">
+                {tools.filter((t) => t.source.type === "builtin").length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 border-b border-border mb-1">
+                      <span className="text-xs text-muted-dark uppercase tracking-wide">
+                        Builtin ({tools.filter((t) => t.source.type === "builtin").length})
+                      </span>
+                    </div>
+                    {tools.filter((t) => t.source.type === "builtin").map((tool) => (
+                      <div key={tool.key} className="px-2 py-1.5 hover:bg-background-secondary rounded transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{tool.name}</span>
+                          <span className="text-xs text-muted-darkest">({tool.source.moduleId})</span>
+                        </div>
+                        <div className="text-xs text-muted-dark line-clamp-1">{tool.description}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {tools.filter((t) => t.source.type === "mcp").length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 border-b border-border mb-1 mt-1">
+                      <span className="text-xs text-muted-dark uppercase tracking-wide">
+                        MCP ({tools.filter((t) => t.source.type === "mcp").length})
+                      </span>
+                    </div>
+                    {tools.filter((t) => t.source.type === "mcp").map((tool) => (
+                      <div key={tool.key} className="px-2 py-1.5 hover:bg-background-secondary rounded transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{tool.name}</span>
+                          <span className="text-xs text-muted-darkest">({tool.source.serverName || tool.source.serverId})</span>
+                        </div>
+                        <div className="text-xs text-muted-dark line-clamp-1">{tool.description}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {tools.length === 0 && (
+                  <div className="px-2 py-3 text-center text-xs text-muted-dark">No tools registered</div>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            {/* MCP Servers Selector */}
+            {mcpServers.length > 0 && onMcpToggle && (
+              <Popover open={mcpOpen} onOpenChange={setMcpOpen}>
+                <PopoverTrigger asChild>
+                  <PromptInputButton
+                    disabled={isMcpLoading}
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <Server className="size-3.5" />
+                    <span className="text-xs">MCP</span>
+                    {enabledMcpServers.length > 0 ? (
+                      <>
+                        <span className="text-xs text-muted-dark">({enabledMcpServers.length})</span>
+                        <span className="size-1.5 rounded-full bg-emerald-400" />
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-dark">(0)</span>
+                    )}
+                    <ChevronDown className={`size-3 opacity-50 transition-transform ${mcpOpen ? "rotate-180" : ""}`} />
+                  </PromptInputButton>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-[260px] p-2">
+                  <div className="px-2 py-1.5 border-b border-border mb-1">
+                    <span className="text-xs text-muted-dark uppercase tracking-wide">MCP Servers</span>
+                  </div>
+                  {mcpServers.map((server) => {
+                    const isEnabled = enabledMcpIds.has(server.id);
+                    const status = enabledMcpServers.find((s) => s.serverId === server.id);
+                    const toolCount = status?.tools.length ?? 0;
+
+                    return (
+                      <button
+                        key={server.id}
+                        onClick={() => onMcpToggle(server.id, !isEnabled)}
+                        disabled={isMcpLoading}
+                        className="w-full text-left px-2 py-2 hover:bg-background-secondary rounded transition-colors flex items-center gap-2"
+                      >
+                        <div
+                          className={`size-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isEnabled ? "bg-emerald-500 border-emerald-500" : "border-border hover:border-muted-dark"
+                          }`}
+                        >
+                          {isEnabled && (
+                            <svg className="size-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            {isEnabled && getMcpStatusDot(server.id)}
+                            <span className="text-xs font-medium truncate">{server.name}</span>
+                          </div>
+                        </div>
+                        {isEnabled && status?.connected && (
+                          <span className="text-xs text-muted-dark flex-shrink-0">{toolCount} tools</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {mcpServers.length === 0 && (
+                    <div className="px-2 py-3 text-center text-xs text-muted-dark">No MCP servers configured</div>
+                  )}
+                </PopoverContent>
+              </Popover>
             )}
           </PromptInputTools>
           <PromptInputSubmit

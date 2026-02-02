@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { jsonSchema } from "ai";
 import type { ToolProvider, ToolDefinition, ToolExecutionContext } from "../types";
 import {
   getGlobalPool,
@@ -84,12 +84,16 @@ export class McpToolProvider implements ToolProvider {
     mcpTool: { name: string; description?: string; inputSchema?: Record<string, unknown> },
     serverConfig?: McpServer
   ): ToolDefinition {
+    // Convert MCP's JSON Schema to AI SDK compatible schema
+    // Default to empty object schema if not provided
+    const mcpJsonSchema = mcpTool.inputSchema || { type: "object", properties: {} };
+
     return {
       name: mcpTool.name,
       description: mcpTool.description || `Tool: ${mcpTool.name}`,
-      // MCP tools use JSON Schema, but we use a passthrough zod schema
-      // to allow any input (MCP server handles validation)
-      inputSchema: z.object({}).passthrough(),
+      // Use jsonSchema() to preserve the MCP tool's parameter definitions
+      // This tells the AI model what parameters the tool expects
+      inputSchema: jsonSchema(mcpJsonSchema),
       source: {
         type: "mcp",
         serverId: wrapper.serverId,

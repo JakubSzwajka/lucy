@@ -1,4 +1,5 @@
-import { z } from "zod";
+import type { z } from "zod";
+import type { Schema } from "ai";
 
 // ============================================================================
 // Tool Source Types
@@ -53,7 +54,8 @@ export interface ToolDefinition<
 > {
   name: string;
   description: string;
-  inputSchema: z.ZodType<TInput>;
+  // Accepts both Zod schemas (for builtin tools) and AI SDK jsonSchema() (for MCP tools)
+  inputSchema: z.ZodType<TInput> | Schema<TInput>;
   source: ToolSource;
 
   // Execution handler
