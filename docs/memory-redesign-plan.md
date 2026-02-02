@@ -359,23 +359,23 @@ This happens at search time, not storage time.
 
 ## Implementation Phases
 
-### Phase 1: Simplify Structure
-- [ ] Remove type folders, use flat `Memory/` folder
-- [ ] Simplify frontmatter (remove `type`, `source`, `updated`)
-- [ ] Simplify note format (remove rigid sections)
-- [ ] Update tool descriptions with linking conventions
+### Phase 1: Simplify Structure ✅ COMPLETED
+- [x] Remove type folders, use flat `Memory/` folder
+- [x] Simplify frontmatter (remove `type`, `source`, `updated`)
+- [x] Simplify note format (remove rigid sections)
+- [x] Update tool descriptions with linking conventions
 
-### Phase 2: Simplify Tools
-- [ ] Merge `memory_search`, `memory_add`, `memory_update` into single `memory` tool
-- [ ] Remove wiki-link validation (agent handles it via conventions)
-- [ ] Add `updates` field support in frontmatter
+### Phase 2: Simplify Tools ✅ COMPLETED
+- [x] Merge `memory_search`, `memory_add`, `memory_update` into single `memory` tool
+- [x] Remove wiki-link validation (agent handles it via conventions)
+- [x] Add `updates` field support in frontmatter
 
-### Phase 3: Agent Prompting
-- [ ] Add linking conventions to system prompt
-- [ ] Add auto-capture patterns (preferences, decisions, context)
-- [ ] Test agent's adherence to conventions
+### Phase 3: Agent Prompting ✅ COMPLETED
+- [x] Add linking conventions to tool description
+- [x] Add auto-capture patterns (preferences, decisions, context)
+- [x] Rich examples for life assistant use cases
 
-### Phase 4: Entity Notes (Optional)
+### Phase 4: Entity Notes (Future)
 - [ ] Add ability for agent to create entity notes (@Person, #Project)
 - [ ] Consider periodic "consolidation" where agent reviews orphan links
 

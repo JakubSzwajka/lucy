@@ -22,6 +22,10 @@
 import { z } from "zod";
 import { defineToolModule, defineTool } from "../../types";
 import type { ObsidianClient } from "@/lib/integrations";
+import {
+  conversationsIntegration,
+  type ConversationSearchResult,
+} from "@/lib/integrations";
 
 // ============================================================================
 // Constants
@@ -144,6 +148,74 @@ function getEntityPath(title: string): string {
 
 function getFactPath(entity: string, topic: string): string {
   return `${MEMORY_ROOT}/${sanitizeForPath(entity)}/${sanitizeForPath(topic)}`;
+}
+
+// ============================================================================
+// Conversation Search Formatting
+// ============================================================================
+
+interface FormattedConversationResult {
+  sessionTitle: string;
+  matchType: "message" | "tool_call" | "tool_result" | "reasoning";
+  matchedContent: string;
+  context: string;
+  createdAt: Date;
+}
+
+function formatConversationResults(
+  results: ConversationSearchResult[]
+): FormattedConversationResult[] {
+  return results.map((result) => {
+    // Format context as readable conversation snippet
+    const contextLines: string[] = [];
+
+    // Add "before" context
+    for (const item of result.context.before) {
+      contextLines.push(formatContextItem(item));
+    }
+
+    // Add matched item with marker
+    contextLines.push(`>>> MATCHED: ${formatContextItem(result.matchedItem)} <<<`);
+
+    // Add "after" context
+    for (const item of result.context.after) {
+      contextLines.push(formatContextItem(item));
+    }
+
+    return {
+      sessionTitle: result.sessionTitle,
+      matchType: result.matchedItem.type,
+      matchedContent: result.matchedItem.content,
+      context: contextLines.join("\n"),
+      createdAt: result.matchedItem.createdAt,
+    };
+  });
+}
+
+function formatContextItem(item: {
+  type: string;
+  content: string;
+  role?: string;
+  toolName?: string;
+}): string {
+  switch (item.type) {
+    case "message":
+      return `[${item.role || "unknown"}]: ${truncate(item.content, 200)}`;
+    case "tool_call":
+      return `[tool: ${item.toolName}]`;
+    case "tool_result":
+      return `[result]: ${truncate(item.content, 200)}`;
+    case "reasoning":
+      return `[thinking]: ${truncate(item.content, 200)}`;
+    default:
+      return `[${item.type}]: ${truncate(item.content, 200)}`;
+  }
+}
+
+function truncate(text: string, maxLength: number): string {
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "...";
 }
 
 // ============================================================================
@@ -283,9 +355,11 @@ Supersede a fact (when something changes):
 
 SEARCH BEHAVIOR (critical for "find" action):
 - This is KEYWORD search, NOT semantic/AI search
-- Searches match literal text in memory content
+- Searches BOTH Obsidian memories AND past conversations in parallel
+- Searches match literal text in content
 - Short, specific terms work best (1-3 words max)
 - Make MULTIPLE searches with different keywords rather than one long query
+- Conversation results include context (messages before/after the match)
 
 BAD QUERY (will likely fail):
   { "query": "what is the user's personal website URL" }
@@ -384,7 +458,7 @@ Add aliases to existing entity:
 
       source: { type: "builtin", moduleId: "memory" },
 
-      execute: async (args) => {
+      execute: async (args, context) => {
         const { action } = args;
 
         // ========== SAVE ==========
@@ -459,14 +533,27 @@ Add aliases to existing entity:
             return { error: "query is required for find action" };
           }
 
-          const searchResults = await client.searchNotes(query, 150);
+          // Create conversations client for parallel search
+          const conversationsClient = conversationsIntegration.createClient();
 
-          // Filter to memory folder only
+          // Search Obsidian memories and past conversations in parallel
+          const [searchResults, conversationResults] = await Promise.all([
+            client.searchNotes(query, 150),
+            Promise.resolve(
+              conversationsClient.search(query, {
+                excludeSessionId: context.sessionId,
+                limit: 5,
+                contextWindow: 3,
+              })
+            ),
+          ]);
+
+          // Filter Obsidian results to memory folder only
           const memoryResults = searchResults.filter((r) =>
             r.filename.startsWith(MEMORY_ROOT + "/")
           );
 
-          // Read full content for top results
+          // Read full content for top Obsidian results
           const memories: Memory[] = [];
           const limit = 10;
 
@@ -493,9 +580,12 @@ Add aliases to existing entity:
             if (memories.length >= limit) break;
           }
 
+          // Format conversation results
+          const conversations = formatConversationResults(conversationResults);
+
           return {
             memories,
-            count: memories.length,
+            conversations,
             query,
           };
         }

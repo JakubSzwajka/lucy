@@ -35,6 +35,14 @@ export type { TodoistTask, TodoistProject, TodoistUser } from "./todoist";
 export { obsidianIntegration, ObsidianClient } from "./obsidian";
 export type { NoteInfo, NoteContent } from "./obsidian";
 
+// Conversations
+export { conversationsIntegration, ConversationsClient } from "./conversations";
+export type {
+  ConversationSearchResult,
+  ConversationSearchOptions,
+  ContextItem,
+} from "./conversations";
+
 // Filesystem
 export { filesystemIntegration, FilesystemService } from "./filesystem";
 export type { FileInfo, FilesystemServiceConfig } from "./filesystem";
@@ -63,6 +71,7 @@ export type AnyIntegration = SimpleIntegration<any>;
 
 import { todoistIntegration } from "./todoist";
 import { obsidianIntegration } from "./obsidian";
+import { conversationsIntegration } from "./conversations";
 import { filesystemIntegration } from "./filesystem";
 
 /**
@@ -76,6 +85,7 @@ import { filesystemIntegration } from "./filesystem";
 export const allIntegrations: AnyIntegration[] = [
   todoistIntegration,
   obsidianIntegration,
+  conversationsIntegration,
   filesystemIntegration,
 ];
 

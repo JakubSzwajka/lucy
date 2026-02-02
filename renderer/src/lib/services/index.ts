@@ -65,3 +65,14 @@ export { SystemPromptService, getSystemPromptService } from "./config";
 // Filesystem Service
 export { FilesystemService, createFilesystemService } from "./filesystem";
 export type { FileInfo, FilesystemServiceConfig } from "./filesystem";
+
+// Conversation Search
+export {
+  ConversationSearchRepository,
+  getConversationSearchRepository,
+} from "./conversation-search";
+export type {
+  ConversationSearchResult,
+  ConversationSearchOptions,
+  ContextItem,
+} from "./conversation-search";
