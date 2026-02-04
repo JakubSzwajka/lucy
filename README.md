@@ -15,15 +15,18 @@ npm run dev              # Start development
 
 ```
 lucy-nextjs/
-├── main/                    # Electron main process
+├── main/                    # Electron main process (IPC, window mgmt)
 ├── renderer/                # Next.js app (App Router)
 │   └── src/
 │       ├── app/             # Pages and API routes
-│       ├── components/      # React components
-│       ├── hooks/           # Custom hooks
+│       │   └── api/         # REST API endpoints
+│       ├── components/      # React UI components
+│       ├── hooks/           # Custom React hooks
 │       ├── lib/
+│       │   ├── ai/          # AI provider abstraction
 │       │   ├── db/          # Database (SQLite + Drizzle)
-│       │   ├── ai/          # AI provider integrations
+│       │   ├── integrations/# External service connectors
+│       │   ├── services/    # Business logic layer
 │       │   └── tools/       # Tool system
 │       └── types/           # TypeScript types
 ├── scripts/                 # Build scripts
@@ -32,11 +35,34 @@ lucy-nextjs/
 
 ## Documentation
 
+### Architecture Docs
+
 | Module | Description |
 |--------|-------------|
 | [Database](docs/database.md) | SQLite schema, multi-agent hierarchy, polymorphic items |
 | [Tools](docs/tools.md) | Tool registry, providers, execution pipeline |
-| [Knowledge](renderer/src/lib/tools/integrations/knowledge/README.md) | File-based knowledge graph with entities and relations |
+| [Library Architecture](renderer/src/lib/README.md) | Module dependency graph, service layer patterns |
+| [Tool Architecture](renderer/src/lib/tools/ARCHITECTURE.md) | Detailed tool system design |
+
+### Layer Documentation
+
+| Layer | Description |
+|-------|-------------|
+| [main/](main/README.md) | Electron main process, IPC, preload bridge |
+| [API Routes](renderer/src/app/api/README.md) | REST endpoints, streaming, request patterns |
+| [Services](renderer/src/lib/services/README.md) | Business logic, repository pattern |
+| [Integrations](renderer/src/lib/integrations/README.md) | External services, MCP protocol |
+| [AI Providers](renderer/src/lib/ai/README.md) | Model registry, provider factories |
+| [Hooks](renderer/src/hooks/README.md) | React hooks for state and async |
+| [Components](renderer/src/components/README.md) | UI component organization |
+
+### Specifications
+
+| Spec | Description |
+|------|-------------|
+| [Settings](docs/SETTINGS_SPEC.md) | Settings system design |
+| [MCP Integration](docs/MCP_INTEGRATION_SPEC.md) | Model Context Protocol integration |
+| [Memory System](docs/memory-redesign-plan.md) | Entity/fact memory model |
 
 ## Commands
 

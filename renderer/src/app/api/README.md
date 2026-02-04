@@ -1,0 +1,431 @@
+# API Routes
+
+This directory contains all Next.js API routes for the Lucy desktop application. These routes serve as the HTTP interface between the React frontend and the backend services.
+
+## Purpose
+
+The API layer provides:
+
+- **RESTful endpoints** for CRUD operations on sessions, agents, items, and configuration
+- **Streaming endpoints** for real-time AI chat responses
+- **Service delegation** - routes are thin controllers that delegate business logic to services
+- **Consistent error handling** with proper HTTP status codes
+
+## Architecture
+
+```
+Frontend (React)
+      |
+      v
+  API Routes (/api/*)      <-- This layer
+      |
+      v
+  Services (@/lib/services)
+      |
+      v
+  Database (SQLite + Drizzle)
+```
+
+Routes follow a consistent pattern:
+1. Parse and validate request parameters
+2. Get the appropriate service singleton
+3. Call service methods
+4. Return JSON responses with appropriate status codes
+
+---
+
+## Routes Reference
+
+### Sessions
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/sessions` | List all sessions |
+| `POST` | `/api/sessions` | Create a new session with root agent |
+| `GET` | `/api/sessions/[id]` | Get session with its agents and items |
+| `PATCH` | `/api/sessions/[id]` | Update session (title, status) |
+| `DELETE` | `/api/sessions/[id]` | Delete session (cascades to agents and items) |
+
+**Create Session Request:**
+```json
+{
+  "title": "Optional title",
+  "agentName": "Optional agent name",
+  "systemPrompt": "Optional system prompt",
+  "model": "Optional model ID"
+}
+```
+
+### Agents
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/api/agents` | Create a new agent (usually a child agent) |
+| `GET` | `/api/agents/[id]` | Get agent with its items |
+| `PATCH` | `/api/agents/[id]` | Update agent (status, result, etc.) |
+| `DELETE` | `/api/agents/[id]` | Delete agent (cascades to items) |
+
+**Create Agent Request:**
+```json
+{
+  "sessionId": "required",
+  "parentId": "optional parent agent ID",
+  "sourceCallId": "optional tool call ID that spawned this agent",
+  "name": "optional",
+  "task": "optional task description",
+  "systemPrompt": "optional",
+  "model": "optional model ID",
+  "config": "optional JSON config"
+}
+```
+
+### Items
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/agents/[id]/items` | Get all items for an agent |
+| `POST` | `/api/agents/[id]/items` | Add an item to an agent's thread |
+
+Items are polymorphic and support four types:
+
+**Message Item:**
+```json
+{
+  "type": "message",
+  "role": "user | assistant | system",
+  "content": "Message text"
+}
+```
+
+**Tool Call Item:**
+```json
+{
+  "type": "tool_call",
+  "callId": "unique call ID",
+  "toolName": "name of the tool",
+  "toolArgs": { "key": "value" },
+  "toolStatus": "pending | running | completed | failed"
+}
+```
+
+**Tool Result Item:**
+```json
+{
+  "type": "tool_result",
+  "callId": "matching call ID",
+  "toolOutput": "result data",
+  "toolError": "error message if failed"
+}
+```
+
+**Reasoning Item:**
+```json
+{
+  "type": "reasoning",
+  "reasoningContent": "Full reasoning text",
+  "reasoningSummary": "Optional summary"
+}
+```
+
+### Chat (Streaming)
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/api/chat` | Stream AI chat response for an agent |
+
+**Request:**
+```json
+{
+  "agentId": "required agent ID",
+  "messages": [{ "role": "user", "content": "Hello" }],
+  "model": "optional model ID override",
+  "thinkingEnabled": true
+}
+```
+
+**Response:** Server-Sent Events stream (see Streaming section below)
+
+### Settings
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/settings` | Get current application settings |
+| `PATCH` | `/api/settings` | Update settings |
+
+**Update Settings Request:**
+```json
+{
+  "defaultModelId": "model-id",
+  "defaultSystemPromptId": "prompt-id",
+  "enabledModels": ["model-1", "model-2"]
+}
+```
+
+### System Prompts
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/system-prompts` | List all system prompts |
+| `POST` | `/api/system-prompts` | Create a new system prompt |
+| `GET` | `/api/system-prompts/[id]` | Get a single system prompt |
+| `PATCH` | `/api/system-prompts/[id]` | Update a system prompt |
+| `DELETE` | `/api/system-prompts/[id]` | Delete a system prompt |
+
+**Create/Update Request:**
+```json
+{
+  "name": "Prompt name",
+  "content": "System prompt content"
+}
+```
+
+### MCP Servers
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/mcp-servers` | List all MCP servers |
+| `POST` | `/api/mcp-servers` | Create a new MCP server |
+| `GET` | `/api/mcp-servers/[id]` | Get a single MCP server |
+| `PATCH` | `/api/mcp-servers/[id]` | Update an MCP server |
+| `DELETE` | `/api/mcp-servers/[id]` | Delete an MCP server |
+| `GET` | `/api/mcp-servers/status` | Get connection status of all enabled MCP servers |
+| `POST` | `/api/mcp-servers/[id]/test` | Test connection to an MCP server |
+
+### Tools
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/tools` | List all registered tools from all providers |
+
+**Response:**
+```json
+{
+  "tools": [
+    {
+      "key": "tool-unique-key",
+      "name": "Tool Name",
+      "description": "What the tool does",
+      "source": "built-in | mcp"
+    }
+  ]
+}
+```
+
+### Providers
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/providers` | Get available AI providers and their models |
+
+### Plans
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/plans?sessionId=xxx` | Get plan for a session with progress |
+
+**Response:**
+```json
+{
+  "plan": {
+    "id": "plan-id",
+    "sessionId": "session-id",
+    "steps": [...],
+    "progress": {
+      "total": 5,
+      "completed": 2,
+      "percentage": 40
+    }
+  }
+}
+```
+
+### OpenAPI
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/openapi` | Get OpenAPI specification for the API |
+
+---
+
+## Request/Response Patterns
+
+### Success Responses
+
+- **200 OK** - Successful GET, PATCH requests
+- **201 Created** - Successful POST requests that create resources
+- **204 No Content** - Successful DELETE requests
+
+### Error Responses
+
+All errors return JSON with an `error` field:
+
+```json
+{
+  "error": "Description of what went wrong"
+}
+```
+
+Common status codes:
+- **400 Bad Request** - Missing required fields or validation errors
+- **404 Not Found** - Resource does not exist
+- **500 Internal Server Error** - Unexpected server errors
+
+### Route Parameter Pattern
+
+Dynamic route segments use Next.js 15's async params pattern:
+
+```typescript
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export async function GET(req: Request, { params }: RouteParams) {
+  const { id } = await params;
+  // ...
+}
+```
+
+---
+
+## Streaming
+
+The `/api/chat` endpoint uses the Vercel AI SDK's streaming capabilities to provide real-time AI responses.
+
+### How It Works
+
+1. **Request received** - Client sends messages, agent ID, and options
+2. **Context preparation** - `ChatService.prepareChat()` resolves:
+   - Agent and its configuration
+   - Model and language model instance
+   - System prompt (agent-specific or default)
+   - Available tools from the tool registry
+   - Provider-specific options (e.g., thinking/reasoning settings)
+3. **Streaming initiated** - `streamText()` from the AI SDK handles:
+   - Sending messages to the AI provider
+   - Multi-step tool use (up to 10 steps with tools, 1 without)
+   - Streaming response chunks back to the client
+4. **Step persistence** - `onStepFinish` callback persists each step's content:
+   - Reasoning blocks (if model supports it)
+   - Text messages
+   - Tool calls and results
+   - Items are saved in their natural interleaved order
+5. **Finalization** - `onFinish` callback updates agent status
+
+### Response Format
+
+The response uses `toUIMessageStreamResponse()` which sends:
+- Text content as it streams
+- Reasoning blocks (when `sendReasoning: true`)
+- Tool calls and results
+- Step completion events
+
+### Step Persistence
+
+The `persistStepContent` function in `step-persistence.service.ts` handles saving streaming content:
+
+```
+For each step:
+1. Save reasoning blocks first (if any)
+2. Process content parts in order:
+   - Text parts: accumulate until interrupted
+   - Tool calls: flush text, save tool call
+   - Tool results: save result and update status
+3. Flush any remaining text
+```
+
+This ensures the conversation history accurately reflects the AI's thought process.
+
+---
+
+## Service Layer
+
+Routes delegate all business logic to services in `@/lib/services`. Each service follows the singleton pattern.
+
+### Available Services
+
+| Service | Getter | Description |
+|---------|--------|-------------|
+| `SessionService` | `getSessionService()` | Session CRUD, session-agent relationships |
+| `AgentService` | `getAgentService()` | Agent CRUD, parent-child hierarchy |
+| `ItemService` | `getItemService()` | Polymorphic item management |
+| `ChatService` | `getChatService()` | Chat orchestration and streaming |
+| `SettingsService` | `getSettingsService()` | Application settings |
+| `SystemPromptService` | `getSystemPromptService()` | System prompt management |
+| `McpService` | `getMcpService()` | MCP server management and connections |
+| `PlanService` | `getPlanService()` | Planning and step tracking |
+
+### Service Result Pattern
+
+Services return result objects that routes can easily convert to HTTP responses:
+
+```typescript
+// Service returns:
+{ session: Session }           // Success
+{ error: "message" }           // Validation error
+{ notFound: true }             // Resource not found
+
+// Route converts to:
+NextResponse.json(result.session)                    // 200
+NextResponse.json({ error }, { status: 400 })        // 400
+NextResponse.json({ error }, { status: 404 })        // 404
+```
+
+### Example Route Pattern
+
+```typescript
+export async function GET(req: Request, { params }: RouteParams) {
+  const { id } = await params;
+  const service = getSessionService();
+
+  const session = service.getWithAgents(id);
+
+  if (!session) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(session);
+}
+```
+
+---
+
+## File Structure
+
+```
+api/
+├── README.md                      # This file
+├── chat/
+│   └── route.ts                   # POST - AI chat streaming
+├── sessions/
+│   ├── route.ts                   # GET, POST - Session list/create
+│   └── [id]/
+│       └── route.ts               # GET, PATCH, DELETE - Single session
+├── agents/
+│   ├── route.ts                   # POST - Create agent
+│   └── [id]/
+│       ├── route.ts               # GET, PATCH, DELETE - Single agent
+│       └── items/
+│           └── route.ts           # GET, POST - Agent items
+├── settings/
+│   └── route.ts                   # GET, PATCH - App settings
+├── system-prompts/
+│   ├── route.ts                   # GET, POST - Prompt list/create
+│   └── [id]/
+│       └── route.ts               # GET, PATCH, DELETE - Single prompt
+├── mcp-servers/
+│   ├── route.ts                   # GET, POST - Server list/create
+│   ├── status/
+│   │   └── route.ts               # GET - All servers status
+│   └── [id]/
+│       ├── route.ts               # GET, PATCH, DELETE - Single server
+│       └── test/
+│           └── route.ts           # POST - Test server connection
+├── tools/
+│   └── route.ts                   # GET - List all tools
+├── providers/
+│   └── route.ts                   # GET - List AI providers
+├── plans/
+│   └── route.ts                   # GET - Get session plan
+└── openapi/
+    └── route.ts                   # GET - OpenAPI specification
+```
