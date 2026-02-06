@@ -34,7 +34,7 @@ API Routes (app/api/*)
 | **SessionService** | Manage conversation sessions (create, archive, title generation) |
 | **AgentService** | Manage agents within sessions (hierarchy, status, turns) |
 | **ItemService** | Manage polymorphic items (messages, tool calls, reasoning) |
-| **ChatService** | Orchestrate AI chat (prepare context, resolve prompts, finalize) |
+| **ChatService** | Turn orchestrator (resolve session, persist messages, stream AI, persist steps, finalize) |
 | **PlanService** | Manage task plans and steps (create, track progress) |
 | **SettingsService** | Manage app settings (default model, enabled models) |
 | **SystemPromptService** | CRUD for system prompts (with seed data) |
@@ -175,25 +175,25 @@ class ItemTransformer {
 
 **File:** `chat/chat.service.ts`
 
-Orchestrates AI chat sessions. Prepares context for streaming, resolves system prompts, and handles finalization.
+Turn orchestrator. Owns the full chat turn: resolves session and agent, persists user messages, prepares AI context, calls `streamText()`, persists streaming steps, and finalizes agent status.
 
 ### Key Methods
 
 ```typescript
 class ChatService {
-  // Preparation
+  // Turn orchestration (main entry point)
+  async executeTurn(sessionId: string, chatMessages: unknown[], options?: ExecuteTurnOptions):
+    Promise<{ stream: StreamTextResult } | { error: string; status: number }>
+
+  // Preparation (internal, called by executeTurn)
   async prepareChat(agentId: string, options?: ChatPrepareOptions): Promise<ChatContext | null>
   async resolveSystemPrompt(agent: Agent): Promise<string | null>
-  async getDefaultSystemPrompt(): Promise<string | null>
 
-  // Message Conversion
+  // Message Conversion (internal)
   convertToModelMessages(chatMessages: unknown[]): ModelMessage[]
   prependSystemPrompt(messages: ModelMessage[], systemPrompt: string | null): ModelMessage[]
 
-  // Provider Options
-  buildProviderOptions(modelConfig: ModelConfig, thinkingEnabled: boolean): unknown
-
-  // Finalization
+  // Finalization (internal, called via onFinish callback)
   async finalizeChat(agentId: string): Promise<ChatFinishResult>
 }
 
@@ -489,10 +489,14 @@ ItemService
     |
     +---> ItemRepository ---> db (items, agents, sessions tables)
 
-ChatService
+ChatService (turn orchestrator)
     |
-    +---> AgentService
+    +---> SessionService (resolve session, auto-title, touch timestamp)
+    +---> AgentService (get agent, update status)
+    +---> ItemService (persist user message)
+    +---> StepPersistence (persist streaming steps)
     +---> ToolRegistry
+    +---> AI Providers (getLanguageModel)
     +---> db (settings, systemPrompts tables)
 
 PlanService

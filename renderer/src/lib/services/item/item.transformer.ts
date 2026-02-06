@@ -6,6 +6,13 @@ import type {
   ReasoningContentPart,
   ToolCallContentPart,
 } from "@/types";
+import {
+  type UIMessage,
+  isTextUIPart,
+  isReasoningUIPart,
+  isToolUIPart,
+  getToolName,
+} from "ai";
 
 // ============================================================================
 // Item Transformer
@@ -19,77 +26,55 @@ export class ItemTransformer {
   /**
    * Extract text content from UIMessage parts (AI SDK format)
    */
-  static extractContent(message: Record<string, unknown>): string {
-    if (typeof message.content === "string") {
-      return message.content;
-    }
-    if (Array.isArray(message.parts)) {
-      return (message.parts as Record<string, unknown>[])
-        .filter((part) => part.type === "text")
-        .map((part) => part.text as string)
-        .join("");
-    }
-    return "";
+  static extractContent(message: UIMessage): string {
+    return message.parts
+      .filter(isTextUIPart)
+      .map((part) => part.text)
+      .join("");
   }
 
   /**
    * Extract interleaved content parts from AI SDK UIMessage parts (streaming format).
-   * AI SDK uses part.type = "tool-${toolName}" format (e.g., "tool-getWeather")
-   * States: "input-streaming", "input-available", "output-available", "output-error"
+   * Handles text, reasoning, and tool parts (both static tool-* and dynamic-tool).
    */
-  static extractContentPartsFromStreamingMessage(message: Record<string, unknown>): ContentPart[] {
+  static extractContentPartsFromStreamingMessage(message: UIMessage): ContentPart[] {
     const contentParts: ContentPart[] = [];
 
-    if (!Array.isArray(message.parts)) {
-      return contentParts;
-    }
+    for (let index = 0; index < message.parts.length; index++) {
+      const part = message.parts[index];
 
-    const parts = message.parts as Record<string, unknown>[];
-
-    // Process parts in order to maintain interleaving
-    for (let index = 0; index < parts.length; index++) {
-      const part = parts[index];
-      const partType = part.type as string;
-
-      if (partType === "reasoning") {
+      if (isReasoningUIPart(part)) {
         contentParts.push({
           type: "reasoning",
           id: `${message.id}-reasoning-${index}`,
-          content: part.text as string,
-        } as ReasoningContentPart);
-      } else if (partType === "text") {
+          content: part.text,
+        } satisfies ReasoningContentPart);
+      } else if (isTextUIPart(part)) {
         contentParts.push({
           type: "text",
           id: `${message.id}-text-${index}`,
-          text: part.text as string,
-        } as TextContentPart);
-      } else if (partType.startsWith("tool-")) {
-        // Extract tool name from "tool-${toolName}" format
-        const toolName = partType.slice(5); // Remove "tool-" prefix
-        const state = part.state as string;
-
-        // Determine status based on AI SDK state values
+          text: part.text,
+        } satisfies TextContentPart);
+      } else if (isToolUIPart(part)) {
         let status: "running" | "completed" | "failed" = "running";
-        if (state === "output-available") {
+        if (part.state === "output-available") {
           status = "completed";
-        } else if (state === "output-error") {
+        } else if (part.state === "output-error") {
           status = "failed";
         }
 
         contentParts.push({
           type: "tool_call",
           id: `${message.id}-tool-${index}`,
-          callId: part.toolCallId as string,
-          toolName: toolName,
-          args: part.input as Record<string, unknown>,
+          callId: part.toolCallId,
+          toolName: getToolName(part),
+          args: part.input as Record<string, unknown> | undefined,
           status,
-          result: state === "output-available" && part.output
+          result: part.state === "output-available" && part.output
             ? JSON.stringify(part.output)
             : undefined,
-          error: state === "output-error" && part.errorText
-            ? (part.errorText as string)
-            : undefined,
-        } as ToolCallContentPart);
+          error: part.state === "output-error" ? part.errorText : undefined,
+        } satisfies ToolCallContentPart);
       }
     }
 
@@ -243,7 +228,7 @@ export class ItemTransformer {
    */
   static mergeWithStreaming(
     loadedItems: Item[],
-    rawMessages: Record<string, unknown>[]
+    rawMessages: UIMessage[]
   ): ChatMessage[] {
     // Start with loaded items converted to messages
     const fromItems = ItemTransformer.itemsToChatMessages(loadedItems);
@@ -254,10 +239,10 @@ export class ItemTransformer {
     );
 
     const streamingMessages = rawMessages
-      .filter((msg) => !loadedMessageIds.has(msg.id as string))
+      .filter((msg) => !loadedMessageIds.has(msg.id))
       .map((msg) => ({
-        id: msg.id as string,
-        role: msg.role as "user" | "assistant" | "system",
+        id: msg.id,
+        role: msg.role,
         content: ItemTransformer.extractContent(msg),
         parts: ItemTransformer.extractContentPartsFromStreamingMessage(msg),
       }));

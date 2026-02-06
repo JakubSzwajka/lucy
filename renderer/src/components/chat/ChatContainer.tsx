@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { PlanPanel } from "@/components/plan";
-import { useAgentChat } from "@/hooks/useAgentChat";
+import { useSessionChat } from "@/hooks/useAgentChat";
 import { useMcpStatus } from "@/hooks/useMcpStatus";
 import { usePlan } from "@/hooks/usePlan";
 import { getModelConfig } from "@/lib/ai/models";
@@ -12,7 +12,6 @@ import type { AvailableProviders } from "@/types";
 
 interface ChatContainerProps {
   sessionId: string | null;
-  agentId: string | null;
   selectedModel: string;
   onModelChange: (modelId: string) => void;
   availableProviders?: AvailableProviders;
@@ -21,15 +20,13 @@ interface ChatContainerProps {
 
 export function ChatContainer({
   sessionId,
-  agentId,
   selectedModel,
   onModelChange,
   availableProviders,
   enabledModels,
 }: ChatContainerProps) {
-  const { messages, agent, sendMessage, isLoading } = useAgentChat({
+  const { messages, agent, sendMessage, isLoading } = useSessionChat({
     sessionId,
-    agentId,
     model: selectedModel,
   });
 

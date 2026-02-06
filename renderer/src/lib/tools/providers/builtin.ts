@@ -78,7 +78,7 @@ export class BuiltinToolProvider implements ToolProvider {
       // Find all tool modules that use this integration
       const toolModules = getToolModulesByIntegration(integration.id);
       if (toolModules.length === 0) {
-        console.warn(`No tool module found for integration ${integration.id}`);
+        console.warn(`[Tools] No module found for integration ${integration.id}`);
         continue;
       }
 
@@ -86,7 +86,7 @@ export class BuiltinToolProvider implements ToolProvider {
         // Create client using integration's factory
         const client = integration.createClient();
         if (!client) {
-          console.warn(`Integration ${integration.id} returned null client`);
+          console.warn(`[Tools] Integration ${integration.id} returned null client`);
           continue;
         }
 
@@ -96,11 +96,11 @@ export class BuiltinToolProvider implements ToolProvider {
           this.tools.push(...moduleTools);
 
           console.log(
-            `Loaded ${moduleTools.length} tools from module: ${toolModule.name} (via ${integration.name})`
+            `[Tools] Loaded ${moduleTools.length} from ${toolModule.name} (via ${integration.name})`
           );
         }
       } catch (error) {
-        console.error(`Failed to initialize integration ${integration.id}:`, error);
+        console.error(`[Tools] Failed to initialize integration ${integration.id}:`, error);
       }
     }
   }

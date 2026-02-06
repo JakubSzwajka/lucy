@@ -18,9 +18,7 @@ export const openApiSpec: Record<string, any> = {
   ],
   tags: [
     { name: "Sessions", description: "User-facing conversation containers" },
-    { name: "Agents", description: "Runtime AI agent instances with hierarchy support" },
-    { name: "Items", description: "Polymorphic conversation entries (messages, tool calls, etc.)" },
-    { name: "Chat", description: "AI chat streaming endpoint" },
+    { name: "Chat", description: "Session-based AI chat streaming" },
     { name: "System Prompts", description: "Reusable system prompts" },
     { name: "Settings", description: "Application settings" },
     { name: "Providers", description: "Available AI providers" },
@@ -177,201 +175,18 @@ export const openApiSpec: Record<string, any> = {
       },
     },
 
-    // ========== AGENTS ==========
-    "/api/agents": {
+    // ========== SESSION CHAT ==========
+    "/api/sessions/{id}/chat": {
       post: {
-        tags: ["Agents"],
-        summary: "Create a new agent",
-        operationId: "createAgent",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/AgentCreate" },
-            },
-          },
-        },
-        responses: {
-          "201": {
-            description: "Created agent",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/Agent" },
-              },
-            },
-          },
-          "400": {
-            description: "Bad request",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-          "404": {
-            description: "Session not found",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-        },
-      },
-    },
-    "/api/agents/{id}": {
-      get: {
-        tags: ["Agents"],
-        summary: "Get agent with items",
-        operationId: "getAgent",
+        tags: ["Sessions"],
+        summary: "Stream AI chat response for a session",
+        operationId: "sessionChat",
         parameters: [
           {
             name: "id",
             in: "path",
             required: true,
-            schema: { type: "string" },
-          },
-        ],
-        responses: {
-          "200": {
-            description: "Agent with items",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/AgentWithItems" },
-              },
-            },
-          },
-          "404": {
-            description: "Agent not found",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-        },
-      },
-      patch: {
-        tags: ["Agents"],
-        summary: "Update agent",
-        operationId: "updateAgent",
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        requestBody: {
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/AgentUpdate" },
-            },
-          },
-        },
-        responses: {
-          "200": {
-            description: "Updated agent",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/Agent" },
-              },
-            },
-          },
-          "400": {
-            description: "Bad request",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-          "404": {
-            description: "Agent not found",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-        },
-      },
-      delete: {
-        tags: ["Agents"],
-        summary: "Delete agent",
-        operationId: "deleteAgent",
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        responses: {
-          "204": {
-            description: "Agent deleted",
-          },
-          "404": {
-            description: "Agent not found",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-        },
-      },
-    },
-
-    // ========== ITEMS ==========
-    "/api/agents/{id}/items": {
-      get: {
-        tags: ["Items"],
-        summary: "Get all items for an agent",
-        operationId: "getAgentItems",
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            required: true,
-            description: "Agent ID",
-            schema: { type: "string" },
-          },
-        ],
-        responses: {
-          "200": {
-            description: "List of items",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "array",
-                  items: { $ref: "#/components/schemas/Item" },
-                },
-              },
-            },
-          },
-          "404": {
-            description: "Agent not found",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-        },
-      },
-      post: {
-        tags: ["Items"],
-        summary: "Add item to agent thread",
-        operationId: "createItem",
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            required: true,
-            description: "Agent ID",
+            description: "Session ID",
             schema: { type: "string" },
           },
         ],
@@ -379,50 +194,7 @@ export const openApiSpec: Record<string, any> = {
           required: true,
           content: {
             "application/json": {
-              schema: { $ref: "#/components/schemas/ItemCreate" },
-            },
-          },
-        },
-        responses: {
-          "201": {
-            description: "Created item",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/Item" },
-              },
-            },
-          },
-          "400": {
-            description: "Bad request",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-          "404": {
-            description: "Agent not found",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
-        },
-      },
-    },
-
-    // ========== CHAT ==========
-    "/api/chat": {
-      post: {
-        tags: ["Chat"],
-        summary: "Stream AI chat response",
-        operationId: "chat",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/ChatRequest" },
+              schema: { $ref: "#/components/schemas/SessionChatRequest" },
             },
           },
         },
@@ -438,16 +210,8 @@ export const openApiSpec: Record<string, any> = {
               },
             },
           },
-          "400": {
-            description: "Bad request",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ApiError" },
-              },
-            },
-          },
           "404": {
-            description: "Agent not found",
+            description: "Session not found",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ApiError" },
@@ -1650,7 +1414,7 @@ export const openApiSpec: Record<string, any> = {
       },
 
       // ========== CHAT ==========
-      ChatRequest: {
+      SessionChatRequest: {
         type: "object",
         properties: {
           messages: {
@@ -1664,11 +1428,10 @@ export const openApiSpec: Record<string, any> = {
               required: ["role", "content"],
             },
           },
-          model: { type: "string", description: "Model ID to use" },
-          agentId: { type: "string", format: "uuid" },
+          model: { type: "string", description: "Model ID override" },
           thinkingEnabled: { type: "boolean", default: true },
         },
-        required: ["messages", "agentId"],
+        required: ["messages"],
       },
 
       // ========== SYSTEM PROMPTS ==========

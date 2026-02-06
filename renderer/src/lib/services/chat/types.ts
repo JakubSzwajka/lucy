@@ -14,6 +14,14 @@ export interface ChatPrepareOptions {
 }
 
 /**
+ * Options for executing a full chat turn
+ */
+export interface ExecuteTurnOptions {
+  modelId?: string;
+  thinkingEnabled?: boolean;
+}
+
+/**
  * Context prepared for a chat stream
  */
 export interface ChatContext {

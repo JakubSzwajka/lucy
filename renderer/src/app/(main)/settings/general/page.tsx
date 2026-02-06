@@ -29,6 +29,7 @@ export default function GeneralSettingsPage() {
   }
 
   return (
+    <div className="p-6">
     <GeneralSettings
       settings={settings}
       systemPrompts={prompts}
@@ -36,5 +37,6 @@ export default function GeneralSettingsPage() {
       onUpdateSettings={updateSettings}
       onNavigateToPrompts={() => router.push("/settings/prompts")}
     />
+    </div>
   );
 }

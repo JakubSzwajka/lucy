@@ -48,6 +48,14 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     maxContextTokens: 200_000,
   },
   {
+    id: "claude-opus-4-6",
+    name: "Claude Opus 4.6",
+    provider: "anthropic",
+    modelId: "claude-opus-4-6",
+    supportsReasoning: true,
+    maxContextTokens: 200_000,
+  },
+  {
     id: "claude-opus-4",
     name: "Claude Opus 4",
     provider: "anthropic",

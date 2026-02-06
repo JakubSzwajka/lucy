@@ -42,6 +42,7 @@ export async function createMcpClient(server: McpServer): Promise<McpClientWrapp
       command: server.command,
       args: server.args || [],
       env,
+      stderr: "ignore",
     });
   } else {
     // HTTP or SSE transport
@@ -67,6 +68,7 @@ export async function createMcpClient(server: McpServer): Promise<McpClientWrapp
   );
 
   await client.connect(transport);
+  console.log(`[MCP] Connected to ${server.name}`);
 
   // Discover tools
   const toolsResult = await client.listTools();
@@ -95,7 +97,7 @@ export async function closeMcpClient(wrapper: McpClientWrapper): Promise<void> {
   try {
     await wrapper.client.close();
   } catch (error) {
-    console.error(`Error closing MCP client ${wrapper.serverName}:`, error);
+    console.error(`[MCP] Error closing client ${wrapper.serverName}:`, error);
   }
 }
 

@@ -26,18 +26,18 @@ async function startProductionServer(): Promise<void> {
     });
 
     serverProcess.stdout?.on("data", (data) => {
-      console.log(`Server: ${data}`);
+      console.log(`[HTTP] ${data}`);
       if (data.toString().includes("Ready") || data.toString().includes("started")) {
         resolve();
       }
     });
 
     serverProcess.stderr?.on("data", (data) => {
-      console.error(`Server Error: ${data}`);
+      console.error(`[HTTP] ${data}`);
     });
 
     serverProcess.on("error", (error) => {
-      console.error("Failed to start server:", error);
+      console.error("[Electron] Failed to start server:", error);
       reject(error);
     });
 
@@ -84,13 +84,13 @@ async function createMainWindow() {
   try {
     await mainWindow.loadURL(url);
   } catch (error) {
-    console.error("Failed to load URL:", error);
+    console.error("[Electron] Failed to load URL:", error);
     // Retry after a short delay
     setTimeout(async () => {
       try {
         await mainWindow?.loadURL(url);
       } catch (retryError) {
-        console.error("Retry failed:", retryError);
+        console.error("[Electron] Retry failed:", retryError);
       }
     }, 2000);
   }
@@ -126,7 +126,7 @@ app.on("ready", async () => {
     try {
       await startProductionServer();
     } catch (error) {
-      console.error("Failed to start production server:", error);
+      console.error("[Electron] Failed to start production server:", error);
     }
   }
   await createMainWindow();

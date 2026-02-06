@@ -18,24 +18,23 @@ All hooks are client-side only (`"use client"`) and follow consistent patterns f
 
 ## Hooks Reference
 
-### useAgentChat
+### useSessionChat
 
 **File:** `useAgentChat.ts`
 
-Manages AI chat interactions with streaming support. Wraps the `@ai-sdk/react` useChat hook and integrates with the agent/items persistence layer.
+Manages AI chat interactions with streaming support. Wraps the `@ai-sdk/react` useChat hook and integrates with the session persistence layer.
 
 **Parameters:**
 ```typescript
-interface UseAgentChatOptions {
+interface UseSessionChatOptions {
   sessionId: string | null;
-  agentId: string | null;
   model: string;
 }
 ```
 
 **Returns:**
 ```typescript
-interface UseAgentChatReturn {
+interface UseSessionChatReturn {
   messages: ChatMessage[];        // Merged loaded + streaming messages
   items: Item[];                  // All persisted items for the agent
   agent: Agent | null;            // Current agent data
@@ -46,9 +45,9 @@ interface UseAgentChatReturn {
 ```
 
 **Key Features:**
-- Loads agent and items from `/api/agents/:id` on agentId change
-- Uses `DefaultChatTransport` to stream via `/api/chat`
-- Persists user messages to `/api/agents/:id/items` before sending
+- Loads session data from `/api/sessions/:id` on sessionId change
+- Uses `DefaultChatTransport` to stream via `/api/sessions/:id/chat`
+- User messages are persisted server-side by the chat route
 - Merges persisted items with streaming messages for unified display
 - Supports thinking/reasoning toggle per message
 
@@ -221,7 +220,7 @@ interface UsePlanReturn {
 ```
 
 **API Endpoints:**
-- `GET /api/plans?sessionId=:id` - Fetch plan for session
+- `GET /api/sessions/:id/plans` - Fetch plan for session
 
 **Key Features:**
 - Adaptive polling intervals based on plan state:
@@ -338,10 +337,9 @@ setItems(
 ### Chat with Agent
 
 ```typescript
-function ChatView({ sessionId, agentId }: Props) {
-  const { messages, sendMessage, isLoading, isInitialized } = useAgentChat({
+function ChatView({ sessionId }: Props) {
+  const { messages, sendMessage, isLoading, isInitialized } = useSessionChat({
     sessionId,
-    agentId,
     model: "claude-3-5-sonnet",
   });
 
@@ -437,13 +435,13 @@ function PlanView({ sessionId, isAgentResponding }: Props) {
 
 | Hook | API Routes | External Libraries |
 |------|------------|-------------------|
-| `useAgentChat` | `/api/chat`, `/api/agents/:id`, `/api/agents/:id/items` | `@ai-sdk/react`, `ai` |
+| `useSessionChat` | `/api/sessions/:id/chat`, `/api/sessions/:id` | `@ai-sdk/react`, `ai` |
 | `useSessions` | `/api/sessions`, `/api/sessions/:id` | - |
 | `useSystemPrompts` | `/api/system-prompts`, `/api/system-prompts/:id` | - |
 | `useMcpServers` | `/api/mcp-servers`, `/api/mcp-servers/:id`, `/api/mcp-servers/:id/test` | - |
 | `useMcpStatus` | `/api/mcp-servers`, `/api/mcp-servers/status`, `/api/mcp-servers/:id` | - |
 | `useSettings` | `/api/settings` | - |
-| `usePlan` | `/api/plans` | - |
+| `usePlan` | `/api/sessions/:id/plans` | - |
 
 ### Type Dependencies
 

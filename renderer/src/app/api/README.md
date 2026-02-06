@@ -6,7 +6,7 @@ This directory contains all Next.js API routes for the Lucy desktop application.
 
 The API layer provides:
 
-- **RESTful endpoints** for CRUD operations on sessions, agents, items, and configuration
+- **RESTful endpoints** for CRUD operations on sessions and configuration
 - **Streaming endpoints** for real-time AI chat responses
 - **Service delegation** - routes are thin controllers that delegate business logic to services
 - **Consistent error handling** with proper HTTP status codes
@@ -45,6 +45,8 @@ Routes follow a consistent pattern:
 | `GET` | `/api/sessions/[id]` | Get session with its agents and items |
 | `PATCH` | `/api/sessions/[id]` | Update session (title, status) |
 | `DELETE` | `/api/sessions/[id]` | Delete session (cascades to agents and items) |
+| `POST` | `/api/sessions/[id]/chat` | Stream AI chat response for a session |
+| `GET` | `/api/sessions/[id]/plans` | Get plan for a session with progress |
 
 **Create Session Request:**
 ```json
@@ -56,94 +58,28 @@ Routes follow a consistent pattern:
 }
 ```
 
-### Agents
-
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/agents` | Create a new agent (usually a child agent) |
-| `GET` | `/api/agents/[id]` | Get agent with its items |
-| `PATCH` | `/api/agents/[id]` | Update agent (status, result, etc.) |
-| `DELETE` | `/api/agents/[id]` | Delete agent (cascades to items) |
-
-**Create Agent Request:**
-```json
-{
-  "sessionId": "required",
-  "parentId": "optional parent agent ID",
-  "sourceCallId": "optional tool call ID that spawned this agent",
-  "name": "optional",
-  "task": "optional task description",
-  "systemPrompt": "optional",
-  "model": "optional model ID",
-  "config": "optional JSON config"
-}
-```
-
-### Items
-
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/api/agents/[id]/items` | Get all items for an agent |
-| `POST` | `/api/agents/[id]/items` | Add an item to an agent's thread |
-
-Items are polymorphic and support four types:
-
-**Message Item:**
-```json
-{
-  "type": "message",
-  "role": "user | assistant | system",
-  "content": "Message text"
-}
-```
-
-**Tool Call Item:**
-```json
-{
-  "type": "tool_call",
-  "callId": "unique call ID",
-  "toolName": "name of the tool",
-  "toolArgs": { "key": "value" },
-  "toolStatus": "pending | running | completed | failed"
-}
-```
-
-**Tool Result Item:**
-```json
-{
-  "type": "tool_result",
-  "callId": "matching call ID",
-  "toolOutput": "result data",
-  "toolError": "error message if failed"
-}
-```
-
-**Reasoning Item:**
-```json
-{
-  "type": "reasoning",
-  "reasoningContent": "Full reasoning text",
-  "reasoningSummary": "Optional summary"
-}
-```
-
 ### Chat (Streaming)
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| `POST` | `/api/chat` | Stream AI chat response for an agent |
+| `POST` | `/api/sessions/[id]/chat` | Stream AI chat response for a session |
 
-**Request:**
+**Session Chat Request:**
 ```json
 {
-  "agentId": "required agent ID",
   "messages": [{ "role": "user", "content": "Hello" }],
   "model": "optional model ID override",
   "thinkingEnabled": true
 }
 ```
 
-**Response:** Server-Sent Events stream (see Streaming section below)
+The session chat route delegates to `ChatService.executeTurn()` which:
+1. Resolves the session's root agent
+2. Saves the latest user message server-side
+3. Auto-generates session title from first message
+4. Prepares AI context (model, tools, system prompt)
+5. Streams AI response via SSE
+6. Persists each streaming step and finalizes agent status
 
 ### Settings
 
@@ -221,7 +157,7 @@ Items are polymorphic and support four types:
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| `GET` | `/api/plans?sessionId=xxx` | Get plan for a session with progress |
+| `GET` | `/api/sessions/[id]/plans` | Get plan for a session with progress |
 
 **Response:**
 ```json
@@ -289,27 +225,30 @@ export async function GET(req: Request, { params }: RouteParams) {
 
 ## Streaming
 
-The `/api/chat` endpoint uses the Vercel AI SDK's streaming capabilities to provide real-time AI responses.
+The `/api/sessions/[id]/chat` endpoint uses the Vercel AI SDK's streaming capabilities to provide real-time AI responses.
 
 ### How It Works
 
-1. **Request received** - Client sends messages, agent ID, and options
-2. **Context preparation** - `ChatService.prepareChat()` resolves:
+The route is a thin HTTP adapter that calls `ChatService.executeTurn()`. Internally, the turn:
+
+1. **Session resolved** - `SessionService.getById()` resolves the root agent
+2. **User message saved** - `ItemService.createMessage()` persists the latest user message
+3. **Context preparation** - `ChatService.prepareChat()` resolves:
    - Agent and its configuration
    - Model and language model instance
    - System prompt (agent-specific or default)
    - Available tools from the tool registry
    - Provider-specific options (e.g., thinking/reasoning settings)
-3. **Streaming initiated** - `streamText()` from the AI SDK handles:
+4. **Streaming initiated** - `streamText()` from the AI SDK handles:
    - Sending messages to the AI provider
    - Multi-step tool use (up to 10 steps with tools, 1 without)
    - Streaming response chunks back to the client
-4. **Step persistence** - `onStepFinish` callback persists each step's content:
+5. **Step persistence** - `onStepFinish` callback persists each step's content:
    - Reasoning blocks (if model supports it)
    - Text messages
    - Tool calls and results
    - Items are saved in their natural interleaved order
-5. **Finalization** - `onFinish` callback updates agent status
+6. **Finalization** - `onFinish` callback updates agent status
 
 ### Response Format
 
@@ -348,7 +287,7 @@ Routes delegate all business logic to services in `@/lib/services`. Each service
 | `SessionService` | `getSessionService()` | Session CRUD, session-agent relationships |
 | `AgentService` | `getAgentService()` | Agent CRUD, parent-child hierarchy |
 | `ItemService` | `getItemService()` | Polymorphic item management |
-| `ChatService` | `getChatService()` | Chat orchestration and streaming |
+| `ChatService` | `getChatService()` | Turn orchestrator (resolve session, stream AI, persist) |
 | `SettingsService` | `getSettingsService()` | Application settings |
 | `SystemPromptService` | `getSystemPromptService()` | System prompt management |
 | `McpService` | `getMcpService()` | MCP server management and connections |
@@ -393,19 +332,15 @@ export async function GET(req: Request, { params }: RouteParams) {
 
 ```
 api/
-├── README.md                      # This file
-├── chat/
-│   └── route.ts                   # POST - AI chat streaming
+├── README.md
 ├── sessions/
 │   ├── route.ts                   # GET, POST - Session list/create
 │   └── [id]/
-│       └── route.ts               # GET, PATCH, DELETE - Single session
-├── agents/
-│   ├── route.ts                   # POST - Create agent
-│   └── [id]/
-│       ├── route.ts               # GET, PATCH, DELETE - Single agent
-│       └── items/
-│           └── route.ts           # GET, POST - Agent items
+│       ├── route.ts               # GET, PATCH, DELETE - Single session
+│       ├── chat/
+│       │   └── route.ts           # POST - Session chat streaming
+│       └── plans/
+│           └── route.ts           # GET - Get session plan
 ├── settings/
 │   └── route.ts                   # GET, PATCH - App settings
 ├── system-prompts/
@@ -424,8 +359,6 @@ api/
 │   └── route.ts                   # GET - List all tools
 ├── providers/
 │   └── route.ts                   # GET - List AI providers
-├── plans/
-│   └── route.ts                   # GET - Get session plan
 └── openapi/
     └── route.ts                   # GET - OpenAPI specification
 ```

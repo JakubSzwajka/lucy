@@ -54,6 +54,7 @@ export { ChatService, getChatService } from "./chat";
 export type {
   ChatContext,
   ChatPrepareOptions,
+  ExecuteTurnOptions,
   ModelMessage,
   ChatFinishResult,
 } from "./chat";

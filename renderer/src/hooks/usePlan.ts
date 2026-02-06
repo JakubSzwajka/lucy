@@ -39,7 +39,7 @@ export function usePlan({
     }
 
     try {
-      const response = await fetch(`/api/plans?sessionId=${sessionId}`);
+      const response = await fetch(`/api/sessions/${sessionId}/plans`);
       if (response.ok) {
         const data = await response.json();
         setPlan(data.plan);
@@ -48,7 +48,7 @@ export function usePlan({
         setError("Failed to fetch plan");
       }
     } catch (err) {
-      console.error("Failed to fetch plan:", err);
+      console.error("[Plan] Failed to fetch:", err);
       setError("Failed to fetch plan");
     }
   }, [sessionId]);

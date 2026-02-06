@@ -71,7 +71,7 @@ export function SystemPromptsSettings({
   };
 
   return (
-    <div className="flex h-[450px] min-h-[400px] border border-border rounded overflow-hidden">
+    <div className="flex flex-1 h-full overflow-hidden">
       {/* Left panel: List */}
       <div className="w-1/3 border-r border-border bg-background-secondary">
         <PromptsList

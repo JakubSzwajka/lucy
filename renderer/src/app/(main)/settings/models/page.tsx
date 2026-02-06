@@ -25,10 +25,12 @@ export default function ModelsSettingsPage() {
   }
 
   return (
+    <div className="p-6">
     <ModelsSettings
       settings={settings}
       availableProviders={availableProviders}
       onUpdateSettings={updateSettings}
     />
+    </div>
   );
 }
