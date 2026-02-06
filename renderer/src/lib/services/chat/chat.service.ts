@@ -54,10 +54,18 @@ export class ChatService {
 
     if (lastUserMessage) {
       const itemService = getItemService();
-      const content = typeof lastUserMessage.content === "string"
+      let content = typeof lastUserMessage.content === "string"
         ? lastUserMessage.content
-        : JSON.stringify(lastUserMessage.content);
+        : undefined;
 
+      if (!content && Array.isArray(lastUserMessage.parts)) {
+        content = (lastUserMessage.parts as Record<string, unknown>[])
+          .filter((part) => part.type === "text")
+          .map((part) => part.text as string)
+          .join("");
+      }
+
+      content = content || "";
       itemService.createMessage(rootAgentId, "user", content);
       sessionService.maybeGenerateTitle(sessionId, content);
     }

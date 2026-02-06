@@ -38,6 +38,7 @@ interface UseSessionChatReturn {
   messages: ChatMessage[];        // Merged loaded + streaming messages
   items: Item[];                  // All persisted items for the agent
   agent: Agent | null;            // Current agent data
+  streamPlan: Plan | null;        // Plan extracted from streaming tool results
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;             // True during streaming or submission
   isInitialized: boolean;         // True once agent data is loaded
@@ -50,6 +51,7 @@ interface UseSessionChatReturn {
 - User messages are persisted server-side by the chat route
 - Merges persisted items with streaming messages for unified display
 - Supports thinking/reasoning toggle per message
+- Extracts plan state from `create_plan`/`update_plan` tool results in the stream
 
 ---
 
@@ -197,15 +199,13 @@ Manages application-wide user settings with optimistic updates.
 
 **File:** `usePlan.ts`
 
-Monitors plan execution progress with adaptive polling.
+Stream-driven plan state with DB fallback. Plan updates are extracted from `create_plan`/`update_plan` tool results in the chat SSE stream, eliminating polling.
 
 **Parameters:**
 ```typescript
 interface UsePlanOptions {
   sessionId: string | null;
-  activePollingInterval?: number;   // Default: 1500ms
-  idlePollingInterval?: number;     // Default: 3000ms
-  isAgentResponding?: boolean;      // Triggers refresh on transition to false
+  streamPlan?: Plan | null;   // Plan extracted from streaming tool results (from useSessionChat)
 }
 ```
 
@@ -220,15 +220,13 @@ interface UsePlanReturn {
 ```
 
 **API Endpoints:**
-- `GET /api/sessions/:id/plans` - Fetch plan for session
+- `GET /api/sessions/:id/plans` - Initial fetch on page load / session switch
 
 **Key Features:**
-- Adaptive polling intervals based on plan state:
-  - 800ms when agent is responding (real-time updates)
-  - 1500ms for active plans (default)
-  - 3000ms when no plan exists (idle)
-  - No polling for completed/failed/cancelled plans
-- Immediate refresh when agent finishes responding
+- Stream-driven: `streamPlan` (from SSE tool results) takes priority over DB state
+- DB fallback: fetches from API on mount and when stream data becomes unavailable
+- Re-fetches from DB when `streamPlan` transitions from non-null to null (stream ended, session switch)
+- No polling — zero unnecessary network requests
 
 ---
 
@@ -408,11 +406,10 @@ function SettingsPanel() {
 ### Plan Monitoring
 
 ```typescript
-function PlanView({ sessionId, isAgentResponding }: Props) {
+function PlanView({ sessionId, streamPlan }: Props) {
   const { plan, isLoading } = usePlan({
     sessionId,
-    isAgentResponding,
-    activePollingInterval: 1500,
+    streamPlan,
   });
 
   if (!plan) return null;

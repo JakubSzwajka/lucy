@@ -8,6 +8,8 @@ import {
   itemsToChatMessages,
   mergeWithStreaming,
 } from "@/lib/services/item/item.transformer";
+import { extractPlanFromMessages } from "./usePlanStream";
+import type { Plan } from "@/components/plan";
 import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents } from "@/types";
 
 interface UseSessionChatOptions {
@@ -23,6 +25,7 @@ interface UseSessionChatReturn {
   messages: ChatMessage[];
   items: Item[];
   agent: Agent | null;
+  streamPlan: Plan | null;
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
@@ -122,6 +125,9 @@ export function useSessionChat({
     return loadedItems;
   }, [loadedItems]);
 
+  // Extract plan state from streaming tool results
+  const streamPlan = useMemo(() => extractPlanFromMessages(rawMessages), [rawMessages]);
+
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions) => {
       if (!sessionId) return;
@@ -139,6 +145,7 @@ export function useSessionChat({
     messages,
     items,
     agent,
+    streamPlan,
     sendMessage,
     isLoading,
     isInitialized,

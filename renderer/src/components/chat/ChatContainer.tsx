@@ -25,7 +25,7 @@ export function ChatContainer({
   availableProviders,
   enabledModels,
 }: ChatContainerProps) {
-  const { messages, agent, sendMessage, isLoading } = useSessionChat({
+  const { messages, agent, streamPlan, sendMessage, isLoading } = useSessionChat({
     sessionId,
     model: selectedModel,
   });
@@ -38,10 +38,10 @@ export function ChatContainer({
     isLoading: isMcpLoading,
   } = useMcpStatus();
 
-  // Plan for current session (refreshes when agent finishes responding)
+  // Plan for current session (stream-driven with DB fallback)
   const { plan } = usePlan({
     sessionId,
-    isAgentResponding: isLoading
+    streamPlan,
   });
 
   // Get model config to check thinking support

@@ -5,12 +5,7 @@ import type { Plan } from "@/components/plan";
 
 interface UsePlanOptions {
   sessionId: string | null;
-  /** Polling interval when plan is active (in ms). Default: 1500 */
-  activePollingInterval?: number;
-  /** Polling interval when no plan exists (in ms). Default: 3000 */
-  idlePollingInterval?: number;
-  /** Whether the agent is currently responding. Triggers refresh on transition to false. */
-  isAgentResponding?: boolean;
+  streamPlan?: Plan | null;
 }
 
 interface UsePlanReturn {
@@ -22,19 +17,16 @@ interface UsePlanReturn {
 
 export function usePlan({
   sessionId,
-  activePollingInterval = 1500,
-  idlePollingInterval = 3000,
-  isAgentResponding = false,
+  streamPlan = null,
 }: UsePlanOptions): UsePlanReturn {
-  const [plan, setPlan] = useState<Plan | null>(null);
+  const [dbPlan, setDbPlan] = useState<Plan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const prevRespondingRef = useRef(isAgentResponding);
+  const prevStreamPlanRef = useRef<Plan | null>(streamPlan);
 
   const fetchPlan = useCallback(async () => {
     if (!sessionId) {
-      setPlan(null);
+      setDbPlan(null);
       return;
     }
 
@@ -42,7 +34,7 @@ export function usePlan({
       const response = await fetch(`/api/sessions/${sessionId}/plans`);
       if (response.ok) {
         const data = await response.json();
-        setPlan(data.plan);
+        setDbPlan(data.plan);
         setError(null);
       } else {
         setError("Failed to fetch plan");
@@ -53,65 +45,29 @@ export function usePlan({
     }
   }, [sessionId]);
 
-  // Initial fetch
+  // Initial fetch on mount / sessionId change
   useEffect(() => {
     setIsLoading(true);
     fetchPlan().finally(() => setIsLoading(false));
   }, [fetchPlan]);
 
-  // Refresh when agent finishes responding (transition from true to false)
+  // Re-fetch from DB when streamPlan transitions from non-null to null
+  // (stream ended, session switch, etc.)
   useEffect(() => {
-    if (prevRespondingRef.current && !isAgentResponding) {
-      // Agent just finished - refresh plan immediately
+    if (prevStreamPlanRef.current && !streamPlan) {
       fetchPlan();
     }
-    prevRespondingRef.current = isAgentResponding;
-  }, [isAgentResponding, fetchPlan]);
-
-  // Continuous polling (always poll, but with different intervals)
-  useEffect(() => {
-    if (!sessionId) {
-      return;
-    }
-
-    // Clear existing interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    // Determine polling interval based on plan state and agent activity
-    let interval: number;
-
-    if (isAgentResponding) {
-      // Agent is actively responding - poll very frequently to show real-time updates
-      interval = 800;
-    } else if (!plan) {
-      // No plan - poll slowly to detect new plan creation
-      interval = idlePollingInterval;
-    } else if (plan.status === "completed" || plan.status === "failed" || plan.status === "cancelled") {
-      // Plan is done - no need to poll
-      return;
-    } else {
-      // Active plan but agent idle - poll at normal rate
-      interval = activePollingInterval;
-    }
-
-    intervalRef.current = setInterval(fetchPlan, interval);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [sessionId, plan?.status, isAgentResponding, activePollingInterval, idlePollingInterval, fetchPlan]);
+    prevStreamPlanRef.current = streamPlan;
+  }, [streamPlan, fetchPlan]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     await fetchPlan();
     setIsLoading(false);
   }, [fetchPlan]);
+
+  // Stream wins when available
+  const plan = streamPlan ?? dbPlan;
 
   return {
     plan,
