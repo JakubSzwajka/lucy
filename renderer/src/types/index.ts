@@ -243,6 +243,37 @@ export interface SystemPromptUpdate {
 }
 
 // ============================================================================
+// QUICK ACTION TYPES
+// ============================================================================
+
+export interface QuickAction {
+  id: string;
+  name: string;
+  content: string;
+  icon: string | null;
+  sortOrder: number;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface QuickActionCreate {
+  name: string;
+  content: string;
+  icon?: string;
+  sortOrder?: number;
+  enabled?: boolean;
+}
+
+export interface QuickActionUpdate {
+  name?: string;
+  content?: string;
+  icon?: string | null;
+  sortOrder?: number;
+  enabled?: boolean;
+}
+
+// ============================================================================
 // API RESPONSE TYPES
 // ============================================================================
 
@@ -336,4 +367,3 @@ export interface McpServerStatus {
 export interface SessionMcpConfig {
   enabledServers: McpServerStatus[];
 }
-

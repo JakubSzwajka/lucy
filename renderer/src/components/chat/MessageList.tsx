@@ -25,11 +25,13 @@ import {
   ToolOutput,
   type ToolPart,
 } from "@/components/ai-elements/tool";
+import { QuickActions } from "./QuickActions";
 import type { ChatMessage, ContentPart } from "@/types";
 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading?: boolean;
+  onQuickAction?: (content: string) => void;
 }
 
 function SessionDivider() {
@@ -178,7 +180,7 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
   );
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+export function MessageList({ messages, isLoading, onQuickAction }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <ConversationEmptyState>
@@ -189,13 +191,14 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
           height={80}
           className="mb-4"
         />
-        <span className="label block mb-2">// INIT.SEQUENCE</span>
+        <span className="label block mb-2">{"// INIT.SEQUENCE"}</span>
         <h2 className="text-xl font-medium mb-2 tracking-tight text-foreground">
           Welcome to Lucy
         </h2>
         <p className="text-sm text-muted-foreground">
           Start a conversation by typing a message below.
         </p>
+        {onQuickAction && <QuickActions onSelect={onQuickAction} />}
       </ConversationEmptyState>
     );
   }

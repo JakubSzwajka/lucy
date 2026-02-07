@@ -62,6 +62,7 @@ export type {
 // Config Services
 export { SettingsService, getSettingsService } from "./config";
 export { SystemPromptService, getSystemPromptService } from "./config";
+export { QuickActionService, getQuickActionService } from "./config";
 
 // Plan Service
 export { PlanService, getPlanService } from "./plan";

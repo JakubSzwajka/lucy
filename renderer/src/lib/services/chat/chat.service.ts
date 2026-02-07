@@ -1,4 +1,5 @@
-import { db, settings, systemPrompts } from "@/lib/db";
+import { db, settings } from "@/lib/db";
+import { getSystemPromptService } from "@/lib/services/config";
 import { eq } from "drizzle-orm";
 import { streamText, stepCountIs, ToolSet } from "ai";
 import { getLanguageModel } from "@/lib/ai/providers";
@@ -204,11 +205,8 @@ export class ChatService {
         return null;
       }
 
-      const [prompt] = db
-        .select()
-        .from(systemPrompts)
-        .where(eq(systemPrompts.id, currentSettings.defaultSystemPromptId))
-        .all();
+      const systemPromptService = getSystemPromptService();
+      const prompt = systemPromptService.getById(currentSettings.defaultSystemPromptId);
 
       return prompt?.content || null;
     } catch {

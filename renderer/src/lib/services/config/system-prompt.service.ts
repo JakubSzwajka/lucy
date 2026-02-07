@@ -1,6 +1,8 @@
-import { db, systemPrompts, SystemPromptRecord } from "@/lib/db";
-import { eq, asc } from "drizzle-orm";
+import { db, systemPrompts } from "@/lib/db";
+import { asc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import fs from "fs";
+import path from "path";
 import { getSettingsService } from "./settings.service";
 import type { SystemPrompt, SystemPromptCreate, SystemPromptUpdate } from "@/types";
 
@@ -8,7 +10,9 @@ import type { SystemPrompt, SystemPromptCreate, SystemPromptUpdate } from "@/typ
 // System Prompt Service
 // ============================================================================
 
-// Seed prompts to create on first access if table is empty
+const PROMPT_FILE_SUFFIX = ".prompt.md";
+
+// Seed prompts to create on first access if storage is empty
 const SEED_PROMPTS = [
   {
     name: "Helpful Assistant",
@@ -27,10 +31,54 @@ const SEED_PROMPTS = [
   },
 ];
 
-/**
- * Parse system prompt record
- */
-function parseSystemPromptRecord(record: SystemPromptRecord): SystemPrompt {
+interface PromptFileRecord {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  content: string;
+}
+
+function getSystemPromptsBasePath(): string {
+  if (process.env.LUCY_USER_DATA_PATH) {
+    return path.join(process.env.LUCY_USER_DATA_PATH, "prompts", "system");
+  }
+
+  return path.join(process.cwd(), "prompts", "system");
+}
+
+function ensureDirectory(dirPath: string): void {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+}
+
+function toDate(value: unknown, fallback: Date): Date {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+}
+
+function slugify(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+
+  return slug || "prompt";
+}
+
+function toPrompt(record: PromptFileRecord): SystemPrompt {
   return {
     id: record.id,
     name: record.name,
@@ -40,24 +88,181 @@ function parseSystemPromptRecord(record: SystemPromptRecord): SystemPrompt {
   };
 }
 
+function serializePrompt(record: PromptFileRecord): string {
+  const normalizedContent = record.content.replace(/\r\n/g, "\n");
+
+  return [
+    "---",
+    `id: ${record.id}`,
+    `name: ${JSON.stringify(record.name)}`,
+    `createdAt: ${record.createdAt.toISOString()}`,
+    `updatedAt: ${record.updatedAt.toISOString()}`,
+    "---",
+    normalizedContent,
+  ].join("\n");
+}
+
+function parsePromptContent(raw: string): PromptFileRecord | null {
+  const normalized = raw.replace(/\r\n/g, "\n");
+
+  if (!normalized.startsWith("---\n")) {
+    return null;
+  }
+
+  const closingMarkerIndex = normalized.indexOf("\n---\n", 4);
+  if (closingMarkerIndex === -1) {
+    return null;
+  }
+
+  const header = normalized.slice(4, closingMarkerIndex);
+  const content = normalized.slice(closingMarkerIndex + 5);
+
+  const fields: Record<string, string> = {};
+  for (const line of header.split("\n")) {
+    const separator = line.indexOf(":");
+    if (separator === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+    fields[key] = value;
+  }
+
+  if (!fields.id || !fields.name) {
+    return null;
+  }
+
+  let parsedName = fields.name;
+  try {
+    parsedName = JSON.parse(fields.name);
+  } catch {
+    // Keep raw header value if not valid JSON.
+  }
+
+  const now = new Date();
+
+  return {
+    id: fields.id,
+    name: parsedName,
+    content,
+    createdAt: toDate(fields.createdAt, now),
+    updatedAt: toDate(fields.updatedAt, now),
+  };
+}
+
 /**
  * Service for system prompt business logic
  */
 export class SystemPromptService {
-  /**
-   * Ensure seed prompts exist
-   */
-  ensureSeedPrompts(): void {
-    const existing = db.select().from(systemPrompts).all();
+  private promptsBasePath: string;
 
-    if (existing.length === 0) {
-      for (const prompt of SEED_PROMPTS) {
-        db.insert(systemPrompts).values({
-          id: uuidv4(),
+  constructor() {
+    this.promptsBasePath = getSystemPromptsBasePath();
+    ensureDirectory(this.promptsBasePath);
+  }
+
+  private listPromptFiles(): string[] {
+    if (!fs.existsSync(this.promptsBasePath)) {
+      return [];
+    }
+
+    return fs.readdirSync(this.promptsBasePath)
+      .filter((fileName) => fileName.endsWith(PROMPT_FILE_SUFFIX));
+  }
+
+  private getPromptFilePath(fileName: string): string {
+    return path.join(this.promptsBasePath, fileName);
+  }
+
+  private writePromptFile(record: PromptFileRecord, fileName?: string): string {
+    const resolvedFileName = fileName || `${slugify(record.name)}-${record.id.slice(0, 8)}${PROMPT_FILE_SUFFIX}`;
+    const filePath = this.getPromptFilePath(resolvedFileName);
+
+    fs.writeFileSync(filePath, serializePrompt(record), "utf-8");
+
+    return resolvedFileName;
+  }
+
+  private loadAllPromptEntries(): Array<{ prompt: SystemPrompt; fileName: string }> {
+    const entries: Array<{ prompt: SystemPrompt; fileName: string }> = [];
+
+    for (const fileName of this.listPromptFiles()) {
+      try {
+        const raw = fs.readFileSync(this.getPromptFilePath(fileName), "utf-8");
+        const parsed = parsePromptContent(raw);
+
+        if (!parsed) {
+          continue;
+        }
+
+        entries.push({
+          prompt: toPrompt(parsed),
+          fileName,
+        });
+      } catch {
+        // Ignore malformed files and continue reading others.
+      }
+    }
+
+    entries.sort((a, b) => a.prompt.name.localeCompare(b.prompt.name));
+    return entries;
+  }
+
+  private findPromptEntryById(id: string): { prompt: SystemPrompt; fileName: string } | null {
+    return this.loadAllPromptEntries().find((entry) => entry.prompt.id === id) || null;
+  }
+
+  private migrateFromDatabaseIfNeeded(): boolean {
+    try {
+      const existingDbPrompts = db
+        .select()
+        .from(systemPrompts)
+        .orderBy(asc(systemPrompts.name))
+        .all();
+
+      if (existingDbPrompts.length === 0) {
+        return false;
+      }
+
+      for (const prompt of existingDbPrompts) {
+        const now = new Date();
+        this.writePromptFile({
+          id: prompt.id,
           name: prompt.name,
           content: prompt.content,
-        }).run();
+          createdAt: toDate(prompt.createdAt, now),
+          updatedAt: toDate(prompt.updatedAt, now),
+        });
       }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Ensure prompt files exist (migrate DB data or create seeds)
+   */
+  ensureSeedPrompts(): void {
+    if (this.listPromptFiles().length > 0) {
+      return;
+    }
+
+    if (this.migrateFromDatabaseIfNeeded()) {
+      return;
+    }
+
+    for (const seed of SEED_PROMPTS) {
+      const now = new Date();
+      this.writePromptFile({
+        id: uuidv4(),
+        name: seed.name,
+        content: seed.content,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
   }
 
@@ -66,27 +271,15 @@ export class SystemPromptService {
    */
   getAll(): SystemPrompt[] {
     this.ensureSeedPrompts();
-
-    const records = db
-      .select()
-      .from(systemPrompts)
-      .orderBy(asc(systemPrompts.name))
-      .all();
-
-    return records.map(parseSystemPromptRecord);
+    return this.loadAllPromptEntries().map((entry) => entry.prompt);
   }
 
   /**
    * Get a system prompt by ID
    */
   getById(id: string): SystemPrompt | null {
-    const [record] = db
-      .select()
-      .from(systemPrompts)
-      .where(eq(systemPrompts.id, id))
-      .all();
-
-    return record ? parseSystemPromptRecord(record) : null;
+    this.ensureSeedPrompts();
+    return this.findPromptEntryById(id)?.prompt || null;
   }
 
   /**
@@ -97,51 +290,54 @@ export class SystemPromptService {
       return { error: "Name and content are required" };
     }
 
-    const id = uuidv4();
+    this.ensureSeedPrompts();
 
-    db.insert(systemPrompts).values({
-      id,
+    const now = new Date();
+    const record: PromptFileRecord = {
+      id: uuidv4(),
       name: data.name,
       content: data.content,
-    }).run();
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    return { prompt: this.getById(id)! };
+    this.writePromptFile(record);
+
+    return { prompt: toPrompt(record) };
   }
 
   /**
    * Update a system prompt
    */
   update(id: string, data: SystemPromptUpdate): { prompt?: SystemPrompt; notFound?: boolean } {
-    const existing = this.getById(id);
+    this.ensureSeedPrompts();
+
+    const existing = this.findPromptEntryById(id);
     if (!existing) {
       return { notFound: true };
     }
 
-    const updateData: Record<string, unknown> = {
-      updatedAt: new Date(),
+    const now = new Date();
+    const updated: PromptFileRecord = {
+      id,
+      name: data.name !== undefined ? data.name : existing.prompt.name,
+      content: data.content !== undefined ? data.content : existing.prompt.content,
+      createdAt: existing.prompt.createdAt,
+      updatedAt: now,
     };
 
-    if (data.name !== undefined) {
-      updateData.name = data.name;
-    }
+    this.writePromptFile(updated, existing.fileName);
 
-    if (data.content !== undefined) {
-      updateData.content = data.content;
-    }
-
-    db.update(systemPrompts)
-      .set(updateData)
-      .where(eq(systemPrompts.id, id))
-      .run();
-
-    return { prompt: this.getById(id)! };
+    return { prompt: toPrompt(updated) };
   }
 
   /**
    * Delete a system prompt
    */
   delete(id: string): { success: boolean; notFound?: boolean } {
-    const existing = this.getById(id);
+    this.ensureSeedPrompts();
+
+    const existing = this.findPromptEntryById(id);
     if (!existing) {
       return { success: false, notFound: true };
     }
@@ -150,8 +346,7 @@ export class SystemPromptService {
     const settingsService = getSettingsService();
     settingsService.clearDefaultSystemPrompt(id);
 
-    // Delete the prompt
-    db.delete(systemPrompts).where(eq(systemPrompts.id, id)).run();
+    fs.unlinkSync(this.getPromptFilePath(existing.fileName));
 
     return { success: true };
   }
