@@ -10,6 +10,7 @@ import {
 } from "@/lib/services/item/item.transformer";
 import { extractPlanFromMessages } from "./usePlanStream";
 import type { Plan } from "@/components/plan";
+import type { UIMessage, ChatStatus } from "ai";
 import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents } from "@/types";
 
 interface UseSessionChatOptions {
@@ -29,6 +30,8 @@ interface UseSessionChatReturn {
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
+  rawMessages: UIMessage[];
+  status: ChatStatus;
 }
 
 export function useSessionChat({
@@ -149,5 +152,7 @@ export function useSessionChat({
     sendMessage,
     isLoading,
     isInitialized,
+    rawMessages,
+    status,
   };
 }

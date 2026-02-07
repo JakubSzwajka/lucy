@@ -27,7 +27,6 @@ export {
   allToolModules,
   getToolModule,
   getToolModuleByIntegration,
-  tasksModule,
   notesModule,
   memoryModule,
 } from "./modules";
