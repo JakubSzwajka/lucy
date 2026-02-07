@@ -22,6 +22,7 @@ export default function McpSettingsPage() {
   }
 
   return (
+    <div className="p-6">
     <McpServersSettings
       servers={servers}
       onCreateServer={createServer}
@@ -29,5 +30,6 @@ export default function McpSettingsPage() {
       onDeleteServer={deleteServer}
       onTestConnection={testConnection}
     />
+    </div>
   );
 }

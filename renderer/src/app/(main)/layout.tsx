@@ -9,7 +9,6 @@ import type { AvailableProviders } from "@/types";
 
 interface MainContextType {
   activeSessionId: string | null;
-  activeAgentId: string | null;
   selectedModel: string;
   availableProviders?: AvailableProviders;
   settings: ReturnType<typeof useSettings>["settings"];
@@ -36,7 +35,6 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -68,7 +66,7 @@ export default function MainLayout({
           }
         }
       } catch (error) {
-        console.error("Failed to fetch available providers:", error);
+        console.error("[App] Failed to fetch available providers:", error);
       }
     }
     fetchProviders();
@@ -79,32 +77,6 @@ export default function MainLayout({
     createSession,
     deleteSession,
   } = useSessions();
-
-  // Fetch session details to get root agent when session changes
-  useEffect(() => {
-    async function fetchSessionDetails() {
-      if (activeSessionId) {
-        try {
-          const response = await fetch(`/api/sessions/${activeSessionId}`);
-          if (response.ok) {
-            const session = await response.json();
-            // Set the root agent as active
-            if (session.rootAgentId) {
-              setActiveAgentId(session.rootAgentId);
-            } else if (session.agents && session.agents.length > 0) {
-              // Fallback to first agent if no root agent set
-              setActiveAgentId(session.agents[0].id);
-            }
-          }
-        } catch (error) {
-          console.error("Failed to fetch session details:", error);
-        }
-      } else {
-        setActiveAgentId(null);
-      }
-    }
-    fetchSessionDetails();
-  }, [activeSessionId]);
 
   // Select first session on load if available
   useEffect(() => {
@@ -128,7 +100,6 @@ export default function MainLayout({
         // Select another session or null
         const remaining = sessions.filter((s) => s.id !== id);
         setActiveSessionId(remaining.length > 0 ? remaining[0].id : null);
-        setActiveAgentId(null);
       }
     },
     [deleteSession, activeSessionId, sessions]
@@ -140,7 +111,6 @@ export default function MainLayout({
 
   const contextValue: MainContextType = {
     activeSessionId,
-    activeAgentId,
     selectedModel,
     availableProviders,
     settings,

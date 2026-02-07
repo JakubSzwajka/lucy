@@ -45,7 +45,7 @@ export class McpClientPool {
         requireApproval: server.requireApproval,
       };
     } catch (error) {
-      console.error(`Failed to connect to MCP server ${server.name}:`, error);
+      console.error(`[MCP] Failed to connect to server ${server.name}:`, error);
       return {
         serverId: server.id,
         serverName: server.name,

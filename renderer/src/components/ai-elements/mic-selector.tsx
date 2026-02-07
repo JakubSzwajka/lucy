@@ -227,8 +227,6 @@ export const MicSelectorLabel = ({
 }: MicSelectorLabelProps) => {
   const matches = device.label.match(deviceIdRegex);
 
-  console.log(matches, device.label);
-
   if (!matches) {
     return (
       <span className={className} {...props}>
@@ -296,7 +294,7 @@ export const useAudioDevices = () => {
         err instanceof Error ? err.message : "Failed to get audio devices";
 
       setError(message);
-      console.error("Error getting audio devices:", message);
+      console.error("[Audio] Error getting devices:", message);
     } finally {
       setLoading(false);
     }
@@ -331,7 +329,7 @@ export const useAudioDevices = () => {
         err instanceof Error ? err.message : "Failed to get audio devices";
 
       setError(message);
-      console.error("Error getting audio devices:", message);
+      console.error("[Audio] Error getting devices:", message);
     } finally {
       setLoading(false);
     }

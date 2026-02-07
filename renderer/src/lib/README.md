@@ -8,7 +8,7 @@ This document describes the module structure under `renderer/src/lib/` and how t
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                              PRESENTATION                                │
 │                                                                          │
-│   hooks/useAgentChat.ts ─────────────────────────────────────────────┐  │
+│   hooks/useSessionChat.ts ────────────────────────────────────────────┐  │
 │            │                                                          │  │
 │            │ uses                                                     │  │
 │            ▼                                                          │  │
@@ -21,10 +21,9 @@ This document describes the module structure under `renderer/src/lib/` and how t
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           API ROUTES (Next.js)                          │
 │                                                                          │
-│   /api/chat/route.ts ──────► ChatService.prepareChat()                  │
-│   /api/sessions/route.ts ──► SessionService                             │
-│   /api/agents/route.ts ────► AgentService                               │
-│   /api/agents/[id]/items ──► ItemService                                │
+│   /api/sessions/[id]/chat ──► ChatService.executeTurn() (turn orchestrator) │
+│   /api/sessions/[id]/plans ─► PlanService                               │
+│   /api/sessions/route.ts ───► SessionService                            │
 └─────────────────────────────────────────────────────────────────────────┘
                                         │
                                         ▼
@@ -33,10 +32,11 @@ This document describes the module structure under `renderer/src/lib/` and how t
 │                                                                          │
 │   ┌────────────────────────────────────────────────────────────────┐   │
 │   │                    services/chat/chat.service.ts                │   │
-│   │  Orchestrates AI chat: prepares context, converts messages,     │   │
-│   │  handles finish callbacks, persists results                     │   │
+│   │  Turn orchestrator: resolves session, persists messages,         │   │
+│   │  prepares AI context, streams response, persists steps          │   │
 │   │                                                                 │   │
-│   │  Dependencies: AgentService, ToolRegistry, AI Providers         │   │
+│   │  Dependencies: SessionService, AgentService, ItemService,       │   │
+│   │  StepPersistence, ToolRegistry, AI Providers                    │   │
 │   └────────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │                              ▼                                          │
@@ -85,7 +85,7 @@ This document describes the module structure under `renderer/src/lib/` and how t
 │           │                                                             │
 │           ▼                                                             │
 │   ┌────────────────────────────────────────────────────────────────┐   │
-│   │                         mcp/pool.ts                             │   │
+│   │                   integrations/mcp/pool.ts                      │   │
 │   │  Connection pool for MCP servers, manages lifecycle             │   │
 │   └────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -135,11 +135,14 @@ service/
 | **SessionService** | User-facing conversation container. Creates sessions with a root agent. | AgentService |
 | **AgentService** | Runtime agent instances. Supports parent-child hierarchy for sub-agents. | - |
 | **ItemService** | Polymorphic items (messages, tool calls, results, reasoning). Validates and persists. | - |
-| **ChatService** | Orchestrates AI chat streaming. Prepares context, resolves prompts, handles finish. | AgentService, ToolRegistry, AI providers |
+| **ChatService** | Turn orchestrator. Owns the full chat turn: resolve session, persist messages, prepare AI context, stream, persist steps, finalize. | SessionService, AgentService, ItemService, StepPersistence, ToolRegistry, AI providers |
+| **PlanService** | Plan lifecycle — create, update, track progress of execution plans. | - |
+| **FilesystemService** | Local filesystem operations for file tools. | - |
 | **SettingsService** | App-wide settings (default model, system prompt, etc.) | - |
 | **SystemPromptService** | Reusable system prompt templates. | - |
+| **ConversationSearchRepository** | Full-text search across past conversation items. | - |
 
-Note: **McpService** lives in `lib/mcp/` alongside the MCP client pool.
+Note: **McpService** lives in `lib/integrations/mcp/` alongside the MCP client pool.
 
 ---
 
@@ -194,7 +197,7 @@ AI requests tool → registry.executeWithPersistence()
 
 ---
 
-### `mcp/` - MCP Protocol
+### `integrations/mcp/` - MCP Protocol
 
 | File | Purpose |
 |------|---------|

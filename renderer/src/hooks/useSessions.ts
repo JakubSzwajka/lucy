@@ -22,7 +22,7 @@ export function useSessions() {
         );
       }
     } catch (error) {
-      console.error("Failed to fetch sessions:", error);
+      console.error("[Sessions] Failed to fetch:", error);
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +50,7 @@ export function useSessions() {
         return session;
       }
     } catch (error) {
-      console.error("Failed to create session:", error);
+      console.error("[Sessions] Failed to create:", error);
     }
     return null;
   }, []);
@@ -65,7 +65,7 @@ export function useSessions() {
         return true;
       }
     } catch (error) {
-      console.error("Failed to delete session:", error);
+      console.error("[Sessions] Failed to delete:", error);
     }
     return false;
   }, []);

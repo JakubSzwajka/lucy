@@ -63,7 +63,9 @@ renderer/src/lib/
 │   │   │   └── index.ts
 │   │   ├── notes/                   # Notes tools → uses obsidian integration
 │   │   │   └── index.ts
-│   │   └── files/                   # Files tools → uses filesystem integration
+│   │   ├── memory/                  # Memory tools → uses obsidian integration
+│   │   │   └── index.ts
+│   │   └── plan/                    # Plan tools → uses plan service
 │   │       └── index.ts
 │   ├── providers/                   # Tool providers
 │   │   ├── builtin.ts               # BuiltinToolProvider (loads from DB)
@@ -94,23 +96,23 @@ renderer/src/lib/
 │           ┌─────────────────────────────────────────┐           │
 │           │          Integration Layer              │           │
 │           │                                         │           │
-│           │  ┌─────────┐ ┌─────────┐ ┌───────────┐ │           │
-│           │  │ todoist │ │obsidian │ │filesystem │ │           │
-│           │  │         │ │         │ │           │ │           │
-│           │  │ client  │ │ client  │ │  service  │ │           │
-│           │  └────┬────┘ └────┬────┘ └─────┬─────┘ │           │
-│           │       │           │            │        │           │
-│           └───────┼───────────┼────────────┼────────┘           │
-│                   ▼           ▼            ▼                     │
-│           ┌─────────────────────────────────────────┐           │
-│           │          Tool Module Layer              │           │
-│           │                                         │           │
-│           │  ┌─────────┐ ┌─────────┐ ┌───────────┐ │           │
-│           │  │  tasks  │ │  notes  │ │   files   │ │           │
-│           │  │         │ │         │ │           │ │           │
-│           │  │ tools   │ │ tools   │ │  tools    │ │           │
-│           │  └─────────┘ └─────────┘ └───────────┘ │           │
-│           └─────────────────────────────────────────┘           │
+│           │  ┌─────────┐ ┌─────────┐ ┌──────────┐  │           │
+│           │  │ todoist │ │obsidian │ │   plan   │  │           │
+│           │  │         │ │         │ │          │  │           │
+│           │  │ client  │ │ client  │ │ service  │  │           │
+│           │  └────┬────┘ └────┬────┘ └────┬─────┘  │           │
+│           │       │           │           │         │           │
+│           └───────┼───────────┼───────────┼─────────┘           │
+│                   ▼           ▼           ▼                      │
+│           ┌──────────────────────────────────────────┐          │
+│           │          Tool Module Layer               │          │
+│           │                                          │          │
+│           │ ┌───────┐ ┌───────┐ ┌────────┐ ┌──────┐ │          │
+│           │ │ tasks │ │ notes │ │ memory │ │ plan │ │          │
+│           │ │       │ │       │ │        │ │      │ │          │
+│           │ │ tools │ │ tools │ │ tools  │ │tools │ │          │
+│           │ └───────┘ └───────┘ └────────┘ └──────┘ │          │
+│           └──────────────────────────────────────────┘          │
 │                                                                  │
 ├─────────────────────────────────────────────────────────────────┤
 │                    Unified Tool Interface                        │
@@ -204,7 +206,7 @@ Tools are namespaced by source:
 
 type ToolSource =
   | { type: "mcp"; serverId: string; serverName: string }
-  | { type: "builtin"; moduleId: string }  // e.g., "tasks", "notes", "files"
+  | { type: "builtin"; moduleId: string }  // e.g., "tasks", "notes", "memory", "plan"
 ```
 
 ---
@@ -215,7 +217,8 @@ type ToolSource =
 |-------------|--------|-------------|
 | `todoist` | `tasks` | Task management via Todoist |
 | `obsidian` | `notes` | Notes via Obsidian Local REST API |
-| `filesystem` | `files` | Local file storage |
+| `obsidian` | `memory` | Entity/fact knowledge store via Obsidian |
+| `plan` | `plan` | Execution plan management |
 
 ### Tools
 
@@ -233,13 +236,17 @@ type ToolSource =
 | `notes_write` | Create/update notes | No |
 | `notes_delete` | Delete notes | **Yes** |
 
-**Files** (`builtin__files__*`) — powered by Filesystem
+**Memory** (`builtin__memory__*`) — powered by Obsidian
 | Tool | Description | Approval |
 |------|-------------|----------|
-| `files_list` | List files with optional regex filter | No |
-| `files_read` | Read file contents | No |
-| `files_write` | Write/create files | No |
-| `files_delete` | Delete files | **Yes** |
+| `memory` | Store, find, and update knowledge (entity/fact hybrid model) | No |
+
+**Plan** (`builtin__plan__*`) — powered by PlanService
+| Tool | Description | Approval |
+|------|-------------|----------|
+| `create_plan` | Create an execution plan with ordered steps | No |
+| `update_plan` | Update plan metadata, add/remove/update steps | No |
+| `get_plan` | Get the current plan for the session | No |
 
 ---
 
@@ -355,7 +362,7 @@ The integration will:
 
 ### Naming
 - **Integration IDs**: lowercase, dash-separated: `my-service`
-- **Module IDs**: lowercase, abstract: `tasks`, `notes`, `files`
+- **Module IDs**: lowercase, abstract: `tasks`, `notes`, `memory`, `plan`
 - **Tool names**: snake_case, prefixed: `tasks_list`, `notes_read`
 
 ### Descriptions

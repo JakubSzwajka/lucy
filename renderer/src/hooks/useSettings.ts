@@ -23,7 +23,7 @@ export function useSettings() {
         throw new Error("Failed to fetch settings");
       }
     } catch (err) {
-      console.error("Failed to fetch settings:", err);
+      console.error("[Settings] Failed to fetch:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
     } finally {
       setIsLoading(false);
@@ -68,7 +68,7 @@ export function useSettings() {
       } catch (err) {
         // Rollback on error
         setSettings(previousSettings);
-        console.error("Failed to update settings:", err);
+        console.error("[Settings] Failed to update:", err);
         throw err;
       }
     },

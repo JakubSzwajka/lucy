@@ -8,11 +8,13 @@ import {
   itemsToChatMessages,
   mergeWithStreaming,
 } from "@/lib/services/item/item.transformer";
-import type { ChatMessage, Item, Agent } from "@/types";
+import { extractPlanFromMessages } from "./usePlanStream";
+import type { Plan } from "@/components/plan";
+import type { UIMessage, ChatStatus } from "ai";
+import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents } from "@/types";
 
-interface UseAgentChatOptions {
+interface UseSessionChatOptions {
   sessionId: string | null;
-  agentId: string | null;
   model: string;
 }
 
@@ -20,44 +22,45 @@ interface SendMessageOptions {
   thinkingEnabled?: boolean;
 }
 
-interface UseAgentChatReturn {
+interface UseSessionChatReturn {
   messages: ChatMessage[];
   items: Item[];
   agent: Agent | null;
+  streamPlan: Plan | null;
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
+  rawMessages: UIMessage[];
+  status: ChatStatus;
 }
 
-export function useAgentChat({
+export function useSessionChat({
   sessionId,
-  agentId,
   model,
-}: UseAgentChatOptions): UseAgentChatReturn {
+}: UseSessionChatOptions): UseSessionChatReturn {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadedItems, setLoadedItems] = useState<Item[]>([]);
   const [agent, setAgent] = useState<Agent | null>(null);
 
-  const prevAgentIdRef = useRef<string | null>(null);
+  const prevSessionIdRef = useRef<string | null>(null);
   const modelRef = useRef(model);
-  const agentIdRef = useRef(agentId);
   const thinkingEnabledRef = useRef(true);
 
   // Keep refs updated
   modelRef.current = model;
-  agentIdRef.current = agentId;
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: "/api/chat",
+        api: sessionId
+          ? `/api/sessions/${sessionId}/chat`
+          : "/api/sessions/_/chat",
         body: () => ({
           model: modelRef.current,
-          agentId: agentIdRef.current,
           thinkingEnabled: thinkingEnabledRef.current,
         }),
       }),
-    []
+    [sessionId]
   );
 
   const {
@@ -71,50 +74,53 @@ export function useAgentChat({
 
   const isLoading = status === "streaming" || status === "submitted";
 
-  // Load agent and items when agentId changes
+  // Load session data when sessionId changes
   useEffect(() => {
-    if (agentId && agentId !== prevAgentIdRef.current) {
-      prevAgentIdRef.current = agentId;
+    if (sessionId && sessionId !== prevSessionIdRef.current) {
+      prevSessionIdRef.current = sessionId;
       setIsInitialized(false);
 
-      // Fetch agent with items
-      fetch(`/api/agents/${agentId}`)
+      fetch(`/api/sessions/${sessionId}`)
         .then((res) => res.json())
-        .then((data) => {
-          setAgent(data);
-          setLoadedItems(data.items || []);
+        .then((data: SessionWithAgents) => {
+          // Find root agent from session data
+          const rootAgent =
+            data.agents?.find((a) => a.id === data.rootAgentId) ||
+            data.agents?.[0];
+          setAgent(rootAgent || null);
+
+          // Get items from root agent
+          const rootItems = rootAgent?.items || [];
+          setLoadedItems(rootItems);
 
           // Convert items to messages for useChat
-          const messageItems = (data.items || []).filter(
-            (item: Item) => item.type === "message"
+          const messageItems = rootItems.filter(
+            (item): item is MessageItem => item.type === "message"
           );
-          const chatMessages = messageItems.map((item: Item) => ({
+          const chatMessages = messageItems.map((item) => ({
             id: item.id,
-            role: (item as any).role,
-            content: (item as any).content,
+            role: item.role,
+            parts: [{ type: "text" as const, text: item.content }],
           }));
           setMessages(chatMessages);
           setIsInitialized(true);
         })
         .catch((error) => {
-          console.error("Failed to load agent:", error);
+          console.error("[Chat] Failed to load session:", error);
           setIsInitialized(true);
         });
-    } else if (!agentId) {
-      prevAgentIdRef.current = null;
+    } else if (!sessionId) {
+      prevSessionIdRef.current = null;
       setMessages([]);
       setLoadedItems([]);
       setAgent(null);
       setIsInitialized(true);
     }
-  }, [agentId, setMessages]);
+  }, [sessionId, setMessages]);
 
   // Combine loaded items with streaming messages using ItemTransformer
   const messages: ChatMessage[] = useMemo(() => {
-    return mergeWithStreaming(
-      loadedItems,
-      rawMessages as unknown as Record<string, unknown>[]
-    );
+    return mergeWithStreaming(loadedItems, rawMessages);
   }, [loadedItems, rawMessages]);
 
   // All items (loaded + inferred from streaming)
@@ -122,39 +128,31 @@ export function useAgentChat({
     return loadedItems;
   }, [loadedItems]);
 
-  // Save user message to database before sending
+  // Extract plan state from streaming tool results
+  const streamPlan = useMemo(() => extractPlanFromMessages(rawMessages), [rawMessages]);
+
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions) => {
-      if (!agentId) return;
+      if (!sessionId) return;
 
       // Update thinking preference for this message
       thinkingEnabledRef.current = options?.thinkingEnabled ?? true;
 
-      // Save user message as an item (for persistence)
-      // Note: Don't add to loadedItems here - chatSendMessage will add to rawMessages
-      // and we combine them in the messages useMemo. Adding here would cause duplicates.
-      await fetch(`/api/agents/${agentId}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "message",
-          role: "user",
-          content,
-        }),
-      });
-
-      // Send to AI - this adds the user message to rawMessages
+      // Just send to AI - server saves user message
       chatSendMessage({ text: content });
     },
-    [agentId, chatSendMessage]
+    [sessionId, chatSendMessage]
   );
 
   return {
     messages,
     items,
     agent,
+    streamPlan,
     sendMessage,
     isLoading,
     isInitialized,
+    rawMessages,
+    status,
   };
 }

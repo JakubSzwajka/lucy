@@ -9,11 +9,15 @@ sessions
     │
     ├── rootAgentId ──────────────────┐
     │                                 │
-    └─── 1:many ───► agents ◄─────────┘
-                        │
-                        ├── parentId (self-referential hierarchy)
-                        │
-                        └─── 1:many ───► items (polymorphic)
+    ├─── 1:many ───► agents ◄─────────┘
+    │                   │
+    │                   ├── parentId (self-referential hierarchy)
+    │                   │
+    │                   └─── 1:many ───► items (polymorphic)
+    │
+    └─── 1:1 ───► plans
+                    │
+                    └─── 1:many ───► planSteps
 ```
 
 ## Tables
@@ -81,6 +85,44 @@ Polymorphic conversation entries per agent. Discriminated by `type` field.
 | `createdAt` | timestamp | all | |
 
 **Indexes:** `(agentId, sequence)`, `callId`
+
+### plans
+
+Execution plans owned by orchestrator agents. One plan per session.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | text | Primary key |
+| `sessionId` | text | FK to sessions (CASCADE delete) |
+| `agentId` | text | FK to agents (CASCADE delete) |
+| `title` | text | Plan title |
+| `description` | text | Optional context/goal |
+| `status` | enum | `pending` \| `in_progress` \| `completed` \| `failed` \| `cancelled` |
+| `createdAt` | timestamp | |
+| `updatedAt` | timestamp | |
+| `completedAt` | timestamp | |
+
+**Indexes:** `sessionId`, `agentId`
+
+### planSteps
+
+Individual steps within a plan.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | text | Primary key |
+| `planId` | text | FK to plans (CASCADE delete) |
+| `sequence` | integer | Step ordering |
+| `description` | text | What this step accomplishes |
+| `assignedAgentId` | text | FK to agents (SET NULL on delete) |
+| `status` | enum | `pending` \| `in_progress` \| `completed` \| `failed` \| `skipped` |
+| `result` | text | Outcome summary |
+| `error` | text | Error message |
+| `createdAt` | timestamp | |
+| `startedAt` | timestamp | |
+| `completedAt` | timestamp | |
+
+**Indexes:** `planId`, `assignedAgentId`, `(planId, sequence)`
 
 ### systemPrompts
 
@@ -171,6 +213,15 @@ type NewItem = typeof items.$inferInsert;
 type ItemType = "message" | "tool_call" | "tool_result" | "reasoning";
 type MessageRole = "user" | "assistant" | "system";
 type ToolCallStatus = "pending" | "pending_approval" | "running" | "completed" | "failed";
+
+// Plans
+type PlanRecord = typeof plans.$inferSelect;
+type NewPlan = typeof plans.$inferInsert;
+type PlanStatus = "pending" | "in_progress" | "completed" | "failed" | "cancelled";
+
+type PlanStepRecord = typeof planSteps.$inferSelect;
+type NewPlanStep = typeof planSteps.$inferInsert;
+type PlanStepStatus = "pending" | "in_progress" | "completed" | "failed" | "skipped";
 
 // MCP
 type McpTransportType = "stdio" | "sse" | "http";

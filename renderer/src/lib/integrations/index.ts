@@ -27,10 +27,6 @@ export type { McpTestResult, McpStatusResult, ValidationResult } from "./mcp";
 // Service Integrations
 // ============================================================================
 
-// Todoist
-export { todoistIntegration, TodoistClient } from "./todoist";
-export type { TodoistTask, TodoistProject, TodoistUser } from "./todoist";
-
 // Obsidian
 export { obsidianIntegration, ObsidianClient } from "./obsidian";
 export type { NoteInfo, NoteContent } from "./obsidian";
@@ -72,7 +68,6 @@ export type AnyIntegration = SimpleIntegration<any>;
 // Integration Registry
 // ============================================================================
 
-import { todoistIntegration } from "./todoist";
 import { obsidianIntegration } from "./obsidian";
 import { conversationsIntegration } from "./conversations";
 import { filesystemIntegration } from "./filesystem";
@@ -87,7 +82,6 @@ import { planIntegration } from "./plan";
  * 3. Add it to this array
  */
 export const allIntegrations: AnyIntegration[] = [
-  todoistIntegration,
   obsidianIntegration,
   conversationsIntegration,
   filesystemIntegration,

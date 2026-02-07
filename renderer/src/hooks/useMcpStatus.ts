@@ -38,7 +38,7 @@ export function useMcpStatus(): UseMcpStatusResult {
         setAllServers(data);
       }
     } catch (err) {
-      console.error("Failed to fetch MCP servers:", err);
+      console.error("[MCP] Failed to fetch servers:", err);
     }
   }, []);
 
@@ -56,7 +56,7 @@ export function useMcpStatus(): UseMcpStatusResult {
       setEnabledServers(data.servers);
       setTotalTools(data.totalTools);
     } catch (err) {
-      console.error("Failed to fetch MCP status:", err);
+      console.error("[MCP] Failed to fetch status:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     }
   }, []);
@@ -112,7 +112,7 @@ export function useMcpStatus(): UseMcpStatusResult {
         // Refresh status to get actual connection state
         await fetchStatus();
       } catch (err) {
-        console.error("Failed to toggle MCP server:", err);
+        console.error("[MCP] Failed to toggle server:", err);
         // Revert on error
         await refresh();
       }

@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
 import { getPlanService } from "@/lib/services";
 
-// GET /api/plans?sessionId=xxx - Get plan for a session
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const sessionId = searchParams.get("sessionId");
-
-  if (!sessionId) {
-    return NextResponse.json(
-      { error: "sessionId is required" },
-      { status: 400 }
-    );
-  }
+// GET /api/sessions/[id]/plans - Get plan for a session
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: sessionId } = await params;
 
   const planService = getPlanService();
   const plan = planService.getBySessionId(sessionId);

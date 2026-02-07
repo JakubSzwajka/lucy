@@ -18,27 +18,27 @@ All hooks are client-side only (`"use client"`) and follow consistent patterns f
 
 ## Hooks Reference
 
-### useAgentChat
+### useSessionChat
 
 **File:** `useAgentChat.ts`
 
-Manages AI chat interactions with streaming support. Wraps the `@ai-sdk/react` useChat hook and integrates with the agent/items persistence layer.
+Manages AI chat interactions with streaming support. Wraps the `@ai-sdk/react` useChat hook and integrates with the session persistence layer.
 
 **Parameters:**
 ```typescript
-interface UseAgentChatOptions {
+interface UseSessionChatOptions {
   sessionId: string | null;
-  agentId: string | null;
   model: string;
 }
 ```
 
 **Returns:**
 ```typescript
-interface UseAgentChatReturn {
+interface UseSessionChatReturn {
   messages: ChatMessage[];        // Merged loaded + streaming messages
   items: Item[];                  // All persisted items for the agent
   agent: Agent | null;            // Current agent data
+  streamPlan: Plan | null;        // Plan extracted from streaming tool results
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;             // True during streaming or submission
   isInitialized: boolean;         // True once agent data is loaded
@@ -46,11 +46,12 @@ interface UseAgentChatReturn {
 ```
 
 **Key Features:**
-- Loads agent and items from `/api/agents/:id` on agentId change
-- Uses `DefaultChatTransport` to stream via `/api/chat`
-- Persists user messages to `/api/agents/:id/items` before sending
+- Loads session data from `/api/sessions/:id` on sessionId change
+- Uses `DefaultChatTransport` to stream via `/api/sessions/:id/chat`
+- User messages are persisted server-side by the chat route
 - Merges persisted items with streaming messages for unified display
 - Supports thinking/reasoning toggle per message
+- Extracts plan state from `create_plan`/`update_plan` tool results in the stream
 
 ---
 
@@ -198,15 +199,13 @@ Manages application-wide user settings with optimistic updates.
 
 **File:** `usePlan.ts`
 
-Monitors plan execution progress with adaptive polling.
+Stream-driven plan state with DB fallback. Plan updates are extracted from `create_plan`/`update_plan` tool results in the chat SSE stream, eliminating polling.
 
 **Parameters:**
 ```typescript
 interface UsePlanOptions {
   sessionId: string | null;
-  activePollingInterval?: number;   // Default: 1500ms
-  idlePollingInterval?: number;     // Default: 3000ms
-  isAgentResponding?: boolean;      // Triggers refresh on transition to false
+  streamPlan?: Plan | null;   // Plan extracted from streaming tool results (from useSessionChat)
 }
 ```
 
@@ -221,15 +220,13 @@ interface UsePlanReturn {
 ```
 
 **API Endpoints:**
-- `GET /api/plans?sessionId=:id` - Fetch plan for session
+- `GET /api/sessions/:id/plans` - Initial fetch on page load / session switch
 
 **Key Features:**
-- Adaptive polling intervals based on plan state:
-  - 800ms when agent is responding (real-time updates)
-  - 1500ms for active plans (default)
-  - 3000ms when no plan exists (idle)
-  - No polling for completed/failed/cancelled plans
-- Immediate refresh when agent finishes responding
+- Stream-driven: `streamPlan` (from SSE tool results) takes priority over DB state
+- DB fallback: fetches from API on mount and when stream data becomes unavailable
+- Re-fetches from DB when `streamPlan` transitions from non-null to null (stream ended, session switch)
+- No polling — zero unnecessary network requests
 
 ---
 
@@ -338,10 +335,9 @@ setItems(
 ### Chat with Agent
 
 ```typescript
-function ChatView({ sessionId, agentId }: Props) {
-  const { messages, sendMessage, isLoading, isInitialized } = useAgentChat({
+function ChatView({ sessionId }: Props) {
+  const { messages, sendMessage, isLoading, isInitialized } = useSessionChat({
     sessionId,
-    agentId,
     model: "claude-3-5-sonnet",
   });
 
@@ -410,11 +406,10 @@ function SettingsPanel() {
 ### Plan Monitoring
 
 ```typescript
-function PlanView({ sessionId, isAgentResponding }: Props) {
+function PlanView({ sessionId, streamPlan }: Props) {
   const { plan, isLoading } = usePlan({
     sessionId,
-    isAgentResponding,
-    activePollingInterval: 1500,
+    streamPlan,
   });
 
   if (!plan) return null;
@@ -437,13 +432,13 @@ function PlanView({ sessionId, isAgentResponding }: Props) {
 
 | Hook | API Routes | External Libraries |
 |------|------------|-------------------|
-| `useAgentChat` | `/api/chat`, `/api/agents/:id`, `/api/agents/:id/items` | `@ai-sdk/react`, `ai` |
+| `useSessionChat` | `/api/sessions/:id/chat`, `/api/sessions/:id` | `@ai-sdk/react`, `ai` |
 | `useSessions` | `/api/sessions`, `/api/sessions/:id` | - |
 | `useSystemPrompts` | `/api/system-prompts`, `/api/system-prompts/:id` | - |
 | `useMcpServers` | `/api/mcp-servers`, `/api/mcp-servers/:id`, `/api/mcp-servers/:id/test` | - |
 | `useMcpStatus` | `/api/mcp-servers`, `/api/mcp-servers/status`, `/api/mcp-servers/:id` | - |
 | `useSettings` | `/api/settings` | - |
-| `usePlan` | `/api/plans` | - |
+| `usePlan` | `/api/sessions/:id/plans` | - |
 
 ### Type Dependencies
 

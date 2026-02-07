@@ -6,7 +6,6 @@ import { useMainContext } from "./layout";
 export default function ChatPage() {
   const {
     activeSessionId,
-    activeAgentId,
     selectedModel,
     setSelectedModel,
     availableProviders,
@@ -14,7 +13,7 @@ export default function ChatPage() {
     handleNewChat,
   } = useMainContext();
 
-  if (!activeSessionId || !activeAgentId) {
+  if (!activeSessionId) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted">
         <div className="text-center">
@@ -35,7 +34,6 @@ export default function ChatPage() {
   return (
     <ChatContainer
       sessionId={activeSessionId}
-      agentId={activeAgentId}
       selectedModel={selectedModel}
       onModelChange={setSelectedModel}
       availableProviders={availableProviders}

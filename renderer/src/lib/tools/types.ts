@@ -13,7 +13,7 @@ export interface McpToolSource {
 
 export interface BuiltinToolSource {
   type: "builtin";
-  moduleId: string; // e.g., "todoist", "filesystem"
+  moduleId: string; // e.g., "notes", "filesystem"
 }
 
 export type ToolSource = McpToolSource | BuiltinToolSource;
@@ -143,7 +143,7 @@ type AnyToolDefinition = ToolDefinition<any, any>;
  * A ToolModule defines abstract tools that use a client from an integration.
  *
  * Tool modules:
- * - Reference an integration by ID (e.g., "todoist", "obsidian")
+ * - Reference an integration by ID (e.g., "obsidian", "filesystem")
  * - Receive a client instance created by the integration
  * - Create tools that use that client
  *
@@ -159,7 +159,7 @@ export interface ToolModule<TClient = unknown> {
   description: string;
 
   // Which integration provides the client
-  integrationId: string; // e.g., "todoist", "obsidian", "filesystem"
+  integrationId: string; // e.g., "obsidian", "filesystem"
 
   // Factory: client → tools
   createTools: (client: TClient) => AnyToolDefinition[];

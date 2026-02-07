@@ -9,6 +9,6 @@ export function register() {
     langfuseSdk.start();
     console.log("[Instrumentation] Langfuse SDK started");
   } catch (error) {
-    console.error("Error starting langfuse SDK:", error);
+    console.error("[Instrumentation] Error starting langfuse SDK:", error);
   }
 }

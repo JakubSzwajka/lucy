@@ -3,11 +3,13 @@
 import { useMemo, useState, useEffect } from "react";
 import {
   PromptInput,
+  PromptInputProvider,
   PromptInputTextarea,
   PromptInputFooter,
   PromptInputTools,
   PromptInputSubmit,
   PromptInputButton,
+  usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import {
   ModelSelector as ModelSelectorRoot,
@@ -25,7 +27,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
 import { AVAILABLE_MODELS, getModelConfig } from "@/lib/ai/models";
 import type { ChatMessage, ModelConfig, AvailableProviders, McpServer, McpServerStatus } from "@/types";
-import { ChevronDown, Lightbulb, Wrench, Server } from "lucide-react";
+import { ChevronDown, Lightbulb, Wrench, Server, Loader2 } from "lucide-react";
 
 interface RegisteredToolInfo {
   key: string;
@@ -49,6 +51,8 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 
 interface ChatInputProps {
   onSend: (message: string) => void;
+  prefillText?: string;
+  prefillNonce?: number;
   isLoading?: boolean;
   messages?: ChatMessage[];
   modelConfig?: ModelConfig;
@@ -68,8 +72,10 @@ interface ChatInputProps {
   isMcpLoading?: boolean;
 }
 
-export function ChatInput({
+function ChatInputInner({
   onSend,
+  prefillText,
+  prefillNonce,
   isLoading,
   messages = [],
   modelConfig,
@@ -85,22 +91,30 @@ export function ChatInput({
   onMcpToggle,
   isMcpLoading,
 }: ChatInputProps) {
+  const { textInput } = usePromptInputController();
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mcpOpen, setMcpOpen] = useState(false);
   const [tools, setTools] = useState<RegisteredToolInfo[]>([]);
+  const [isToolsLoading, setIsToolsLoading] = useState(true);
+
+  useEffect(() => {
+    if (prefillNonce !== undefined && prefillText !== undefined) {
+      textInput.setInput(prefillText);
+    }
+  }, [prefillNonce, prefillText, textInput]);
 
   // Fetch registered tools
   useEffect(() => {
     fetch("/api/tools")
       .then((res) => res.json())
       .then((data) => setTools(data.tools || []))
-      .catch(() => setTools([]));
+      .catch(() => setTools([]))
+      .finally(() => setIsToolsLoading(false));
   }, []);
 
   // MCP helpers
   const enabledMcpIds = new Set(enabledMcpServers.map((s) => s.serverId));
-  const totalMcpTools = enabledMcpServers.reduce((acc, s) => acc + s.tools.length, 0);
 
   const getMcpStatusDot = (serverId: string) => {
     const status = enabledMcpServers.find((s) => s.serverId === serverId);
@@ -132,13 +146,8 @@ export function ChatInput({
     return availableProviders[model.provider];
   };
 
-  const isModelEnabled = (model: ModelConfig): boolean => {
-    if (!enabledModels) return true;
-    return enabledModels.includes(model.id);
-  };
-
   const visibleModels = useMemo(
-    () => AVAILABLE_MODELS.filter((model) => isModelEnabled(model)),
+    () => AVAILABLE_MODELS.filter((model) => !enabledModels || enabledModels.includes(model.id)),
     [enabledModels]
   );
 
@@ -239,7 +248,11 @@ export function ChatInput({
                 <PromptInputButton className="gap-1.5 text-muted-foreground hover:text-foreground">
                   <Wrench className="size-3.5" />
                   <span className="text-xs">Tools</span>
-                  <span className="text-xs text-muted-dark">({tools.length})</span>
+                  {isToolsLoading ? (
+                    <Loader2 className="size-3 animate-spin text-muted-dark" />
+                  ) : (
+                    <span className="text-xs text-muted-dark">({tools.length})</span>
+                  )}
                   <ChevronDown className={`size-3 opacity-50 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
                 </PromptInputButton>
               </PopoverTrigger>
@@ -281,13 +294,22 @@ export function ChatInput({
                   </>
                 )}
                 {tools.length === 0 && (
-                  <div className="px-2 py-3 text-center text-xs text-muted-dark">No tools registered</div>
+                  <div className="px-2 py-3 text-center text-xs text-muted-dark">
+                    {isToolsLoading ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="size-3 animate-spin" />
+                        <span>Loading tools...</span>
+                      </div>
+                    ) : (
+                      "No tools registered"
+                    )}
+                  </div>
                 )}
               </PopoverContent>
             </Popover>
 
             {/* MCP Servers Selector */}
-            {mcpServers.length > 0 && onMcpToggle && (
+            {(mcpServers.length > 0 || isMcpLoading) && onMcpToggle && (
               <Popover open={mcpOpen} onOpenChange={setMcpOpen}>
                 <PopoverTrigger asChild>
                   <PromptInputButton
@@ -296,7 +318,9 @@ export function ChatInput({
                   >
                     <Server className="size-3.5" />
                     <span className="text-xs">MCP</span>
-                    {enabledMcpServers.length > 0 ? (
+                    {isMcpLoading ? (
+                      <Loader2 className="size-3 animate-spin text-muted-dark" />
+                    ) : enabledMcpServers.length > 0 ? (
                       <>
                         <span className="text-xs text-muted-dark">({enabledMcpServers.length})</span>
                         <span className="size-1.5 rounded-full bg-emerald-400" />
@@ -385,5 +409,13 @@ export function ChatInput({
         )}
       </div>
     </div>
+  );
+}
+
+export function ChatInput(props: ChatInputProps) {
+  return (
+    <PromptInputProvider>
+      <ChatInputInner {...props} />
+    </PromptInputProvider>
   );
 }

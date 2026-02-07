@@ -70,12 +70,13 @@ npm run dev
 ### API Routes
 API routes run via Next.js standalone server in production:
 - `/api/sessions` - Session CRUD (user-facing conversation container)
-- `/api/agents` - Agent CRUD (runtime instances, support hierarchy)
-- `/api/agents/[id]/items` - Polymorphic items (messages, tool calls, results, reasoning)
-- `/api/chat` - AI chat streaming (works with agentId)
+- `/api/sessions/[id]/chat` - AI chat streaming (session-centric, resolves root agent internally)
 - `/api/providers` - Available AI providers
 - `/api/settings` - App settings
 - `/api/system-prompts` - System prompt management
+- `/api/mcp-servers` - MCP server management
+- `/api/plans` - Plan management
+- `/api/tools` - Tool listing
 
 ### Database
 - SQLite via `better-sqlite3` + Drizzle ORM

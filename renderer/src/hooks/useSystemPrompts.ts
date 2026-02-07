@@ -25,7 +25,7 @@ export function useSystemPrompts() {
         throw new Error("Failed to fetch system prompts");
       }
     } catch (err) {
-      console.error("Failed to fetch system prompts:", err);
+      console.error("[SystemPrompts] Failed to fetch:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
     } finally {
       setIsLoading(false);

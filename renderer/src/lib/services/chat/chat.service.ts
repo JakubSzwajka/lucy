@@ -1,5 +1,7 @@
-import { db, settings, systemPrompts, sessions } from "@/lib/db";
+import { db, settings } from "@/lib/db";
+import { getSystemPromptService } from "@/lib/services/config";
 import { eq } from "drizzle-orm";
+import { streamText, stepCountIs, ToolSet } from "ai";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
 import {
@@ -8,7 +10,10 @@ import {
   getMcpProvider,
 } from "@/lib/tools";
 import { getAgentService } from "../agent";
-import type { ChatContext, ChatPrepareOptions, ModelMessage, ChatFinishResult } from "./types";
+import { getSessionService } from "../session";
+import { getItemService } from "../item";
+import { persistStepContent } from "./step-persistence.service";
+import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, ModelMessage, ChatFinishResult } from "./types";
 import type { Agent, ModelConfig } from "@/types";
 
 // ============================================================================
@@ -19,6 +24,89 @@ import type { Agent, ModelConfig } from "@/types";
  * Service for chat orchestration logic
  */
 export class ChatService {
+  // -------------------------------------------------------------------------
+  // Turn Execution
+  // -------------------------------------------------------------------------
+
+  /**
+   * Execute a full chat turn: persist user message, prepare context, stream AI response.
+   * Returns the streamText result for the caller to convert into an HTTP response.
+   */
+  async executeTurn(sessionId: string, chatMessages: unknown[], options: ExecuteTurnOptions = {}) {
+    const { modelId, thinkingEnabled } = options;
+
+    // 1. Resolve session and root agent
+    const sessionService = getSessionService();
+    const session = sessionService.getById(sessionId);
+
+    if (!session) {
+      return { error: "Session not found" as const, status: 404 as const };
+    }
+
+    const rootAgentId = session.rootAgentId;
+    if (!rootAgentId) {
+      return { error: "Session has no root agent" as const, status: 400 as const };
+    }
+
+    // 2. Persist latest user message
+    const lastUserMessage = (chatMessages as Record<string, unknown>[])
+      .filter((m) => m.role === "user")
+      .pop();
+
+    if (lastUserMessage) {
+      const itemService = getItemService();
+      let content = typeof lastUserMessage.content === "string"
+        ? lastUserMessage.content
+        : undefined;
+
+      if (!content && Array.isArray(lastUserMessage.parts)) {
+        content = (lastUserMessage.parts as Record<string, unknown>[])
+          .filter((part) => part.type === "text")
+          .map((part) => part.text as string)
+          .join("");
+      }
+
+      content = content || "";
+      itemService.createMessage(rootAgentId, "user", content);
+      sessionService.maybeGenerateTitle(sessionId, content);
+    }
+
+    // 3. Prepare chat context
+    const context = await this.prepareChat(rootAgentId, { modelId, thinkingEnabled });
+    if (!context) {
+      return { error: "Agent not found" as const, status: 404 as const };
+    }
+
+    // 4. Convert and prepare messages
+    const modelMessages = this.convertToModelMessages(chatMessages);
+    const messagesWithSystem = this.prependSystemPrompt(modelMessages, context.systemPrompt);
+
+    const hasTools = Object.keys(context.tools).length > 0;
+
+    // 5. Stream AI response
+    const result = streamText({
+      model: context.languageModel,
+      messages: messagesWithSystem,
+      tools: hasTools ? context.tools as ToolSet : undefined,
+      stopWhen: hasTools ? stepCountIs(10) : stepCountIs(1),
+      maxOutputTokens: context.maxOutputTokens,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      providerOptions: context.providerOptions as any,
+      onStepFinish: async ({ content, reasoning }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await persistStepContent(rootAgentId, content as any[], reasoning);
+      },
+      onFinish: async () => {
+        await this.finalizeChat(rootAgentId);
+      },
+      experimental_telemetry: {
+        isEnabled: true,
+      },
+    });
+
+    return { stream: result };
+  }
+
   // -------------------------------------------------------------------------
   // Chat Preparation
   // -------------------------------------------------------------------------
@@ -117,11 +205,8 @@ export class ChatService {
         return null;
       }
 
-      const [prompt] = db
-        .select()
-        .from(systemPrompts)
-        .where(eq(systemPrompts.id, currentSettings.defaultSystemPromptId))
-        .all();
+      const systemPromptService = getSystemPromptService();
+      const prompt = systemPromptService.getById(currentSettings.defaultSystemPromptId);
 
       return prompt?.content || null;
     } catch {
@@ -209,7 +294,6 @@ export class ChatService {
 
   /**
    * Finalize a chat stream by updating agent status.
-   * Item persistence is handled by onStepFinish in the route.
    */
   async finalizeChat(agentId: string): Promise<ChatFinishResult> {
     try {
@@ -240,10 +324,7 @@ export class ChatService {
    * Update session timestamp
    */
   private touchSession(sessionId: string): void {
-    db.update(sessions)
-      .set({ updatedAt: new Date() })
-      .where(eq(sessions.id, sessionId))
-      .run();
+    getSessionService().touch(sessionId);
   }
 }
 

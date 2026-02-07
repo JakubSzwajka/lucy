@@ -137,6 +137,25 @@ export const systemPrompts = sqliteTable("system_prompts", {
 });
 
 // ============================================================================
+// QUICK ACTIONS - Predefined user prompts shown on empty chat
+// ============================================================================
+
+export const quickActions = sqliteTable("quick_actions", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  content: text("content").notNull(),
+  icon: text("icon"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+// ============================================================================
 // PLANS - Execution plans owned by orchestrator agents
 // ============================================================================
 
@@ -250,6 +269,9 @@ export type ToolCallStatus = (typeof toolCallStatusEnum)[number];
 
 export type SystemPromptRecord = typeof systemPrompts.$inferSelect;
 export type NewSystemPrompt = typeof systemPrompts.$inferInsert;
+
+export type QuickActionRecord = typeof quickActions.$inferSelect;
+export type NewQuickAction = typeof quickActions.$inferInsert;
 
 export type SettingsRecord = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
