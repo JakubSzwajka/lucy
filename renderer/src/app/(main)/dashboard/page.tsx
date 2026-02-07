@@ -1,7 +1,5 @@
 "use client";
 
-import { useMainContext } from "../layout";
-
 const cards = [
   {
     label: "ACTIVE_SESSIONS",
@@ -30,8 +28,6 @@ const cards = [
 ];
 
 export default function DashboardPage() {
-  const { settings } = useMainContext();
-
   return (
     <div className="flex-1 overflow-y-auto p-8">
       <div className="max-w-4xl mx-auto">

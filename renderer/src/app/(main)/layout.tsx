@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, createContext, useContext } from "react";
+import { useState, useCallback, useEffect, useRef, createContext, useContext } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
@@ -35,18 +35,30 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
+  const { settings } = useSettings();
+
+  const [selectedModel, setSelectedModel] = useState(
+    () => settings?.defaultModelId || DEFAULT_MODEL.id
+  );
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const { settings } = useSettings();
+  // Track whether settings default model has been applied
+  const appliedDefaultModelRef = useRef(false);
 
-  // Apply default model from settings when settings load
+  // Apply default model from settings when settings load (only once)
   useEffect(() => {
-    if (settings?.defaultModelId) {
+    if (settings?.defaultModelId && !appliedDefaultModelRef.current) {
+      appliedDefaultModelRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- applying default model from async-loaded settings
       setSelectedModel(settings.defaultModelId);
     }
   }, [settings?.defaultModelId]);
+
+  const selectedModelRef = useRef(selectedModel);
+  useEffect(() => {
+    selectedModelRef.current = selectedModel;
+  }, [selectedModel]);
 
   useEffect(() => {
     async function fetchProviders() {
@@ -57,7 +69,7 @@ export default function MainLayout({
           setAvailableProviders(providers);
 
           // If current selected model's provider is unavailable, select first available model
-          const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+          const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModelRef.current);
           if (currentModel && !providers[currentModel.provider]) {
             const firstAvailable = AVAILABLE_MODELS.find(m => providers[m.provider]);
             if (firstAvailable) {
@@ -81,6 +93,7 @@ export default function MainLayout({
   // Select first session on load if available
   useEffect(() => {
     if (sessions.length > 0 && !activeSessionId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initializing activeSessionId from async-loaded sessions; cannot compute during render
       setActiveSessionId(sessions[0].id);
     }
   }, [sessions, activeSessionId]);

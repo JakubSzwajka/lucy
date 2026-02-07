@@ -1,5 +1,5 @@
 import { db, items, agents, sessions, ItemRecord } from "@/lib/db";
-import { eq, ne, and, or, like, asc, desc, sql, lt, gt } from "drizzle-orm";
+import { eq, ne, and, or, like, asc, desc, lt, gt } from "drizzle-orm";
 import type {
   ConversationSearchResult,
   ConversationSearchOptions,

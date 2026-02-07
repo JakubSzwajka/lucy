@@ -4,8 +4,6 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import {
-  ItemTransformer,
-  itemsToChatMessages,
   mergeWithStreaming,
 } from "@/lib/services/item/item.transformer";
 import { extractPlanFromMessages } from "./usePlanStream";
@@ -46,10 +44,13 @@ export function useSessionChat({
   const modelRef = useRef(model);
   const thinkingEnabledRef = useRef(true);
 
-  // Keep refs updated
-  modelRef.current = model;
+  // Keep refs updated via effect to avoid ref mutation during render
+  useEffect(() => {
+    modelRef.current = model;
+  }, [model]);
 
-  const transport = useMemo(
+  const [transport, setTransport] = useState(
+    // eslint-disable-next-line react-hooks/refs -- refs are captured in a deferred `body` callback, not read during render
     () =>
       new DefaultChatTransport({
         api: sessionId
@@ -59,9 +60,23 @@ export function useSessionChat({
           model: modelRef.current,
           thinkingEnabled: thinkingEnabledRef.current,
         }),
-      }),
-    [sessionId]
+      })
   );
+
+  // Recreate transport when sessionId changes
+  useEffect(() => {
+    setTransport(
+      new DefaultChatTransport({
+        api: sessionId
+          ? `/api/sessions/${sessionId}/chat`
+          : "/api/sessions/_/chat",
+        body: () => ({
+          model: modelRef.current,
+          thinkingEnabled: thinkingEnabledRef.current,
+        }),
+      })
+    );
+  }, [sessionId]);
 
   const {
     messages: rawMessages,

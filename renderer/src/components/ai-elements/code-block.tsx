@@ -297,6 +297,8 @@ const CodeBlockBody = memo(
     prevProps.className === nextProps.className
 );
 
+CodeBlockBody.displayName = "CodeBlockBody";
+
 export const CodeBlockContainer = ({
   className,
   language,
@@ -382,8 +384,15 @@ export const CodeBlockContent = ({
   );
 
   useEffect(() => {
-    // Reset to raw tokens when code changes (shows current code, not stale tokens)
-    setTokenized(highlightCode(code, language) ?? rawTokens);
+    // Check if cached result is available; if so, use it immediately
+    const cached = highlightCode(code, language);
+    if (cached) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronizing with external shiki highlighting cache
+      setTokenized(cached);
+      return;
+    }
+
+    setTokenized(rawTokens);
 
     // Subscribe to async highlighting result
     highlightCode(code, language, setTokenized);

@@ -47,6 +47,7 @@ export function usePlan({
 
   // Initial fetch on mount / sessionId change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern: setIsLoading gates UI loading state before async fetch
     setIsLoading(true);
     fetchPlan().finally(() => setIsLoading(false));
   }, [fetchPlan]);
@@ -55,6 +56,7 @@ export function usePlan({
   // (stream ended, session switch, etc.)
   useEffect(() => {
     if (prevStreamPlanRef.current && !streamPlan) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchPlan sets state internally after async DB fetch
       fetchPlan();
     }
     prevStreamPlanRef.current = streamPlan;

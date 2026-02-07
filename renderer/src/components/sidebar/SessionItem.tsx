@@ -53,7 +53,7 @@ export function SessionItem({
       onClick={onSelect}
     >
       <div className="flex justify-between items-start mb-1">
-        <span className="label text-muted">// SESSION.{formatLogNumber(sessionNumber)}</span>
+        <span className="label text-muted">{"// "}SESSION.{formatLogNumber(sessionNumber)}</span>
         <span className="label-sm text-muted-dark">
           {formatTime(new Date(session.updatedAt))}
         </span>

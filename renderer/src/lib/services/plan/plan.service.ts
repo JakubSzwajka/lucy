@@ -2,10 +2,8 @@ import {
   PlanRepository,
   getPlanRepository,
   type PlanWithSteps,
-  type CreatePlanData,
   type UpdatePlanData,
   type AddStepData,
-  type UpdateStepData,
 } from "./plan.repository";
 import type { PlanStatus, PlanStepRecord, PlanStepStatus } from "@/lib/db/schema";
 

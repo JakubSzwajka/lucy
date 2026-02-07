@@ -18,6 +18,17 @@ export interface TextShimmerProps {
   spread?: number;
 }
 
+// Cache motion components outside render to avoid recreating on each render
+const motionComponentCache = new Map<string, ReturnType<typeof motion.create>>();
+
+function getMotionComponent(tag: keyof JSX.IntrinsicElements) {
+  const cached = motionComponentCache.get(tag);
+  if (cached) return cached;
+  const component = motion.create(tag);
+  motionComponentCache.set(tag, component);
+  return component;
+}
+
 const ShimmerComponent = ({
   children,
   as: Component = "p",
@@ -25,7 +36,7 @@ const ShimmerComponent = ({
   duration = 2,
   spread = 2,
 }: TextShimmerProps) => {
-  const MotionComponent = motion.create(
+  const MotionComponent = getMotionComponent(
     Component as keyof JSX.IntrinsicElements
   );
 
@@ -35,6 +46,7 @@ const ShimmerComponent = ({
   );
 
   return (
+    // eslint-disable-next-line react-hooks/static-components -- component is cached in module-level map, not recreated on each render
     <MotionComponent
       animate={{ backgroundPosition: "0% center" }}
       className={cn(

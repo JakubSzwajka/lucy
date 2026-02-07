@@ -163,8 +163,10 @@ export const InlineCitationCarouselIndex = ({
       return;
     }
 
+    /* eslint-disable react-hooks/set-state-in-effect -- synchronizing with external embla carousel API state */
     setCount(api.scrollSnapList().length);
     setCurrent(api.selectedScrollSnap() + 1);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap() + 1);

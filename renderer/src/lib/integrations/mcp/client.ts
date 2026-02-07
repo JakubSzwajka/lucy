@@ -2,7 +2,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { McpServer, McpTool, McpServerStatus } from "@/types";
-import type { Tool } from "ai";
 import { z } from "zod";
 
 export interface McpClientWrapper {

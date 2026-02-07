@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface TagValue {
   id: string;
@@ -52,16 +52,18 @@ export function TagCategoryEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Generate ID from name if new category
-  useEffect(() => {
-    if (isNew && formData.name) {
-      const id = formData.name
+  // Generate ID from name for new categories inline during name changes
+  const handleNameChange = (name: string) => {
+    if (isNew) {
+      const id = name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
-      setFormData((prev) => ({ ...prev, id }));
+      setFormData((prev) => ({ ...prev, name, id }));
+    } else {
+      setFormData((prev) => ({ ...prev, name }));
     }
-  }, [formData.name, isNew]);
+  };
 
   const handleAddValue = async () => {
     if (!newValueName.trim()) return;
@@ -153,9 +155,7 @@ export function TagCategoryEditor({
           <input
             type="text"
             value={formData.name}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, name: e.target.value }))
-            }
+            onChange={(e) => handleNameChange(e.target.value)}
             placeholder="e.g., Topic, Project, Status"
             className="w-full bg-background-secondary border border-border rounded px-3 py-2 text-sm focus:outline-none focus:border-foreground"
           />

@@ -158,6 +158,8 @@ const PersonaWithModel = memo(
   }
 );
 
+PersonaWithModel.displayName = "PersonaWithModel";
+
 interface PersonaWithoutModelProps {
   children: ReactNode;
 }
@@ -165,6 +167,8 @@ interface PersonaWithoutModelProps {
 const PersonaWithoutModel = memo(
   ({ children }: PersonaWithoutModelProps) => children
 );
+
+PersonaWithoutModel.displayName = "PersonaWithoutModel";
 
 export const Persona: FC<PersonaProps> = memo(
   ({
@@ -244,6 +248,8 @@ export const Persona: FC<PersonaProps> = memo(
     const speakingInput = useStateMachineInput(rive, stateMachine, "speaking");
     const asleepInput = useStateMachineInput(rive, stateMachine, "asleep");
 
+    // Rive state machine inputs are external mutable API objects; setting .value is the intended API
+    /* eslint-disable react-hooks/immutability */
     useEffect(() => {
       if (listeningInput) {
         listeningInput.value = state === "listening";
@@ -258,6 +264,7 @@ export const Persona: FC<PersonaProps> = memo(
         asleepInput.value = state === "asleep";
       }
     }, [state, listeningInput, thinkingInput, speakingInput, asleepInput]);
+    /* eslint-enable react-hooks/immutability */
 
     const Component = source.hasModel ? PersonaWithModel : PersonaWithoutModel;
 
@@ -268,3 +275,5 @@ export const Persona: FC<PersonaProps> = memo(
     );
   }
 );
+
+Persona.displayName = "Persona";

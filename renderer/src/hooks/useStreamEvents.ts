@@ -85,6 +85,7 @@ export function useStreamEvents(rawMessages: UIMessage[], status: string) {
         type: 'stream-start',
         summary: 'Stream started',
       };
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- accumulating events from external stream status transitions
       setEvents(prev => [...prev, startEvent]);
     }
 
@@ -122,6 +123,7 @@ export function useStreamEvents(rawMessages: UIMessage[], status: string) {
     }
 
     if (newEvents.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- accumulating events from streaming message parts
       setEvents(prev => [...prev, ...newEvents]);
     }
   }, [rawMessages]);
