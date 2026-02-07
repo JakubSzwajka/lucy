@@ -2,15 +2,50 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
+  tag:
+    name: Create CalVer Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate CalVer tag
+        id: version
+        run: |
+          DATE_TAG="v$(date -u +'%Y.%m.%d')"
+          # Check for existing tags with today's date and find the next suffix
+          EXISTING=$(git tag -l "${DATE_TAG}*" | sort -V | tail -1)
+          if [ -z "$EXISTING" ]; then
+            VERSION="$DATE_TAG"
+          elif [ "$EXISTING" = "$DATE_TAG" ]; then
+            VERSION="${DATE_TAG}.1"
+          else
+            # Extract suffix number and increment
+            SUFFIX=$(echo "$EXISTING" | sed "s/${DATE_TAG}\.//")
+            NEXT=$((SUFFIX + 1))
+            VERSION="${DATE_TAG}.${NEXT}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tagging as $VERSION"
+
+      - name: Create and push tag
+        run: |
+          git tag "${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}"
+
   build-macos:
     name: Build macOS
+    needs: [tag]
     runs-on: macos-latest
 
     steps:
@@ -62,6 +97,7 @@ jobs:
 
   build-windows:
     name: Build Windows
+    needs: [tag]
     runs-on: windows-latest
 
     steps:
@@ -114,6 +150,7 @@ jobs:
 
   build-linux:
     name: Build Linux
+    needs: [tag]
     runs-on: ubuntu-latest
 
     steps:
@@ -164,7 +201,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    needs: [build-macos, build-windows, build-linux]
+    needs: [tag, build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
 
     steps:
@@ -178,6 +215,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.tag.outputs.version }}
+          name: ${{ needs.tag.outputs.version }}
           generate_release_notes: true
           files: |
             artifacts/macos-builds/*
