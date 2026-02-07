@@ -15,9 +15,13 @@ files:
 extraMetadata:
   main: app/background.js
 
-# Rebuild native modules for Electron
+# Rebuild only better-sqlite3 for Electron (tree-sitter from swagger-ui
+# runs in browser context and doesn't need Electron rebuild)
 npmRebuild: true
 nodeGypRebuild: false
+nativeRebuilder: sequential
+onlyModules:
+  - better-sqlite3
 
 # Include native dependencies
 asarUnpack:

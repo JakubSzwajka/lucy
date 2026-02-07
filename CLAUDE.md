@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-This is a **desktop application** built with Electron + Next.js (via Nextron). The app runs locally with a SQLite database and connects to AI providers (Anthropic, Google, OpenAI).
+This is a **desktop application** built with Electron + Next.js. The app runs locally with a SQLite database and connects to AI providers (Anthropic, Google, OpenAI).
 
 ```
 lucy-nextjs/

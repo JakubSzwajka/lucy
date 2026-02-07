@@ -37,6 +37,7 @@ async function build() {
   const nextStandalone = path.join(RENDERER_DIR, ".next", "standalone");
   const nextStatic = path.join(RENDERER_DIR, ".next", "static");
   const publicDir = path.join(RENDERER_DIR, "public");
+  const migrationsDir = path.join(ROOT, "drizzle");
 
   // Copy standalone server
   await fs.copy(nextStandalone, STANDALONE_DIR);
@@ -50,6 +51,11 @@ async function build() {
   // Copy public files if they exist
   if (await fs.pathExists(publicDir)) {
     await fs.copy(publicDir, path.join(STANDALONE_DIR, "renderer", "public"));
+  }
+
+  // Copy DB migrations for first-run schema bootstrap
+  if (await fs.pathExists(migrationsDir)) {
+    await fs.copy(migrationsDir, path.join(STANDALONE_DIR, "drizzle"));
   }
 
   // Step 4: Compile main process TypeScript
