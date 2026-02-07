@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npx next build renderer
+
+      - name: Prepare standalone
+        run: |
+          mkdir -p app/standalone
+          cp -r renderer/.next/standalone/ app/standalone/
+          cp -r renderer/.next/static app/standalone/renderer/.next/static
+          if [ -d renderer/public ]; then cp -r renderer/public app/standalone/renderer/public; fi
+          if [ -d drizzle ]; then cp -r drizzle app/standalone/drizzle; fi
+          echo '{"name":"lucy-standalone","version":"1.0.0","main":"server.js"}' > app/standalone/package.json
+
+      - name: Copy native modules
+        run: |
+          for mod in better-sqlite3 bindings file-uri-to-path prebuild-install; do
+            if [ -d "node_modules/$mod" ]; then
+              cp -r "node_modules/$mod" "app/standalone/node_modules/$mod"
+            fi
+          done
+
+      - name: Compile main process
+        run: npx tsc
+
+      - name: Build Electron (macOS)
+        run: npx electron-builder --config electron-builder.yml --mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npx next build renderer
+
+      - name: Prepare standalone
+        shell: bash
+        run: |
+          mkdir -p app/standalone
+          cp -r renderer/.next/standalone/ app/standalone/
+          cp -r renderer/.next/static app/standalone/renderer/.next/static
+          if [ -d renderer/public ]; then cp -r renderer/public app/standalone/renderer/public; fi
+          if [ -d drizzle ]; then cp -r drizzle app/standalone/drizzle; fi
+          echo '{"name":"lucy-standalone","version":"1.0.0","main":"server.js"}' > app/standalone/package.json
+
+      - name: Copy native modules
+        shell: bash
+        run: |
+          for mod in better-sqlite3 bindings file-uri-to-path prebuild-install; do
+            if [ -d "node_modules/$mod" ]; then
+              cp -r "node_modules/$mod" "app/standalone/node_modules/$mod"
+            fi
+          done
+
+      - name: Compile main process
+        run: npx tsc
+
+      - name: Build Electron (Windows)
+        run: npx electron-builder --config electron-builder.yml --win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-builds
+          path: |
+            dist/*.exe
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npx next build renderer
+
+      - name: Prepare standalone
+        run: |
+          mkdir -p app/standalone
+          cp -r renderer/.next/standalone/ app/standalone/
+          cp -r renderer/.next/static app/standalone/renderer/.next/static
+          if [ -d renderer/public ]; then cp -r renderer/public app/standalone/renderer/public; fi
+          if [ -d drizzle ]; then cp -r drizzle app/standalone/drizzle; fi
+          echo '{"name":"lucy-standalone","version":"1.0.0","main":"server.js"}' > app/standalone/package.json
+
+      - name: Copy native modules
+        run: |
+          for mod in better-sqlite3 bindings file-uri-to-path prebuild-install; do
+            if [ -d "node_modules/$mod" ]; then
+              cp -r "node_modules/$mod" "app/standalone/node_modules/$mod"
+            fi
+          done
+
+      - name: Compile main process
+        run: npx tsc
+
+      - name: Build Electron (Linux)
+        run: npx electron-builder --config electron-builder.yml --linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-builds
+          path: |
+            dist/*.AppImage
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/macos-builds/*
+            artifacts/windows-builds/*
+            artifacts/linux-builds/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
