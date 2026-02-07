@@ -175,7 +175,7 @@ export class ToolRegistry {
     // Parse and validate args with the tool's input schema
     let parsedArgs: unknown;
     try {
-      parsedArgs = definition.inputSchema.parse(preprocessedArgs);
+      parsedArgs = this.parseArgsWithSchema(definition, preprocessedArgs);
     } catch (parseError) {
       console.error(`[ToolRegistry] Schema validation failed for ${key}:`, parseError);
       parsedArgs = preprocessedArgs; // Fall back to preprocessed args if schema parsing fails
@@ -213,6 +213,28 @@ export class ToolRegistry {
       console.error(`[ToolRegistry] Tool ${key} failed:`, errorMessage);
       return { error: errorMessage };
     }
+  }
+
+  private parseArgsWithSchema(
+    definition: ToolDefinition,
+    args: Record<string, unknown>
+  ): unknown {
+    if (!this.isParsableSchema(definition.inputSchema)) {
+      return args;
+    }
+
+    return definition.inputSchema.parse(args);
+  }
+
+  private isParsableSchema(
+    schema: ToolDefinition["inputSchema"]
+  ): schema is ToolDefinition["inputSchema"] & { parse: (input: unknown) => unknown } {
+    return (
+      typeof schema === "object" &&
+      schema !== null &&
+      "parse" in schema &&
+      typeof schema.parse === "function"
+    );
   }
 
   // -------------------------------------------------------------------------

@@ -1,15 +1,16 @@
 # Lucy
 
-A desktop AI assistant built with Electron + Next.js (Nextron). Runs locally with SQLite and connects to AI providers (Anthropic, Google, OpenAI).
+A desktop AI assistant built with Electron + Next.js. Runs locally with SQLite and connects to AI providers (Anthropic, Google, OpenAI).
 
 ## Quick Start
 
 ```bash
 npm install
-npm run db:push          # Initialize database
 npm rebuild better-sqlite3  # Rebuild native module
 npm run dev              # Start development
 ```
+
+Database schema migrations now run automatically on app startup.
 
 ## Architecture
 
