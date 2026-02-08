@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api/client";
 import type { QuickAction } from "@/types";
 
 interface QuickActionsProps {
@@ -11,9 +12,8 @@ export function QuickActions({ onSelect }: QuickActionsProps) {
   const [actions, setActions] = useState<QuickAction[]>([]);
 
   useEffect(() => {
-    fetch("/api/quick-actions?enabled=true")
-      .then((res) => res.json())
-      .then((data: QuickAction[]) => {
+    api.request<QuickAction[]>("/api/quick-actions?enabled=true")
+      .then((data) => {
         setActions(
           data.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
         );

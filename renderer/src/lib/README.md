@@ -16,14 +16,23 @@ This document describes the module structure under `renderer/src/lib/` and how t
 │   │              services/item/item.transformer.ts          │        │  │
 │   │  Converts DB items ↔ ChatMessages ↔ AI SDK format       │        │  │
 │   └─────────────────────────────────────────────────────────┘        │  │
+│                                                                       │  │
+│   All hooks use ──► lib/api/client.ts (APIClient)                    │  │
+│                        │  Bearer token auth, 401 handling            │  │
+│                        │  baseURL from NEXT_PUBLIC_API_URL           │  │
+│                        ▼                                              │  │
+│                    Cloud Backend (backend/:3001)                      │  │
 └──────────────────────────────────────────────────────────────────────┘  │
                                                                            │
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                           API ROUTES (Next.js)                          │
+│                    API ROUTES (Legacy - kept for Electron standalone)    │
 │                                                                          │
-│   /api/sessions/[id]/chat ──► ChatService.executeTurn() (turn orchestrator) │
+│   /api/sessions/[id]/chat ──► ChatService.executeTurn()                  │
 │   /api/sessions/[id]/plans ─► PlanService                               │
 │   /api/sessions/route.ts ───► SessionService                            │
+│                                                                          │
+│   NOTE: Frontend now calls Cloud Backend directly via API Client.        │
+│   These local routes remain for Electron standalone mode only.           │
 └─────────────────────────────────────────────────────────────────────────┘
                                         │
                                         ▼
@@ -206,6 +215,17 @@ AI requests tool → registry.executeWithPersistence()
 | `index.ts` | Re-exports |
 
 The pool is used by `McpToolProvider` to discover and execute tools from configured MCP servers.
+
+---
+
+### `api/` - API Client Layer
+| File | Purpose |
+|------|---------|
+| `client.ts` | Authenticated HTTP client for cloud backend. Configurable `baseURL` from `NEXT_PUBLIC_API_URL`, auto-attaches Bearer token, handles 401 by clearing token and redirecting to `/login`. Supports JSON requests (`request<T>()`) and SSE streaming (`stream()`). |
+
+**Key exports:**
+- `api` - Singleton APIClient instance
+- `API_BASE_URL` - The configured backend URL
 
 ---
 

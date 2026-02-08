@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { api } from "@/lib/api/client";
 import type { Plan } from "@/components/plan";
 
 interface UsePlanOptions {
@@ -31,14 +32,9 @@ export function usePlan({
     }
 
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/plans`);
-      if (response.ok) {
-        const data = await response.json();
-        setDbPlan(data.plan);
-        setError(null);
-      } else {
-        setError("Failed to fetch plan");
-      }
+      const data = await api.request<{ plan: Plan | null }>(`/api/sessions/${sessionId}/plans`);
+      setDbPlan(data.plan);
+      setError(null);
     } catch (err) {
       console.error("[Plan] Failed to fetch:", err);
       setError("Failed to fetch plan");

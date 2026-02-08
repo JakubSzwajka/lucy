@@ -1,8 +1,8 @@
-# Lucy Desktop App - Development Guidelines
+# Lucy - Development Guidelines
 
 ## Architecture Overview
 
-This is a **desktop application** built with Electron + Next.js. The app runs locally with a SQLite database and connects to AI providers (Anthropic, Google, OpenAI).
+Lucy is an **AI assistant** that runs as both a **desktop app** (Electron + Next.js) and a **cloud backend** (standalone Next.js API server). The two stacks share the same business logic. The desktop frontend connects to the cloud backend via an authenticated API client.
 
 ```
 lucy-nextjs/
@@ -10,22 +10,44 @@ lucy-nextjs/
 │   ├── background.ts        # App entry, window management, IPC
 │   ├── preload.ts           # Context bridge for renderer
 │   └── helpers/             # Electron utilities
-├── renderer/                # Next.js app (App Router)
+├── renderer/                # Next.js frontend (Electron-embedded)
 │   ├── src/
-│   │   ├── app/             # Pages and API routes
+│   │   ├── app/             # Pages and API routes (local, no auth)
+│   │   │   ├── login/          # Login page
+│   │   │   └── register/       # Register page
 │   │   ├── components/      # React components
 │   │   ├── hooks/           # Custom hooks
-│   │   ├── lib/             # Utilities, database, AI providers
+│   │   ├── lib/             # Services, database, AI providers
+│   │   │   └── api/            # API client for cloud backend
 │   │   └── types/           # TypeScript types
 │   ├── public/
 │   └── next.config.js
+├── backend/                 # Standalone cloud API server (NEW)
+│   ├── src/
+│   │   ├── app/             # API routes (auth-protected, multi-user)
+│   │   └── lib/             # Services, database, auth, AI providers
+│   ├── next.config.js       # Standalone output
+│   ├── drizzle.config.ts    # Dual SQLite/Postgres support
+│   └── package.json         # Independent dependencies
 ├── scripts/
-│   └── build.js             # Custom production build script
+│   └── build.js             # Custom production build script (desktop)
 └── resources/               # App icons
 ```
 
+### Two Stacks
+
+| | Desktop (`renderer/`) | Cloud (`backend/`) |
+|---|---|---|
+| **Auth** | None (local single-user) | JWT on every route |
+| **Multi-user** | No | Yes (`userId` on all tables) |
+| **Database** | SQLite only | SQLite (dev) or Postgres (prod) |
+| **Runs as** | Embedded in Electron | Standalone Next.js server |
+| **Frontend** | Full React UI (calls cloud backend API) | Landing page only |
+| **Port** | Electron-managed | 3001 |
+
 ## Commands
 
+### Desktop App (root)
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start development mode (Electron + Next.js hot reload) |
@@ -34,15 +56,42 @@ lucy-nextjs/
 | `npm run db:push` | Push schema changes to database |
 | `npm run db:studio` | Open Drizzle Studio for database inspection |
 
+### Cloud Backend (`cd backend/`)
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start backend server on port 3001 |
+| `npm run build` | Build for production (standalone output) |
+| `npm run db:push` | Push schema to SQLite or Postgres |
+| `npm run db:studio` | Open Drizzle Studio |
+
 ## Development Workflow
 
-### Before First Run
+### Desktop App - Before First Run
 ```bash
 npm install
 npm run db:push          # Initialize database schema
 npm rebuild better-sqlite3  # Rebuild native module for system Node
 npm run dev
 ```
+
+### Cloud Backend - Before First Run
+```bash
+cd backend
+npm install
+cp .env.example .env.local   # Fill in JWT_SECRET + API keys
+npm run db:push              # Initialize database schema
+npm run dev                  # Starts on port 3001
+```
+
+### Running Both Stacks (Development)
+```bash
+# Terminal 1: Start cloud backend
+cd backend && npm run dev    # Starts on port 3001
+
+# Terminal 2: Start desktop app
+npm run dev                  # Starts Electron + Next.js on port 8888
+```
+The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_API_URL` in `renderer/.env.local` to change the backend URL.
 
 ### Native Module Note
 `better-sqlite3` is a native module that must be compiled for the correct runtime:
@@ -68,28 +117,41 @@ npm run dev
 - Use named exports for components
 
 ### API Routes
-API routes run via Next.js standalone server in production:
-- `/api/sessions` - Session CRUD (user-facing conversation container)
-- `/api/sessions/[id]/chat` - AI chat streaming (session-centric, resolves root agent internally)
-- `/api/providers` - Available AI providers
-- `/api/settings` - App settings
-- `/api/system-prompts` - System prompt management
-- `/api/mcp-servers` - MCP server management
-- `/api/plans` - Plan management
-- `/api/tools` - Tool listing
+Both `renderer/` and `backend/` expose the same API surface. Backend routes add JWT auth + userId scoping.
+
+| Route | Description |
+|-------|-------------|
+| `/api/sessions` | Session CRUD |
+| `/api/sessions/[id]/chat` | AI chat streaming (SSE) |
+| `/api/sessions/[id]/plans` | Plans for a session |
+| `/api/providers` | Available AI providers |
+| `/api/settings` | App settings (per-user in backend) |
+| `/api/system-prompts` | System prompt management |
+| `/api/quick-actions` | Quick action management |
+| `/api/mcp-servers` | MCP server management |
+| `/api/tools` | Tool listing |
+| `/api/openapi` | OpenAPI spec |
+| `/api/auth/*` | Register/login/verify (backend only) |
+| `/api/health` | DB connectivity check (backend only) |
 
 ### Database
-- SQLite via `better-sqlite3` + Drizzle ORM
-- Schema defined in `renderer/src/lib/db/schema.ts`
+- **Desktop**: SQLite via `better-sqlite3` + Drizzle ORM, schema in `renderer/src/lib/db/schema.ts`
+- **Backend**: SQLite (dev) or PostgreSQL (prod) via `DATABASE_PROVIDER` env, schema in `backend/src/lib/db/schema.ts`
 - In dev: Database at project root (`lucy.db`)
-- In prod: Database in user data directory (via `LUCY_USER_DATA_PATH`)
+- In desktop prod: Database in user data directory (via `LUCY_USER_DATA_PATH`)
+- In backend prod: PostgreSQL via `DATABASE_URL`
 
-**Multi-Agent Schema:**
-- `sessions` - User-facing conversation container (has rootAgentId)
+**Schema (shared structure, backend adds userId):**
+- `users` - User accounts (backend only)
+- `sessions` - User-facing conversation container (has rootAgentId, userId in backend)
 - `agents` - Runtime instances with parent-child hierarchy (parentId, sourceCallId)
 - `items` - Polymorphic entries per agent (message | tool_call | tool_result | reasoning)
 - `system_prompts` - Reusable system prompts
-- `settings` - App-wide settings
+- `settings` - App-wide settings (per-user in backend)
+- `plans` / `plan_steps` - Multi-step plan tracking
+- `mcp_servers` - MCP server configuration
+- `quick_actions` - Quick action prompts
+- `integrations` - Third-party integration config
 
 ## TypeScript
 
@@ -99,9 +161,10 @@ API routes run via Next.js standalone server in production:
 - Prefer interfaces for public APIs, types for unions/intersections
 - Never use `any`; use `unknown` and narrow with type guards
 
-Two tsconfig files:
+Three tsconfig files:
 - Root `tsconfig.json` - Main process (CommonJS, targets Electron Node)
-- `renderer/tsconfig.json` - Next.js app (ESM, React JSX)
+- `renderer/tsconfig.json` - Next.js frontend app (ESM, React JSX)
+- `backend/tsconfig.json` - Next.js backend app (ESM, `@/*` → `./src/*`)
 
 ## Error Handling
 
@@ -116,6 +179,9 @@ Two tsconfig files:
 - `contextIsolation: true` in Electron (enforced)
 - `nodeIntegration: false` in Electron (enforced)
 - Use preload script for any Node.js APIs needed in renderer
+- Backend: JWT auth (Bearer token) on all routes except health/openapi
+- Backend: CORS middleware with configurable allowed origins
+- Backend: bcrypt password hashing, rate limiting on auth endpoints
 
 ## State Management
 
@@ -131,6 +197,7 @@ Two tsconfig files:
 
 ## Build & Distribution
 
+### Desktop App
 Production build uses custom script (`scripts/build.js`) that:
 1. Builds Next.js in standalone mode (preserves API routes)
 2. Compiles main process TypeScript
@@ -140,3 +207,29 @@ Production build uses custom script (`scripts/build.js`) that:
 Outputs in `dist/`:
 - `Lucy-{version}-arm64.dmg` - macOS Apple Silicon
 - `Lucy-{version}.dmg` - macOS Intel
+
+### Cloud Backend
+- `cd backend && npm run build` produces standalone Next.js output
+- Deploy to Railway (or any Node.js host) with Postgres
+- Set `DATABASE_PROVIDER=postgres` + `DATABASE_URL` + `JWT_SECRET` in env
+
+## Backend Separation Progress
+
+### Done (Phases 1-5)
+- [x] Backend project infrastructure (package.json, tsconfig, next.config, drizzle, CORS middleware)
+- [x] Database schema with `users` table + `userId` on all data tables
+- [x] Dual database connection (SQLite / PostgreSQL via env toggle)
+- [x] Auth system (JWT, register/login/verify routes, rate limiting)
+- [x] All services copied + adapted with `userId` parameter
+- [x] All 16 API routes migrated with `requireAuth` middleware
+- [x] Health check endpoint
+- [x] Landing page
+- [x] **Validation**: Backend compiles and runs, health endpoint + auth flow verified
+- [x] **Frontend auth integration**: Login/register pages, AuthProvider, API client, all hooks rewired to backend
+
+### TODO (Next Phases)
+- [ ] **PostgreSQL schema**: Generate and test Drizzle migrations for Postgres dialect
+- [ ] **Deployment**: Railway setup (Postgres, env vars, CI/CD)
+- [ ] **Offline/online mode**: Decide if desktop app works offline (local SQLite) or always hits cloud backend
+- [ ] **API key management**: Move API keys from client-side .env to backend (centralized)
+- [ ] **Shared code extraction**: Consider shared package for types/interfaces used by both renderer and backend

@@ -17,6 +17,8 @@ All components follow a consistent pattern: they receive data via props and emit
 
 ```
 components/
+├── auth-guard.tsx   # Authentication route guard
+├── providers.tsx    # Root-level context providers (AuthProvider)
 ├── ai-elements/     # AI-specific UI primitives (messages, tools, reasoning)
 ├── chat/            # Chat feature components
 ├── plan/            # Plan display components
@@ -24,6 +26,13 @@ components/
 ├── sidebar/         # Navigation sidebar
 └── ui/              # Generic UI primitives (shadcn/ui)
 ```
+
+## Root Components
+
+| Component | Description |
+|-----------|-------------|
+| `AuthGuard` | Wraps protected routes. Checks auth state via `useAuth()`, redirects to `/login` if not authenticated. Shows loading state during token verification. |
+| `Providers` | Client-side wrapper component in root layout. Provides `AuthProvider` context to the entire component tree. |
 
 ## Key Directories
 

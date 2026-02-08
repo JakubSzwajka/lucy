@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
+import { api, API_BASE_URL } from "@/lib/api/client";
 import {
   mergeWithStreaming,
 } from "@/lib/services/item/item.transformer";
@@ -54,8 +55,12 @@ export function useSessionChat({
     () =>
       new DefaultChatTransport({
         api: sessionId
-          ? `/api/sessions/${sessionId}/chat`
-          : "/api/sessions/_/chat",
+          ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
+          : `${API_BASE_URL}/api/sessions/_/chat`,
+        headers: () => {
+          const token = api.getToken();
+          return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
+        },
         body: () => ({
           model: modelRef.current,
           thinkingEnabled: thinkingEnabledRef.current,
@@ -68,8 +73,12 @@ export function useSessionChat({
     setTransport(
       new DefaultChatTransport({
         api: sessionId
-          ? `/api/sessions/${sessionId}/chat`
-          : "/api/sessions/_/chat",
+          ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
+          : `${API_BASE_URL}/api/sessions/_/chat`,
+        headers: () => {
+          const token = api.getToken();
+          return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
+        },
         body: () => ({
           model: modelRef.current,
           thinkingEnabled: thinkingEnabledRef.current,
@@ -95,9 +104,8 @@ export function useSessionChat({
       prevSessionIdRef.current = sessionId;
       setIsInitialized(false);
 
-      fetch(`/api/sessions/${sessionId}`)
-        .then((res) => res.json())
-        .then((data: SessionWithAgents) => {
+      api.request<SessionWithAgents>(`/api/sessions/${sessionId}`)
+        .then((data) => {
           // Find root agent from session data
           const rootAgent =
             data.agents?.find((a) => a.id === data.rootAgentId) ||

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { api } from "@/lib/api/client";
 import type { McpServer, McpServerStatus } from "@/types";
 
 interface McpStatusResponse {
@@ -32,11 +33,8 @@ export function useMcpStatus(): UseMcpStatusResult {
   // Fetch all configured servers
   const fetchServers = useCallback(async () => {
     try {
-      const response = await fetch("/api/mcp-servers");
-      if (response.ok) {
-        const data = await response.json();
-        setAllServers(data);
-      }
+      const data = await api.request<McpServer[]>("/api/mcp-servers");
+      setAllServers(data);
     } catch (err) {
       console.error("[MCP] Failed to fetch servers:", err);
     }
@@ -47,12 +45,7 @@ export function useMcpStatus(): UseMcpStatusResult {
     try {
       setError(null);
 
-      const response = await fetch("/api/mcp-servers/status");
-      if (!response.ok) {
-        throw new Error("Failed to fetch MCP status");
-      }
-
-      const data: McpStatusResponse = await response.json();
+      const data = await api.request<McpStatusResponse>("/api/mcp-servers/status");
       setEnabledServers(data.servers);
       setTotalTools(data.totalTools);
     } catch (err) {
@@ -99,15 +92,10 @@ export function useMcpStatus(): UseMcpStatusResult {
         }
 
         // Update server enabled state via API
-        const response = await fetch(`/api/mcp-servers/${serverId}`, {
+        await api.request(`/api/mcp-servers/${serverId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabled }),
         });
-
-        if (!response.ok) {
-          throw new Error("Failed to update server");
-        }
 
         // Refresh status to get actual connection state
         await fetchStatus();

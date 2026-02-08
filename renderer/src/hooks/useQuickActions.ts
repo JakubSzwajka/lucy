@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { api } from "@/lib/api/client";
 import type { QuickAction, QuickActionCreate, QuickActionUpdate } from "@/types";
 
 export function useQuickActions() {
@@ -11,19 +12,14 @@ export function useQuickActions() {
   const fetchActions = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch("/api/quick-actions");
-      if (response.ok) {
-        const data = await response.json();
-        setActions(
-          data.map((a: QuickAction) => ({
-            ...a,
-            createdAt: new Date(a.createdAt),
-            updatedAt: new Date(a.updatedAt),
-          }))
-        );
-      } else {
-        throw new Error("Failed to fetch quick actions");
-      }
+      const data = await api.request<QuickAction[]>("/api/quick-actions");
+      setActions(
+        data.map((a) => ({
+          ...a,
+          createdAt: new Date(a.createdAt),
+          updatedAt: new Date(a.updatedAt),
+        }))
+      );
     } catch (err) {
       console.error("[QuickActions] Failed to fetch:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
@@ -38,15 +34,10 @@ export function useQuickActions() {
 
   const createAction = useCallback(
     async (data: QuickActionCreate): Promise<QuickAction> => {
-      const response = await fetch("/api/quick-actions", {
+      const created = await api.request<QuickAction>("/api/quick-actions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) throw new Error("Failed to create quick action");
-
-      const created = await response.json();
       const action: QuickAction = {
         ...created,
         createdAt: new Date(created.createdAt),
@@ -65,15 +56,10 @@ export function useQuickActions() {
 
   const updateAction = useCallback(
     async (id: string, data: QuickActionUpdate): Promise<QuickAction> => {
-      const response = await fetch(`/api/quick-actions/${id}`, {
+      const updated = await api.request<QuickAction>(`/api/quick-actions/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) throw new Error("Failed to update quick action");
-
-      const updated = await response.json();
       const action: QuickAction = {
         ...updated,
         createdAt: new Date(updated.createdAt),
@@ -91,11 +77,9 @@ export function useQuickActions() {
   );
 
   const deleteAction = useCallback(async (id: string): Promise<void> => {
-    const response = await fetch(`/api/quick-actions/${id}`, {
+    await api.request(`/api/quick-actions/${id}`, {
       method: "DELETE",
     });
-
-    if (!response.ok) throw new Error("Failed to delete quick action");
 
     setActions((prev) => prev.filter((a) => a.id !== id));
   }, []);

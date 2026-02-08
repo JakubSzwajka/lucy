@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
+import { AuthGuard } from "@/components/auth-guard";
+import { api } from "@/lib/api/client";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_MODEL, AVAILABLE_MODELS } from "@/lib/ai/models";
@@ -64,18 +66,15 @@ export default function MainLayout({
   useEffect(() => {
     async function fetchProviders() {
       try {
-        const response = await fetch("/api/providers");
-        if (response.ok) {
-          const providers: AvailableProviders = await response.json();
-          setAvailableProviders(providers);
+        const providers = await api.request<AvailableProviders>("/api/providers");
+        setAvailableProviders(providers);
 
-          // If current selected model's provider is unavailable, select first available model
-          const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModelRef.current);
-          if (currentModel && !providers[currentModel.provider]) {
-            const firstAvailable = AVAILABLE_MODELS.find(m => providers[m.provider]);
-            if (firstAvailable) {
-              setSelectedModel(firstAvailable.id);
-            }
+        // If current selected model's provider is unavailable, select first available model
+        const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModelRef.current);
+        if (currentModel && !providers[currentModel.provider]) {
+          const firstAvailable = AVAILABLE_MODELS.find(m => providers[m.provider]);
+          if (firstAvailable) {
+            setSelectedModel(firstAvailable.id);
           }
         }
       } catch (error) {
@@ -164,26 +163,28 @@ export default function MainLayout({
   };
 
   return (
-    <MainContext.Provider value={contextValue}>
-      <div className="h-screen bg-background flex flex-col">
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <Sidebar
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={handleSelectSession}
-            onNewChat={handleNewChat}
-            onDeleteSession={handleDeleteSession}
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
+    <AuthGuard>
+      <MainContext.Provider value={contextValue}>
+        <div className="h-screen bg-background flex flex-col">
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar */}
+            <Sidebar
+              sessions={sessions}
+              activeSessionId={activeSessionId}
+              onSelectSession={handleSelectSession}
+              onNewChat={handleNewChat}
+              onDeleteSession={handleDeleteSession}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
 
-          {/* Main Content Area */}
-          <main className="flex-1 flex flex-col bg-background overflow-hidden">
-            {children}
-          </main>
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col bg-background overflow-hidden">
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-    </MainContext.Provider>
+      </MainContext.Provider>
+    </AuthGuard>
   );
 }

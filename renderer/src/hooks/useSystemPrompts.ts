@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { api } from "@/lib/api/client";
 import type { SystemPrompt, SystemPromptCreate, SystemPromptUpdate } from "@/types";
 
 export function useSystemPrompts() {
@@ -11,19 +12,14 @@ export function useSystemPrompts() {
   const fetchPrompts = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch("/api/system-prompts");
-      if (response.ok) {
-        const data = await response.json();
-        setPrompts(
-          data.map((p: SystemPrompt) => ({
-            ...p,
-            createdAt: new Date(p.createdAt),
-            updatedAt: new Date(p.updatedAt),
-          }))
-        );
-      } else {
-        throw new Error("Failed to fetch system prompts");
-      }
+      const data = await api.request<SystemPrompt[]>("/api/system-prompts");
+      setPrompts(
+        data.map((p) => ({
+          ...p,
+          createdAt: new Date(p.createdAt),
+          updatedAt: new Date(p.updatedAt),
+        }))
+      );
     } catch (err) {
       console.error("[SystemPrompts] Failed to fetch:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
@@ -38,17 +34,10 @@ export function useSystemPrompts() {
 
   const createPrompt = useCallback(
     async (data: SystemPromptCreate): Promise<SystemPrompt> => {
-      const response = await fetch("/api/system-prompts", {
+      const created = await api.request<SystemPrompt>("/api/system-prompts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to create system prompt");
-      }
-
-      const created = await response.json();
       const prompt: SystemPrompt = {
         ...created,
         createdAt: new Date(created.createdAt),
@@ -63,17 +52,10 @@ export function useSystemPrompts() {
 
   const updatePrompt = useCallback(
     async (id: string, data: SystemPromptUpdate): Promise<SystemPrompt> => {
-      const response = await fetch(`/api/system-prompts/${id}`, {
+      const updated = await api.request<SystemPrompt>(`/api/system-prompts/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update system prompt");
-      }
-
-      const updated = await response.json();
       const prompt: SystemPrompt = {
         ...updated,
         createdAt: new Date(updated.createdAt),
@@ -91,13 +73,9 @@ export function useSystemPrompts() {
   );
 
   const deletePrompt = useCallback(async (id: string): Promise<void> => {
-    const response = await fetch(`/api/system-prompts/${id}`, {
+    await api.request(`/api/system-prompts/${id}`, {
       method: "DELETE",
     });
-
-    if (!response.ok) {
-      throw new Error("Failed to delete system prompt");
-    }
 
     setPrompts((prev) => prev.filter((p) => p.id !== id));
   }, []);

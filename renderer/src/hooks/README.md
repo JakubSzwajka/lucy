@@ -6,7 +6,7 @@ React custom hooks for state management and async data fetching in the Lucy desk
 
 This layer provides reusable hooks that encapsulate:
 
-- **API communication** with Next.js API routes
+- **API communication** with the cloud backend via authenticated API client
 - **State management** for CRUD operations
 - **Optimistic updates** for responsive UI
 - **Error handling** and loading states
@@ -46,12 +46,41 @@ interface UseSessionChatReturn {
 ```
 
 **Key Features:**
-- Loads session data from `/api/sessions/:id` on sessionId change
-- Uses `DefaultChatTransport` to stream via `/api/sessions/:id/chat`
+- Loads session data from cloud backend via API client on sessionId change
+- Uses `DefaultChatTransport` with auth headers to stream via cloud backend `/api/sessions/:id/chat`
 - User messages are persisted server-side by the chat route
 - Merges persisted items with streaming messages for unified display
 - Supports thinking/reasoning toggle per message
 - Extracts plan state from `create_plan`/`update_plan` tool results in the stream
+
+---
+
+### useAuth
+
+**File:** `useAuth.tsx`
+
+Authentication state management via React Context. Provides login, register, logout, and token verification.
+
+**Usage:**
+Wrap your app with `AuthProvider` (done in root layout via `Providers` component), then use `useAuth()` in any component.
+
+**Returns:**
+```typescript
+interface AuthContextValue {
+  user: { id: string; email: string; name?: string } | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<void>;
+  logout: () => void;
+}
+```
+
+**Key Features:**
+- Token stored in `localStorage` (key: `lucy_auth_token`)
+- On mount, verifies existing token via `/api/auth/verify`
+- Login/register store JWT token and set user state
+- Logout clears token and user state
 
 ---
 
@@ -244,9 +273,8 @@ const [error, setError] = useState<Error | null>(null);
 const fetchData = useCallback(async () => {
   try {
     setError(null);
-    const response = await fetch("/api/resource");
-    if (!response.ok) throw new Error("Failed to fetch");
-    const result = await response.json();
+    import { api } from "@/lib/api/client";
+    const result = await api.request<T[]>("/api/resource");
     setData(result);
   } catch (err) {
     setError(err instanceof Error ? err : new Error("Unknown error"));
@@ -274,15 +302,12 @@ const updateResource = useCallback(async (updates: Updates) => {
 
   try {
     // 3. Make API request
-    const response = await fetch("/api/resource", {
+    const result = await api.request<Resource>("/api/resource", {
       method: "PATCH",
       body: JSON.stringify(updates),
     });
 
-    if (!response.ok) throw new Error("Failed");
-
     // 4. Update with server response
-    const result = await response.json();
     setState(result);
   } catch (err) {
     // 5. Rollback on error
@@ -298,15 +323,11 @@ Used in `useSessions`, `useSystemPrompts`, `useMcpServers`:
 
 ```typescript
 const createResource = useCallback(async (data: CreateData) => {
-  const response = await fetch("/api/resource", {
+  const created = await api.request<Resource>("/api/resource", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 
-  if (!response.ok) throw new Error("Failed to create");
-
-  const created = await response.json();
   // Update local state without refetching
   setResources((prev) => [...prev, created]);
   return created;
@@ -432,6 +453,8 @@ function PlanView({ sessionId, streamPlan }: Props) {
 
 | Hook | API Routes | External Libraries |
 |------|------------|-------------------|
+| All hooks | - | `@/lib/api/client` (API client for authenticated requests) |
+| `useAuth` | `/api/auth/verify`, `/api/auth/login`, `/api/auth/register` | `@/lib/api/client` |
 | `useSessionChat` | `/api/sessions/:id/chat`, `/api/sessions/:id` | `@ai-sdk/react`, `ai` |
 | `useSessions` | `/api/sessions`, `/api/sessions/:id` | - |
 | `useSystemPrompts` | `/api/system-prompts`, `/api/system-prompts/:id` | - |

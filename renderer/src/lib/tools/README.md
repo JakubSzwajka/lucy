@@ -27,7 +27,7 @@ await initializeToolRegistry();
 
 // Get tools for AI SDK
 const registry = getToolRegistry();
-const tools = await registry.toAiSdkTools({ agentId, sessionId });
+const tools = await registry.toAiSdkTools({ agentId, sessionId, userId });
 ```
 
 ---

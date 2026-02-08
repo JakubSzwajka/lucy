@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { api } from "@/lib/api/client";
 import type { Session } from "@/types";
 
 export function useSessions() {
@@ -9,18 +10,14 @@ export function useSessions() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const response = await fetch("/api/sessions");
-      if (response.ok) {
-        const data = await response.json();
-        // Convert timestamps to Date objects
-        setSessions(
-          data.map((s: Record<string, unknown>) => ({
-            ...s,
-            createdAt: new Date(s.createdAt as string),
-            updatedAt: new Date(s.updatedAt as string),
-          }))
-        );
-      }
+      const data = await api.request<Record<string, unknown>[]>("/api/sessions");
+      setSessions(
+        data.map((s) => ({
+          ...s,
+          createdAt: new Date(s.createdAt as string),
+          updatedAt: new Date(s.updatedAt as string),
+        })) as Session[]
+      );
     } catch (error) {
       console.error("[Sessions] Failed to fetch:", error);
     } finally {
@@ -34,21 +31,17 @@ export function useSessions() {
 
   const createSession = useCallback(async (title?: string) => {
     try {
-      const response = await fetch("/api/sessions", {
+      const newSession = await api.request<Record<string, unknown>>("/api/sessions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
-      if (response.ok) {
-        const newSession = await response.json();
-        const session: Session = {
-          ...newSession,
-          createdAt: new Date(newSession.createdAt),
-          updatedAt: new Date(newSession.updatedAt),
-        };
-        setSessions((prev) => [session, ...prev]);
-        return session;
-      }
+      const session: Session = {
+        ...newSession,
+        createdAt: new Date(newSession.createdAt as string),
+        updatedAt: new Date(newSession.updatedAt as string),
+      } as Session;
+      setSessions((prev) => [session, ...prev]);
+      return session;
     } catch (error) {
       console.error("[Sessions] Failed to create:", error);
     }
@@ -57,13 +50,11 @@ export function useSessions() {
 
   const deleteSession = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/sessions/${id}`, {
+      await api.request(`/api/sessions/${id}`, {
         method: "DELETE",
       });
-      if (response.ok) {
-        setSessions((prev) => prev.filter((s) => s.id !== id));
-        return true;
-      }
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      return true;
     } catch (error) {
       console.error("[Sessions] Failed to delete:", error);
     }

@@ -1,5 +1,7 @@
 # API Routes
 
+> **Note:** These local API routes are **legacy**. The frontend now communicates with the cloud backend (`backend/`) via the API client at `renderer/src/lib/api/client.ts`. These routes remain in place for the embedded Electron server but are not used when the backend is running. All new development should target the backend API routes at `backend/src/app/api/`.
+
 This directory contains all Next.js API routes for the Lucy desktop application. These routes serve as the HTTP interface between the React frontend and the backend services.
 
 ## Purpose
@@ -17,13 +19,32 @@ The API layer provides:
 Frontend (React)
       |
       v
-  API Routes (/api/*)      <-- This layer
+  API Client (@/lib/api/client)    <-- Authenticated requests
+      |
+      v
+  Cloud Backend (backend/)
+      |
+      v
+  Backend API Routes (/api/*)
+      |
+      v
+  Services (backend/src/lib/services)
+      |
+      v
+  Database (SQLite/PostgreSQL)
+
+  ─── LEGACY PATH (kept for Electron standalone) ───
+
+Frontend (React)
+      |
+      v
+  Local API Routes (/api/*)       <-- This directory
       |
       v
   Services (@/lib/services)
       |
       v
-  Database (SQLite + Drizzle)
+  Database (SQLite)
 ```
 
 Routes follow a consistent pattern:

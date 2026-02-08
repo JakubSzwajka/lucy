@@ -24,6 +24,7 @@ import {
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { api } from "@/lib/api/client";
 import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
 import { AVAILABLE_MODELS, getModelConfig } from "@/lib/ai/models";
 import type { ChatMessage, ModelConfig, AvailableProviders, McpServer, McpServerStatus } from "@/types";
@@ -106,8 +107,7 @@ function ChatInputInner({
 
   // Fetch registered tools
   useEffect(() => {
-    fetch("/api/tools")
-      .then((res) => res.json())
+    api.request<{ tools: RegisteredToolInfo[] }>("/api/tools")
       .then((data) => setTools(data.tools || []))
       .catch(() => setTools([]))
       .finally(() => setIsToolsLoading(false));

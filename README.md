@@ -1,26 +1,34 @@
 # Lucy
 
-A desktop AI assistant built with Electron + Next.js. Runs locally with SQLite and connects to AI providers (Anthropic, Google, OpenAI).
+An AI assistant with a desktop app (Electron + Next.js) and cloud backend (Next.js API server). The desktop app connects to the cloud backend for all data and AI operations.
 
 ## Quick Start
 
 ```bash
+# Terminal 1: Start cloud backend
+cd backend
 npm install
-npm rebuild better-sqlite3  # Rebuild native module
-npm run dev              # Start development
+cp .env.example .env.local   # Fill in JWT_SECRET + API keys
+npm run db:push              # Initialize database schema
+npm run dev                  # Starts on port 3001
+
+# Terminal 2: Start desktop app
+npm install
+npm rebuild better-sqlite3   # Rebuild native module
+npm run dev                  # Starts Electron + Next.js on port 8888
 ```
 
-Database schema migrations now run automatically on app startup.
+The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_API_URL` in `renderer/.env.local` to change the backend URL.
 
 ## Architecture
 
-Lucy is a 3-layer desktop app: an Electron shell, a Next.js renderer (pages + API routes), and a core library (AI, database, tools, services).
+Lucy has two stacks: a desktop app (Electron + Next.js) and a cloud backend (standalone Next.js API server). The desktop frontend connects to the cloud backend via an authenticated API client.
 
 ```
 Electron (main/)
-  └── Next.js App (renderer/src/app/)
+  └── Next.js UI (renderer/src/app/)
         ├── Pages ─── use hooks ─── compose components
-        └── API Routes ─── call services ─── use AI + tools ─── persist to DB
+        └── Hooks ─── API Client ─── Cloud Backend (backend/) ─── Services ─── DB
 ```
 
 ### System Call Map
@@ -131,11 +139,21 @@ flowchart LR
 
 ## Commands
 
+### Desktop App (root)
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development mode |
+| `npm run dev` | Start development mode (Electron + Next.js hot reload) |
 | `npm run build` | Build production app (DMG/installer) |
+| `npm rebuild better-sqlite3` | Rebuild native module for Node.js |
 | `npm run db:push` | Push schema changes to database |
+| `npm run db:studio` | Open Drizzle Studio |
+
+### Cloud Backend (`cd backend/`)
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start backend server on port 3001 |
+| `npm run build` | Build for production (standalone output) |
+| `npm run db:push` | Push schema to SQLite or Postgres |
 | `npm run db:studio` | Open Drizzle Studio |
 
 ## Key Concepts

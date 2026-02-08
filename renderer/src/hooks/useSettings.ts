@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { api } from "@/lib/api/client";
 import type { UserSettings, SettingsUpdate } from "@/types";
 
 export function useSettings() {
@@ -11,17 +12,12 @@ export function useSettings() {
   const fetchSettings = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch("/api/settings");
-      if (response.ok) {
-        const data = await response.json();
-        setSettings({
-          ...data,
-          createdAt: new Date(data.createdAt),
-          updatedAt: new Date(data.updatedAt),
-        });
-      } else {
-        throw new Error("Failed to fetch settings");
-      }
+      const data = await api.request<Record<string, unknown>>("/api/settings");
+      setSettings({
+        ...data,
+        createdAt: new Date(data.createdAt as string),
+        updatedAt: new Date(data.updatedAt as string),
+      } as UserSettings);
     } catch (err) {
       console.error("[Settings] Failed to fetch:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
@@ -47,24 +43,15 @@ export function useSettings() {
       });
 
       try {
-        const response = await fetch("/api/settings", {
+        const data = await api.request<Record<string, unknown>>("/api/settings", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          setSettings({
-            ...data,
-            createdAt: new Date(data.createdAt),
-            updatedAt: new Date(data.updatedAt),
-          });
-        } else {
-          // Rollback on error
-          setSettings(previousSettings);
-          throw new Error("Failed to update settings");
-        }
+        setSettings({
+          ...data,
+          createdAt: new Date(data.createdAt as string),
+          updatedAt: new Date(data.updatedAt as string),
+        } as UserSettings);
       } catch (err) {
         // Rollback on error
         setSettings(previousSettings);

@@ -14,6 +14,8 @@ The services layer provides:
 
 ## Architecture
 
+> **Note:** In the current architecture, the frontend hooks no longer call these local services directly. Instead, hooks use the API client (`@/lib/api/client`) to call the cloud backend (`backend/`), which has its own copy of these services with multi-user support. The services in this directory are still used by the local API routes (kept for Electron standalone mode).
+
 ```
 API Routes (app/api/*)
        |

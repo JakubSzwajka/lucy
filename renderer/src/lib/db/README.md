@@ -1,5 +1,7 @@
 # Database
 
+> **Note:** This is the **desktop-only** database. The cloud backend (`backend/`) has its own database with additional `users` table and `userId` columns on all data tables. In the current architecture, the frontend connects to the backend database via API calls.
+
 SQLite database using Drizzle ORM. Schema defined in `renderer/src/lib/db/schema.ts`.
 
 ## Entity Relationship
