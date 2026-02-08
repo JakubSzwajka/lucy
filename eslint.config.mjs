@@ -23,9 +23,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Build output inside renderer
+    // Build output inside renderer and backend
     "renderer/.next/**",
     "renderer/out/**",
+    "backend/.next/**",
   ]),
 ]);
 

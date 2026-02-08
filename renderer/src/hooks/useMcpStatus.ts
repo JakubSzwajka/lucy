@@ -110,8 +110,13 @@ export function useMcpStatus(): UseMcpStatusResult {
 
   // Initial fetch
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    let cancelled = false;
+    (async () => {
+      await Promise.all([fetchServers(), fetchStatus()]);
+      if (!cancelled) setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [fetchServers, fetchStatus]);
 
   return {
     allServers,

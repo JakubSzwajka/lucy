@@ -36,27 +36,26 @@ export function useAuth(): AuthContextValue {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const hasToken = !!api.getToken();
+  const [isLoading, setIsLoading] = useState(hasToken);
 
   useEffect(() => {
-    const token = api.getToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
+    if (!hasToken) return;
 
+    let cancelled = false;
     api
       .request<{ user: AuthUser }>("/api/auth/verify")
       .then((data) => {
-        setUser(data.user);
+        if (!cancelled) setUser(data.user);
       })
       .catch(() => {
         api.clearToken();
       })
       .finally(() => {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       });
-  }, []);
+    return () => { cancelled = true; };
+  }, [hasToken]);
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await api.request<{ token: string; user: AuthUser }>(
