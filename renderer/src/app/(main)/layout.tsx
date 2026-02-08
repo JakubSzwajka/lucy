@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, createContext, useContext } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
@@ -121,6 +122,34 @@ export default function MainLayout({
   const handleSelectSession = useCallback((id: string) => {
     setActiveSessionId(id);
   }, []);
+
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Cmd+N (Mac) / Ctrl+N (Windows/Linux) → New chat
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        handleNewChat();
+        if (pathname !== "/") {
+          router.push("/");
+        }
+      }
+
+      // Escape → Focus prompt input (only on chat page)
+      if (e.key === "Escape" && pathname === "/") {
+        const textarea = document.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
+        if (textarea && document.activeElement !== textarea) {
+          e.preventDefault();
+          textarea.focus();
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleNewChat, pathname, router]);
 
   const contextValue: MainContextType = {
     activeSessionId,

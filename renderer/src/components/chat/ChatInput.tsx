@@ -390,7 +390,7 @@ function ChatInputInner({
       <div className="mt-2 flex gap-4 justify-between">
         <div className="flex gap-4">
           <span className="label-sm text-muted-darkest">
-            SHORTCUTS: ENTER TO SHIP • SHIFT+ENTER FOR NEW LINE
+            SHORTCUTS: ENTER TO SHIP • SHIFT+ENTER FOR NEW LINE • ESC TO FOCUS
           </span>
           <span className="label-sm text-muted-darkest">MODE: CHAT_v1.0</span>
         </div>

@@ -247,7 +247,14 @@ export function Sidebar({
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              {!collapsed && "New Session"}
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">New Session</span>
+                  <kbd className="text-[10px] mono text-muted-dark bg-background/50 px-1.5 py-0.5 rounded border border-border">
+                    {"⌘N"}
+                  </kbd>
+                </>
+              )}
             </button>
           </div>
 
