@@ -11,7 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.23",
@@ -75,6 +76,9 @@
     "yaml": "^2.8.2",
     "zod": "^4.3.6"
   },
+  "lint-staged": {
+    "renderer/**/*.{js,jsx,ts,tsx}": "eslint --max-warnings 0"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
@@ -88,6 +92,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "fs-extra": "^11.3.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
