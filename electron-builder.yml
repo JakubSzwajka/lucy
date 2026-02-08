@@ -20,9 +20,6 @@ extraMetadata:
 npmRebuild: true
 nodeGypRebuild: false
 nativeRebuilder: sequential
-onlyModules:
-  - better-sqlite3
-
 # Include native dependencies
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
@@ -37,24 +34,5 @@ mac:
   category: public.app-category.productivity
   hardenedRuntime: true
   gatekeeperAssess: false
-
-win:
-  target:
-    - target: nsis
-      arch:
-        - x64
-  icon: resources/icon.ico
-
-linux:
-  target:
-    - target: AppImage
-      arch:
-        - x64
-  icon: resources/icon.png
-  category: Utility
-
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
 
 publish: null

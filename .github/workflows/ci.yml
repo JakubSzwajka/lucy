@@ -46,6 +46,14 @@ jobs:
       - name: Type check (renderer)
         run: npx tsc --noEmit -p renderer/tsconfig.json
 
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Type check (backend)
+        run: npx tsc --noEmit
+        working-directory: backend
+
   build:
     name: Build
     runs-on: ubuntu-latest
