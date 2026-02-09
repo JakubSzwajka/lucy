@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -59,7 +60,7 @@ jobs:
 
   tag:
     name: Create CalVer Tag
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [lint, typecheck]
     runs-on: ubuntu-latest
     outputs:
@@ -170,7 +171,7 @@ jobs:
 
   deploy-backend:
     name: Deploy Backend to Railway
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [lint, typecheck]
     runs-on: ubuntu-latest
     env:
