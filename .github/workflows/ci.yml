@@ -197,5 +197,5 @@ jobs:
             --service $SERVICE
 
       - name: Deploy backend
-        run: railway up --service $SERVICE --detach
+        run: railway up --service $SERVICE 
         working-directory: backend
