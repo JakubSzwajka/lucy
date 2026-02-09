@@ -98,6 +98,15 @@ function hasMigrationRows(sqlite: ReturnType<typeof Database>): boolean {
   return result.count > 0;
 }
 
-export const db = getDb();
+// Lazy proxy: only connect to SQLite when a property is actually accessed at runtime.
+// This prevents SQLITE_BUSY errors during `next build` when multiple workers
+// evaluate this module concurrently but never actually query the database.
+export const db: BetterSQLite3Database<typeof schema> = new Proxy({} as BetterSQLite3Database<typeof schema>, {
+  get(_target, prop, receiver) {
+    const instance = getDb();
+    const value = Reflect.get(instance, prop, receiver);
+    return typeof value === "function" ? value.bind(instance) : value;
+  },
+});
 
 export * from "./schema";
