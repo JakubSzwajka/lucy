@@ -56,12 +56,12 @@ jobs:
         run: npx tsc --noEmit
         working-directory: backend
 
-  # --- Release desktop app (only on push to main) ---
+  # --- Release desktop app (only on push to main, after backend deploy) ---
 
   tag:
     name: Create CalVer Tag
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [lint, typecheck]
+    needs: [deploy-backend]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -193,7 +193,7 @@ jobs:
             LANGFUSE_PUBLIC_KEY="${{ secrets.LANGFUSE_PUBLIC_KEY }}" \
             LANGFUSE_SECRET_KEY="${{ secrets.LANGFUSE_SECRET_KEY }}" \
             LANGFUSE_BASE_URL="${{ secrets.LANGFUSE_BASE_URL }}" \
-            CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}" \
+            CORS_ORIGINS="*" \
             --service $SERVICE
 
       - name: Deploy backend
