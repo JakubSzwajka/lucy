@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const { userId } = authResult.user;
 
   const mcpService = getMcpService();
-  const servers = mcpService.getAll(userId);
+  const servers = await mcpService.getAll(userId);
   return NextResponse.json(servers);
 }
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const body: McpServerCreate = await request.json();
   const mcpService = getMcpService();
 
-  const result = mcpService.create(body, userId);
+  const result = await mcpService.create(body, userId);
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 400 });

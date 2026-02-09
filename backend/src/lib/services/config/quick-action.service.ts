@@ -21,37 +21,34 @@ function parseQuickActionRecord(record: QuickActionRecord): QuickAction {
 }
 
 export class QuickActionService {
-  getAll(userId: string, enabled?: boolean): QuickAction[] {
+  async getAll(userId: string, enabled?: boolean): Promise<QuickAction[]> {
     if (enabled === undefined) {
-      const records = db
+      const records = await db
         .select()
         .from(quickActions)
         .where(eq(quickActions.userId, userId))
-        .orderBy(asc(quickActions.sortOrder), asc(quickActions.name))
-        .all();
+        .orderBy(asc(quickActions.sortOrder), asc(quickActions.name));
       return records.map(parseQuickActionRecord);
     }
 
-    const records = db
+    const records = await db
       .select()
       .from(quickActions)
       .where(and(eq(quickActions.userId, userId), eq(quickActions.enabled, enabled)))
-      .orderBy(asc(quickActions.sortOrder), asc(quickActions.name))
-      .all();
+      .orderBy(asc(quickActions.sortOrder), asc(quickActions.name));
     return records.map(parseQuickActionRecord);
   }
 
-  getById(id: string, userId: string): QuickAction | null {
-    const [record] = db
+  async getById(id: string, userId: string): Promise<QuickAction | null> {
+    const [record] = await db
       .select()
       .from(quickActions)
-      .where(and(eq(quickActions.id, id), eq(quickActions.userId, userId)))
-      .all();
+      .where(and(eq(quickActions.id, id), eq(quickActions.userId, userId)));
 
     return record ? parseQuickActionRecord(record) : null;
   }
 
-  create(data: QuickActionCreate, userId: string): { action?: QuickAction; error?: string } {
+  async create(data: QuickActionCreate, userId: string): Promise<{ action?: QuickAction; error?: string }> {
     const trimmedName = data.name?.trim();
     const trimmedContent = data.content?.trim();
 
@@ -65,7 +62,7 @@ export class QuickActionService {
 
     const id = uuidv4();
 
-    db.insert(quickActions).values({
+    await db.insert(quickActions).values({
       id,
       userId,
       name: trimmedName,
@@ -73,13 +70,13 @@ export class QuickActionService {
       icon: data.icon || null,
       sortOrder: data.sortOrder ?? 0,
       enabled: data.enabled ?? true,
-    }).run();
+    });
 
-    return { action: this.getById(id, userId)! };
+    return { action: (await this.getById(id, userId))! };
   }
 
-  update(id: string, data: QuickActionUpdate, userId: string): { action?: QuickAction; error?: string; notFound?: boolean } {
-    const existing = this.getById(id, userId);
+  async update(id: string, data: QuickActionUpdate, userId: string): Promise<{ action?: QuickAction; error?: string; notFound?: boolean }> {
+    const existing = await this.getById(id, userId);
     if (!existing) {
       return { notFound: true };
     }
@@ -112,21 +109,20 @@ export class QuickActionService {
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.enabled !== undefined) updateData.enabled = data.enabled;
 
-    db.update(quickActions)
+    await db.update(quickActions)
       .set(updateData)
-      .where(and(eq(quickActions.id, id), eq(quickActions.userId, userId)))
-      .run();
+      .where(and(eq(quickActions.id, id), eq(quickActions.userId, userId)));
 
-    return { action: this.getById(id, userId)! };
+    return { action: (await this.getById(id, userId))! };
   }
 
-  delete(id: string, userId: string): { success: boolean; notFound?: boolean } {
-    const existing = this.getById(id, userId);
+  async delete(id: string, userId: string): Promise<{ success: boolean; notFound?: boolean }> {
+    const existing = await this.getById(id, userId);
     if (!existing) {
       return { success: false, notFound: true };
     }
 
-    db.delete(quickActions).where(and(eq(quickActions.id, id), eq(quickActions.userId, userId))).run();
+    await db.delete(quickActions).where(and(eq(quickActions.id, id), eq(quickActions.userId, userId)));
     return { success: true };
   }
 }

@@ -15,19 +15,19 @@ export async function GET(
 
   // Verify session ownership
   const sessionService = getSessionService();
-  const session = sessionService.getById(sessionId, userId);
+  const session = await sessionService.getById(sessionId, userId);
   if (!session) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
   const planService = getPlanService();
-  const plan = planService.getBySessionId(sessionId, userId);
+  const plan = await planService.getBySessionId(sessionId, userId);
 
   if (!plan) {
     return NextResponse.json({ plan: null });
   }
 
-  const progress = planService.getProgress(plan.id, userId);
+  const progress = await planService.getProgress(plan.id, userId);
 
   return NextResponse.json({
     plan: {

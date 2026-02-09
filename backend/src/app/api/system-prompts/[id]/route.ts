@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const systemPromptService = getSystemPromptService();
 
-  const prompt = systemPromptService.getById(id, userId);
+  const prompt = await systemPromptService.getById(id, userId);
 
   if (!prompt) {
     return NextResponse.json({ error: "System prompt not found" }, { status: 404 });
@@ -34,7 +34,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const body = await request.json();
   const systemPromptService = getSystemPromptService();
 
-  const result = systemPromptService.update(id, {
+  const result = await systemPromptService.update(id, {
     name: body.name,
     content: body.content,
   }, userId);
@@ -55,7 +55,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const systemPromptService = getSystemPromptService();
 
-  const result = systemPromptService.delete(id, userId);
+  const result = await systemPromptService.delete(id, userId);
 
   if (result.notFound) {
     return NextResponse.json({ error: "System prompt not found" }, { status: 404 });

@@ -11,7 +11,7 @@ export async function insertItem(
   itemData: CreateItemData
 ): Promise<{ id: string; sequence: number }> {
   const itemService = getItemService();
-  const result = itemService.create(agentId, itemData);
+  const result = await itemService.create(agentId, itemData);
 
   if (result.error || !result.item) {
     throw new Error(result.error || "Failed to insert item");
@@ -32,7 +32,7 @@ export async function saveToolCall(
   status: ToolCallStatus = "running"
 ): Promise<{ id: string; sequence: number }> {
   const itemService = getItemService();
-  const result = itemService.createToolCall(agentId, callId, toolName, toolArgs, status);
+  const result = await itemService.createToolCall(agentId, callId, toolName, toolArgs, status);
 
   if (result.error || !result.item) {
     throw new Error(result.error || "Failed to save tool call");
@@ -52,7 +52,7 @@ export async function saveToolResult(
   error?: string
 ): Promise<{ id: string; sequence: number }> {
   const itemService = getItemService();
-  const itemResult = itemService.createToolResult(agentId, callId, result, error);
+  const itemResult = await itemService.createToolResult(agentId, callId, result, error);
 
   if (itemResult.error || !itemResult.item) {
     throw new Error(itemResult.error || "Failed to save tool result");
@@ -70,5 +70,5 @@ export async function updateToolCallStatus(
   status: ToolCallStatus
 ): Promise<void> {
   const itemService = getItemService();
-  itemService.updateToolCallStatus(callId, status);
+  await itemService.updateToolCallStatus(callId, status);
 }

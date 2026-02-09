@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const { userId } = authResult.user;
 
   const systemPromptService = getSystemPromptService();
-  const prompts = systemPromptService.getAll(userId);
+  const prompts = await systemPromptService.getAll(userId);
   return NextResponse.json(prompts);
 }
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const { name, content } = await request.json();
   const systemPromptService = getSystemPromptService();
 
-  const result = systemPromptService.create({ name, content }, userId);
+  const result = await systemPromptService.create({ name, content }, userId);
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 400 });

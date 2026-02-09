@@ -29,11 +29,11 @@ export interface PaginatedResult<T> {
  * @template TUpdate - The type for updating entities
  */
 export interface Repository<T, TCreate, TUpdate> {
-  findById(id: string, userId: string): T | null;
-  findAll(userId: string, options?: QueryOptions): T[];
-  create(data: TCreate, userId: string): T;
-  update(id: string, data: TUpdate, userId: string): T | null;
-  delete(id: string, userId: string): boolean;
+  findById(id: string, userId: string): Promise<T | null>;
+  findAll(userId: string, options?: QueryOptions): Promise<T[]>;
+  create(data: TCreate, userId: string): Promise<T>;
+  update(id: string, data: TUpdate, userId: string): Promise<T | null>;
+  delete(id: string, userId: string): Promise<boolean>;
 }
 
 /**
@@ -41,6 +41,6 @@ export interface Repository<T, TCreate, TUpdate> {
  */
 export interface PaginatedRepository<T, TCreate, TUpdate>
   extends Repository<T, TCreate, TUpdate> {
-  findPaginated(userId: string, options?: QueryOptions): PaginatedResult<T>;
-  count(userId: string): number;
+  findPaginated(userId: string, options?: QueryOptions): Promise<PaginatedResult<T>>;
+  count(userId: string): Promise<number>;
 }

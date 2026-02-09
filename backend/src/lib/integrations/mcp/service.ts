@@ -36,40 +36,40 @@ export class McpService {
     this.repository = repository || getMcpRepository();
   }
 
-  getAll(userId: string): McpServer[] {
+  async getAll(userId: string): Promise<McpServer[]> {
     return this.repository.findAll(userId);
   }
 
-  getAllEnabled(userId: string): McpServer[] {
+  async getAllEnabled(userId: string): Promise<McpServer[]> {
     return this.repository.findAllEnabled(userId);
   }
 
-  getById(id: string, userId: string): McpServer | null {
+  async getById(id: string, userId: string): Promise<McpServer | null> {
     return this.repository.findById(id, userId);
   }
 
-  create(data: McpServerCreate, userId: string): { server?: McpServer; error?: string } {
+  async create(data: McpServerCreate, userId: string): Promise<{ server?: McpServer; error?: string }> {
     const validation = this.validateCreate(data);
     if (!validation.valid) {
       return { error: validation.error };
     }
 
-    const server = this.repository.create(data, userId);
+    const server = await this.repository.create(data, userId);
     return { server };
   }
 
-  update(id: string, data: McpServerUpdate, userId: string): { server?: McpServer; error?: string; notFound?: boolean } {
-    const existing = this.repository.findById(id, userId);
+  async update(id: string, data: McpServerUpdate, userId: string): Promise<{ server?: McpServer; error?: string; notFound?: boolean }> {
+    const existing = await this.repository.findById(id, userId);
     if (!existing) {
       return { notFound: true };
     }
 
-    const server = this.repository.update(id, data, userId);
+    const server = await this.repository.update(id, data, userId);
     return { server: server || undefined };
   }
 
-  delete(id: string, userId: string): { success: boolean; notFound?: boolean } {
-    const deleted = this.repository.delete(id, userId);
+  async delete(id: string, userId: string): Promise<{ success: boolean; notFound?: boolean }> {
+    const deleted = await this.repository.delete(id, userId);
     if (!deleted) {
       return { success: false, notFound: true };
     }
@@ -93,7 +93,7 @@ export class McpService {
   }
 
   async testConnection(id: string, userId: string): Promise<McpTestResult & { notFound?: boolean }> {
-    const server = this.repository.findById(id, userId);
+    const server = await this.repository.findById(id, userId);
     if (!server) {
       return { success: false, notFound: true };
     }
@@ -117,7 +117,7 @@ export class McpService {
   }
 
   async getStatus(userId: string): Promise<McpStatusResult> {
-    const enabledServers = this.repository.findAllEnabled(userId);
+    const enabledServers = await this.repository.findAllEnabled(userId);
     const statuses = await ensureServersConnected(enabledServers);
     const pool = getGlobalPool();
     const totalTools = pool.getAllTools().length;

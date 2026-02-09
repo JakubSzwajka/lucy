@@ -52,68 +52,62 @@ export interface UpdateStepData {
 // ============================================================================
 
 export class PlanRepository {
-  findById(id: string, userId: string): PlanWithSteps | null {
-    const plan = db.select().from(plans).where(and(eq(plans.id, id), eq(plans.userId, userId))).get();
+  async findById(id: string, userId: string): Promise<PlanWithSteps | null> {
+    const [plan] = await db.select().from(plans).where(and(eq(plans.id, id), eq(plans.userId, userId)));
     if (!plan) return null;
 
-    const steps = db
+    const steps = await db
       .select()
       .from(planSteps)
       .where(eq(planSteps.planId, id))
-      .orderBy(asc(planSteps.sequence))
-      .all();
+      .orderBy(asc(planSteps.sequence));
 
     return { ...plan, steps };
   }
 
-  findBySessionId(sessionId: string, userId: string): PlanWithSteps | null {
-    const plan = db
+  async findBySessionId(sessionId: string, userId: string): Promise<PlanWithSteps | null> {
+    const [plan] = await db
       .select()
       .from(plans)
-      .where(and(eq(plans.sessionId, sessionId), eq(plans.userId, userId)))
-      .get();
+      .where(and(eq(plans.sessionId, sessionId), eq(plans.userId, userId)));
 
     if (!plan) return null;
 
-    const steps = db
+    const steps = await db
       .select()
       .from(planSteps)
       .where(eq(planSteps.planId, plan.id))
-      .orderBy(asc(planSteps.sequence))
-      .all();
+      .orderBy(asc(planSteps.sequence));
 
     return { ...plan, steps };
   }
 
-  findByAgentId(agentId: string, userId: string): PlanWithSteps | null {
-    const plan = db
+  async findByAgentId(agentId: string, userId: string): Promise<PlanWithSteps | null> {
+    const [plan] = await db
       .select()
       .from(plans)
-      .where(and(eq(plans.agentId, agentId), eq(plans.userId, userId)))
-      .get();
+      .where(and(eq(plans.agentId, agentId), eq(plans.userId, userId)));
 
     if (!plan) return null;
 
-    const steps = db
+    const steps = await db
       .select()
       .from(planSteps)
       .where(eq(planSteps.planId, plan.id))
-      .orderBy(asc(planSteps.sequence))
-      .all();
+      .orderBy(asc(planSteps.sequence));
 
     return { ...plan, steps };
   }
 
-  existsForSession(sessionId: string, userId: string): boolean {
-    const plan = db
+  async existsForSession(sessionId: string, userId: string): Promise<boolean> {
+    const [plan] = await db
       .select({ id: plans.id })
       .from(plans)
-      .where(and(eq(plans.sessionId, sessionId), eq(plans.userId, userId)))
-      .get();
+      .where(and(eq(plans.sessionId, sessionId), eq(plans.userId, userId)));
     return !!plan;
   }
 
-  create(data: CreatePlanData, userId: string): PlanWithSteps {
+  async create(data: CreatePlanData, userId: string): Promise<PlanWithSteps> {
     const planId = nanoid();
     const now = new Date();
 
@@ -129,7 +123,7 @@ export class PlanRepository {
       updatedAt: now,
     };
 
-    db.insert(plans).values(planData).run();
+    await db.insert(plans).values(planData);
 
     const stepRecords: PlanStepRecord[] = [];
     for (let i = 0; i < data.steps.length; i++) {
@@ -142,7 +136,7 @@ export class PlanRepository {
         status: "pending",
         createdAt: now,
       };
-      db.insert(planSteps).values(stepData).run();
+      await db.insert(planSteps).values(stepData);
       stepRecords.push({
         ...stepData,
         assignedAgentId: null,
@@ -160,7 +154,7 @@ export class PlanRepository {
     } as PlanWithSteps;
   }
 
-  update(id: string, data: UpdatePlanData, userId: string): PlanWithSteps | null {
+  async update(id: string, data: UpdatePlanData, userId: string): Promise<PlanWithSteps | null> {
     const now = new Date();
 
     const updateData: Partial<PlanRecord> = {
@@ -172,33 +166,38 @@ export class PlanRepository {
       updateData.completedAt = now;
     }
 
-    db.update(plans).set(updateData).where(and(eq(plans.id, id), eq(plans.userId, userId))).run();
+    await db.update(plans).set(updateData).where(and(eq(plans.id, id), eq(plans.userId, userId)));
 
     return this.findById(id, userId);
   }
 
-  delete(id: string, userId: string): boolean {
-    const result = db.delete(plans).where(and(eq(plans.id, id), eq(plans.userId, userId))).run();
-    return result.changes > 0;
+  async delete(id: string, userId: string): Promise<boolean> {
+    const existing = await this.findById(id, userId);
+    if (!existing) {
+      return false;
+    }
+
+    await db.delete(plans).where(and(eq(plans.id, id), eq(plans.userId, userId)));
+    return true;
   }
 
   // ---------------------------------------------------------------------------
   // Step Operations
   // ---------------------------------------------------------------------------
 
-  findStepById(stepId: string): PlanStepRecord | null {
-    return db.select().from(planSteps).where(eq(planSteps.id, stepId)).get() ?? null;
+  async findStepById(stepId: string): Promise<PlanStepRecord | null> {
+    const [step] = await db.select().from(planSteps).where(eq(planSteps.id, stepId));
+    return step ?? null;
   }
 
-  addSteps(planId: string, steps: AddStepData[]): PlanStepRecord[] {
+  async addSteps(planId: string, steps: AddStepData[]): Promise<PlanStepRecord[]> {
     const now = new Date();
 
-    const existingSteps = db
+    const existingSteps = await db
       .select()
       .from(planSteps)
       .where(eq(planSteps.planId, planId))
-      .orderBy(asc(planSteps.sequence))
-      .all();
+      .orderBy(asc(planSteps.sequence));
 
     let insertAt = existingSteps.length;
 
@@ -207,10 +206,9 @@ export class PlanRepository {
       if (afterIdx !== -1) {
         insertAt = afterIdx + 1;
         for (let i = insertAt; i < existingSteps.length; i++) {
-          db.update(planSteps)
+          await db.update(planSteps)
             .set({ sequence: existingSteps[i].sequence + steps.length })
-            .where(eq(planSteps.id, existingSteps[i].id))
-            .run();
+            .where(eq(planSteps.id, existingSteps[i].id));
         }
       }
     }
@@ -226,7 +224,7 @@ export class PlanRepository {
         status: "pending",
         createdAt: now,
       };
-      db.insert(planSteps).values(stepData).run();
+      await db.insert(planSteps).values(stepData);
       newSteps.push({
         ...stepData,
         assignedAgentId: null,
@@ -237,12 +235,12 @@ export class PlanRepository {
       } as PlanStepRecord);
     }
 
-    db.update(plans).set({ updatedAt: now }).where(eq(plans.id, planId)).run();
+    await db.update(plans).set({ updatedAt: now }).where(eq(plans.id, planId));
 
     return newSteps;
   }
 
-  updateStep(stepId: string, data: UpdateStepData): PlanStepRecord | null {
+  async updateStep(stepId: string, data: UpdateStepData): Promise<PlanStepRecord | null> {
     const now = new Date();
 
     const updateData: Partial<PlanStepRecord> = { ...data };
@@ -255,57 +253,54 @@ export class PlanRepository {
       updateData.completedAt = now;
     }
 
-    db.update(planSteps).set(updateData).where(eq(planSteps.id, stepId)).run();
+    await db.update(planSteps).set(updateData).where(eq(planSteps.id, stepId));
 
-    const step = this.findStepById(stepId);
+    const step = await this.findStepById(stepId);
     if (step) {
-      db.update(plans).set({ updatedAt: now }).where(eq(plans.id, step.planId)).run();
+      await db.update(plans).set({ updatedAt: now }).where(eq(plans.id, step.planId));
     }
 
     return step;
   }
 
-  removeSteps(stepIds: string[]): void {
+  async removeSteps(stepIds: string[]): Promise<void> {
     const now = new Date();
 
-    const firstStep = stepIds.length > 0 ? this.findStepById(stepIds[0]) : null;
+    const firstStep = stepIds.length > 0 ? await this.findStepById(stepIds[0]) : null;
     const planId = firstStep?.planId;
 
     for (const stepId of stepIds) {
-      db.delete(planSteps).where(eq(planSteps.id, stepId)).run();
+      await db.delete(planSteps).where(eq(planSteps.id, stepId));
     }
 
     if (planId) {
-      this.resequenceSteps(planId);
-      db.update(plans).set({ updatedAt: now }).where(eq(plans.id, planId)).run();
+      await this.resequenceSteps(planId);
+      await db.update(plans).set({ updatedAt: now }).where(eq(plans.id, planId));
     }
   }
 
-  resequenceSteps(planId: string): void {
-    const steps = db
+  async resequenceSteps(planId: string): Promise<void> {
+    const steps = await db
       .select()
       .from(planSteps)
       .where(eq(planSteps.planId, planId))
-      .orderBy(asc(planSteps.sequence))
-      .all();
+      .orderBy(asc(planSteps.sequence));
 
     for (let i = 0; i < steps.length; i++) {
       if (steps[i].sequence !== i + 1) {
-        db.update(planSteps)
+        await db.update(planSteps)
           .set({ sequence: i + 1 })
-          .where(eq(planSteps.id, steps[i].id))
-          .run();
+          .where(eq(planSteps.id, steps[i].id));
       }
     }
   }
 
-  getSteps(planId: string): PlanStepRecord[] {
+  async getSteps(planId: string): Promise<PlanStepRecord[]> {
     return db
       .select()
       .from(planSteps)
       .where(eq(planSteps.planId, planId))
-      .orderBy(asc(planSteps.sequence))
-      .all();
+      .orderBy(asc(planSteps.sequence));
   }
 }
 

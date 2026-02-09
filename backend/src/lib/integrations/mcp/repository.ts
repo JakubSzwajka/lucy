@@ -30,26 +30,26 @@ function parseServerRecord(record: McpServerRecord): McpServer {
 }
 
 export class McpRepository implements Repository<McpServer, McpServerCreate, McpServerUpdate> {
-  findById(id: string, userId: string): McpServer | null {
-    const [record] = db.select().from(mcpServers).where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId))).all();
+  async findById(id: string, userId: string): Promise<McpServer | null> {
+    const [record] = await db.select().from(mcpServers).where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)));
     return record ? parseServerRecord(record) : null;
   }
 
-  findAll(userId: string): McpServer[] {
-    const records = db.select().from(mcpServers).where(eq(mcpServers.userId, userId)).all();
+  async findAll(userId: string): Promise<McpServer[]> {
+    const records = await db.select().from(mcpServers).where(eq(mcpServers.userId, userId));
     return records.map(parseServerRecord);
   }
 
-  findAllEnabled(userId: string): McpServer[] {
-    const records = db.select().from(mcpServers).where(and(eq(mcpServers.enabled, true), eq(mcpServers.userId, userId))).all();
+  async findAllEnabled(userId: string): Promise<McpServer[]> {
+    const records = await db.select().from(mcpServers).where(and(eq(mcpServers.enabled, true), eq(mcpServers.userId, userId)));
     return records.map(parseServerRecord);
   }
 
-  create(data: McpServerCreate, userId: string): McpServer {
+  async create(data: McpServerCreate, userId: string): Promise<McpServer> {
     const id = uuidv4();
     const now = new Date();
 
-    db.insert(mcpServers).values({
+    await db.insert(mcpServers).values({
       id,
       userId,
       name: data.name,
@@ -65,13 +65,13 @@ export class McpRepository implements Repository<McpServer, McpServerCreate, Mcp
       iconUrl: data.iconUrl || null,
       createdAt: now,
       updatedAt: now,
-    }).run();
+    });
 
-    return this.findById(id, userId)!;
+    return (await this.findById(id, userId))!;
   }
 
-  update(id: string, data: McpServerUpdate, userId: string): McpServer | null {
-    const existing = this.findById(id, userId);
+  async update(id: string, data: McpServerUpdate, userId: string): Promise<McpServer | null> {
+    const existing = await this.findById(id, userId);
     if (!existing) {
       return null;
     }
@@ -92,18 +92,18 @@ export class McpRepository implements Repository<McpServer, McpServerCreate, Mcp
     if (data.enabled !== undefined) updateData.enabled = data.enabled;
     if (data.iconUrl !== undefined) updateData.iconUrl = data.iconUrl;
 
-    db.update(mcpServers).set(updateData).where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId))).run();
+    await db.update(mcpServers).set(updateData).where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)));
 
     return this.findById(id, userId);
   }
 
-  delete(id: string, userId: string): boolean {
-    const existing = this.findById(id, userId);
+  async delete(id: string, userId: string): Promise<boolean> {
+    const existing = await this.findById(id, userId);
     if (!existing) {
       return false;
     }
 
-    db.delete(mcpServers).where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId))).run();
+    await db.delete(mcpServers).where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)));
     return true;
   }
 }

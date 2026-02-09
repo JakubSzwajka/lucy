@@ -18,11 +18,11 @@ export class ConversationsClient {
    * @param options - Search options
    * @returns Array of matching conversation results with context
    */
-  search(
+  async search(
     query: string,
     userId: string,
     options?: ConversationSearchOptions
-  ): ConversationSearchResult[] {
+  ): Promise<ConversationSearchResult[]> {
     return this.repository.searchWithContext(query, userId, options);
   }
 }

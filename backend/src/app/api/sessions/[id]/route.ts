@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const sessionService = getSessionService();
 
-  const session = sessionService.getWithAgents(id, userId);
+  const session = await sessionService.getWithAgents(id, userId);
 
   if (!session) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -33,7 +33,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const sessionService = getSessionService();
 
-  sessionService.delete(id, userId);
+  await sessionService.delete(id, userId);
   return new NextResponse(null, { status: 204 });
 }
 
@@ -47,7 +47,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const updates = await request.json();
   const sessionService = getSessionService();
 
-  const result = sessionService.update(id, {
+  const result = await sessionService.update(id, {
     title: updates.title,
     status: updates.status,
   }, userId);

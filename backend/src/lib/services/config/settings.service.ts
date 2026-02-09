@@ -27,28 +27,26 @@ function parseSettings(record: SettingsRecord): UserSettings {
 }
 
 export class SettingsService {
-  ensureSettings(userId: string): UserSettings {
+  async ensureSettings(userId: string): Promise<UserSettings> {
     const settingsId = `default-${userId}`;
-    const [existing] = db
+    const [existing] = await db
       .select()
       .from(settings)
-      .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)))
-      .all();
+      .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
 
     if (!existing) {
-      db.insert(settings).values({
+      await db.insert(settings).values({
         id: settingsId,
         userId,
         defaultModelId: "gpt-4o",
         defaultSystemPromptId: null,
         enabledModels: JSON.stringify(getAllModelIds()),
-      }).run();
+      });
 
-      const [created] = db
+      const [created] = await db
         .select()
         .from(settings)
-        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)))
-        .all();
+        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
 
       return parseSettings(created);
     }
@@ -56,12 +54,12 @@ export class SettingsService {
     return parseSettings(existing);
   }
 
-  get(userId: string): UserSettings {
+  async get(userId: string): Promise<UserSettings> {
     return this.ensureSettings(userId);
   }
 
-  update(data: SettingsUpdate, userId: string): UserSettings {
-    this.ensureSettings(userId);
+  async update(data: SettingsUpdate, userId: string): Promise<UserSettings> {
+    await this.ensureSettings(userId);
 
     const settingsId = `default-${userId}`;
     const updateData: Record<string, unknown> = {
@@ -80,28 +78,25 @@ export class SettingsService {
       updateData.enabledModels = JSON.stringify(data.enabledModels);
     }
 
-    db.update(settings)
+    await db.update(settings)
       .set(updateData)
-      .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)))
-      .run();
+      .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
 
-    const [updated] = db
+    const [updated] = await db
       .select()
       .from(settings)
-      .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)))
-      .all();
+      .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
 
     return parseSettings(updated);
   }
 
-  clearDefaultSystemPrompt(promptId: string, userId: string): void {
-    const currentSettings = this.get(userId);
+  async clearDefaultSystemPrompt(promptId: string, userId: string): Promise<void> {
+    const currentSettings = await this.get(userId);
     if (currentSettings.defaultSystemPromptId === promptId) {
       const settingsId = `default-${userId}`;
-      db.update(settings)
+      await db.update(settings)
         .set({ defaultSystemPromptId: null, updatedAt: new Date() })
-        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)))
-        .run();
+        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
     }
   }
 }

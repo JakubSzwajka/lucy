@@ -1,24 +1,24 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // ============================================================================
 // USERS - Multi-user support
 // ============================================================================
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 // ============================================================================
 // SESSIONS - User-facing conversation container
 // ============================================================================
 
-export const sessions = sqliteTable("sessions", {
+export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
 
   // User association (required for multi-user)
@@ -35,10 +35,10 @@ export const sessions = sqliteTable("sessions", {
   // Session lifecycle
   status: text("status", { enum: ["active", "archived"] }).notNull().default("active"),
 
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
@@ -51,7 +51,7 @@ export const sessions = sqliteTable("sessions", {
 
 export const agentStatusEnum = ["pending", "running", "waiting", "completed", "failed", "cancelled"] as const;
 
-export const agents = sqliteTable("agents", {
+export const agents = pgTable("agents", {
   id: text("id").primaryKey(),
 
   // User association
@@ -73,7 +73,7 @@ export const agents = sqliteTable("agents", {
   task: text("task"), // The goal/instruction for this agent
   systemPrompt: text("system_prompt"), // Agent-specific system prompt
   model: text("model"), // Which model to use
-  config: text("config", { mode: "json" }).$type<Record<string, unknown>>(), // Additional config
+  config: jsonb("config").$type<Record<string, unknown>>(), // Additional config
 
   // Runtime state
   status: text("status", { enum: agentStatusEnum }).notNull().default("pending"),
@@ -83,11 +83,11 @@ export const agents = sqliteTable("agents", {
   turnCount: integer("turn_count").notNull().default(0), // Number of turns completed
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  startedAt: integer("started_at", { mode: "timestamp" }),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
 }, (table) => [
   index("agents_session_idx").on(table.sessionId),
   index("agents_parent_idx").on(table.parentId),
@@ -102,7 +102,7 @@ export const itemTypeEnum = ["message", "tool_call", "tool_result", "reasoning"]
 export const messageRoleEnum = ["user", "assistant", "system"] as const;
 export const toolCallStatusEnum = ["pending", "pending_approval", "running", "completed", "failed"] as const;
 
-export const items = sqliteTable("items", {
+export const items = pgTable("items", {
   id: text("id").primaryKey(),
 
   // Belongs to an agent's conversation thread
@@ -123,7 +123,7 @@ export const items = sqliteTable("items", {
   // === TYPE: tool_call ===
   callId: text("call_id"), // Unique ID for linking call → result
   toolName: text("tool_name"),
-  toolArgs: text("tool_args", { mode: "json" }).$type<Record<string, unknown>>(),
+  toolArgs: jsonb("tool_args").$type<Record<string, unknown>>(),
   toolStatus: text("tool_status", { enum: toolCallStatusEnum }),
 
   // === TYPE: tool_result ===
@@ -136,7 +136,7 @@ export const items = sqliteTable("items", {
   reasoningContent: text("reasoning_content"),
 
   // Metadata
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
@@ -148,17 +148,17 @@ export const items = sqliteTable("items", {
 // SYSTEM PROMPTS - Reusable system prompts
 // ============================================================================
 
-export const systemPrompts = sqliteTable("system_prompts", {
+export const systemPrompts = pgTable("system_prompts", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
     .references(() => users.id),
   name: text("name").notNull(),
   content: text("content").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
@@ -169,7 +169,7 @@ export const systemPrompts = sqliteTable("system_prompts", {
 // QUICK ACTIONS - Predefined user prompts shown on empty chat
 // ============================================================================
 
-export const quickActions = sqliteTable("quick_actions", {
+export const quickActions = pgTable("quick_actions", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -178,11 +178,11 @@ export const quickActions = sqliteTable("quick_actions", {
   content: text("content").notNull(),
   icon: text("icon"),
   sortOrder: integer("sort_order").notNull().default(0),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
@@ -195,7 +195,7 @@ export const quickActions = sqliteTable("quick_actions", {
 
 export const planStatusEnum = ['pending', 'in_progress', 'completed', 'failed', 'cancelled'] as const;
 
-export const plans = sqliteTable("plans", {
+export const plans = pgTable("plans", {
   id: text("id").primaryKey(),
 
   // User association
@@ -219,13 +219,13 @@ export const plans = sqliteTable("plans", {
   status: text("status", { enum: planStatusEnum }).notNull().default("pending"),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
+  completedAt: timestamp("completed_at"),
 }, (table) => [
   index("plans_session_idx").on(table.sessionId),
   index("plans_agent_idx").on(table.agentId),
@@ -238,7 +238,7 @@ export const plans = sqliteTable("plans", {
 
 export const planStepStatusEnum = ['pending', 'in_progress', 'completed', 'failed', 'skipped'] as const;
 
-export const planSteps = sqliteTable("plan_steps", {
+export const planSteps = pgTable("plan_steps", {
   id: text("id").primaryKey(),
 
   // Belongs to plan
@@ -262,11 +262,11 @@ export const planSteps = sqliteTable("plan_steps", {
   error: text("error"),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  startedAt: integer("started_at", { mode: "timestamp" }),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
 }, (table) => [
   index("plan_steps_plan_idx").on(table.planId),
   index("plan_steps_agent_idx").on(table.assignedAgentId),
@@ -277,7 +277,7 @@ export const planSteps = sqliteTable("plan_steps", {
 // SETTINGS - App-wide settings (per user)
 // ============================================================================
 
-export const settings = sqliteTable("settings", {
+export const settings = pgTable("settings", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -285,10 +285,10 @@ export const settings = sqliteTable("settings", {
   defaultModelId: text("default_model_id"),
   defaultSystemPromptId: text("default_system_prompt_id"),
   enabledModels: text("enabled_models"), // JSON array of model IDs
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
@@ -301,7 +301,7 @@ export const settings = sqliteTable("settings", {
 
 export const mcpTransportTypeEnum = ["stdio", "sse", "http"] as const;
 
-export const mcpServers = sqliteTable("mcp_servers", {
+export const mcpServers = pgTable("mcp_servers", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -322,15 +322,15 @@ export const mcpServers = sqliteTable("mcp_servers", {
   headers: text("headers"), // JSON object of headers
 
   // Settings
-  requireApproval: integer("require_approval", { mode: "boolean" }).notNull().default(false),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  requireApproval: boolean("require_approval").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(true),
   iconUrl: text("icon_url"),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
@@ -341,7 +341,7 @@ export const mcpServers = sqliteTable("mcp_servers", {
 // SESSION MCP SERVERS - Junction table for session-to-MCP mapping
 // ============================================================================
 
-export const sessionMcpServers = sqliteTable("session_mcp_servers", {
+export const sessionMcpServers = pgTable("session_mcp_servers", {
   id: text("id").primaryKey(),
   sessionId: text("session_id")
     .notNull()
@@ -349,7 +349,7 @@ export const sessionMcpServers = sqliteTable("session_mcp_servers", {
   mcpServerId: text("mcp_server_id")
     .notNull()
     .references(() => mcpServers.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [
@@ -361,19 +361,19 @@ export const sessionMcpServers = sqliteTable("session_mcp_servers", {
 // INTEGRATIONS - Third-party service integrations (Todoist, Notion, etc.)
 // ============================================================================
 
-export const integrations = sqliteTable("integrations", {
+export const integrations = pgTable("integrations", {
   id: text("id").primaryKey(), // e.g., "todoist", "notion"
   userId: text("user_id")
     .notNull()
     .references(() => users.id),
   name: text("name").notNull(), // Display name
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  enabled: boolean("enabled").notNull().default(false),
   credentials: text("credentials"), // JSON: { "apiKey": "..." }
   config: text("config"), // JSON: integration-specific config
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => [

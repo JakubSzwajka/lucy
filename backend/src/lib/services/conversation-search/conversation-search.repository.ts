@@ -40,11 +40,11 @@ function toContextItem(record: ItemRecord): ContextItem {
 }
 
 export class ConversationSearchRepository {
-  searchWithContext(
+  async searchWithContext(
     query: string,
     userId: string,
     options: ConversationSearchOptions = {}
-  ): ConversationSearchResult[] {
+  ): Promise<ConversationSearchResult[]> {
     const {
       limit = 5,
       contextWindow = 3,
@@ -95,7 +95,7 @@ export class ConversationSearchRepository {
       );
     }
 
-    const matchedRecords = db
+    const matchedRecords = await db
       .select({
         item: items,
         sessionId: agents.sessionId,
@@ -106,8 +106,7 @@ export class ConversationSearchRepository {
       .innerJoin(sessions, eq(agents.sessionId, sessions.id))
       .where(whereCondition!)
       .orderBy(desc(items.createdAt))
-      .limit(limit * 2)
-      .all();
+      .limit(limit * 2);
 
     const results: ConversationSearchResult[] = [];
     const seenSessions = new Set<string>();
@@ -118,12 +117,12 @@ export class ConversationSearchRepository {
       }
       seenSessions.add(record.sessionId);
 
-      const contextBefore = this.getContextBefore(
+      const contextBefore = await this.getContextBefore(
         record.item.agentId,
         record.item.sequence,
         contextWindow
       );
-      const contextAfter = this.getContextAfter(
+      const contextAfter = await this.getContextAfter(
         record.item.agentId,
         record.item.sequence,
         contextWindow
@@ -155,12 +154,12 @@ export class ConversationSearchRepository {
     return results;
   }
 
-  private getContextBefore(
+  private async getContextBefore(
     agentId: string,
     sequence: number,
     count: number
-  ): ContextItem[] {
-    const records = db
+  ): Promise<ContextItem[]> {
+    const records = await db
       .select()
       .from(items)
       .where(
@@ -170,18 +169,17 @@ export class ConversationSearchRepository {
         )
       )
       .orderBy(desc(items.sequence))
-      .limit(count)
-      .all();
+      .limit(count);
 
     return records.reverse().map(toContextItem);
   }
 
-  private getContextAfter(
+  private async getContextAfter(
     agentId: string,
     sequence: number,
     count: number
-  ): ContextItem[] {
-    const records = db
+  ): Promise<ContextItem[]> {
+    const records = await db
       .select()
       .from(items)
       .where(
@@ -191,8 +189,7 @@ export class ConversationSearchRepository {
         )
       )
       .orderBy(asc(items.sequence))
-      .limit(count)
-      .all();
+      .limit(count);
 
     return records.map(toContextItem);
   }

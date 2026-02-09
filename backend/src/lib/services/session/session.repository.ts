@@ -32,36 +32,36 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
   /**
    * Find a session by ID (scoped to user)
    */
-  findById(id: string, userId: string): Session | null {
-    const [record] = db.select().from(sessions).where(and(eq(sessions.id, id), eq(sessions.userId, userId))).all();
+  async findById(id: string, userId: string): Promise<Session | null> {
+    const [record] = await db.select().from(sessions).where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
     return record ? parseSessionRecord(record) : null;
   }
 
   /**
    * Find all sessions ordered by updatedAt descending (scoped to user)
    */
-  findAll(userId: string): Session[] {
-    const records = db.select().from(sessions).where(eq(sessions.userId, userId)).orderBy(desc(sessions.updatedAt)).all();
+  async findAll(userId: string): Promise<Session[]> {
+    const records = await db.select().from(sessions).where(eq(sessions.userId, userId)).orderBy(desc(sessions.updatedAt));
     return records.map(parseSessionRecord);
   }
 
   /**
    * Create a new session with a root agent
    */
-  create(data: SessionCreate & { agentName?: string; systemPrompt?: string; model?: string }, userId: string): Session {
+  async create(data: SessionCreate & { agentName?: string; systemPrompt?: string; model?: string }, userId: string): Promise<Session> {
     const sessionId = uuidv4();
     const agentId = uuidv4();
 
     // Create session
-    db.insert(sessions).values({
+    await db.insert(sessions).values({
       id: sessionId,
       userId,
       title: data.title || "New Chat",
       rootAgentId: agentId,
-    }).run();
+    });
 
     // Create root agent for the session
-    db.insert(agents).values({
+    await db.insert(agents).values({
       id: agentId,
       userId,
       sessionId,
@@ -69,16 +69,16 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
       systemPrompt: data.systemPrompt || null,
       model: data.model || null,
       status: "pending",
-    }).run();
+    });
 
-    return this.findById(sessionId, userId)!;
+    return (await this.findById(sessionId, userId))!;
   }
 
   /**
    * Update a session
    */
-  update(id: string, data: SessionUpdate, userId: string): Session | null {
-    const existing = this.findById(id, userId);
+  async update(id: string, data: SessionUpdate, userId: string): Promise<Session | null> {
+    const existing = await this.findById(id, userId);
     if (!existing) {
       return null;
     }
@@ -90,7 +90,7 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
     if (data.title !== undefined) updateData.title = data.title;
     if (data.status !== undefined) updateData.status = data.status;
 
-    db.update(sessions).set(updateData).where(and(eq(sessions.id, id), eq(sessions.userId, userId))).run();
+    await db.update(sessions).set(updateData).where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
 
     return this.findById(id, userId);
   }
@@ -98,29 +98,32 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
   /**
    * Delete a session (cascades to agents and items)
    */
-  delete(id: string, userId: string): boolean {
-    const result = db.delete(sessions).where(and(eq(sessions.id, id), eq(sessions.userId, userId))).run();
-    return result.changes > 0;
+  async delete(id: string, userId: string): Promise<boolean> {
+    const existing = await this.findById(id, userId);
+    if (!existing) {
+      return false;
+    }
+
+    await db.delete(sessions).where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+    return true;
   }
 
   /**
    * Update session title
    */
-  updateTitle(id: string, title: string, userId: string): void {
-    db.update(sessions)
+  async updateTitle(id: string, title: string, userId: string): Promise<void> {
+    await db.update(sessions)
       .set({ title, updatedAt: new Date() })
-      .where(and(eq(sessions.id, id), eq(sessions.userId, userId)))
-      .run();
+      .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
   }
 
   /**
    * Update session timestamp
    */
-  touch(id: string, userId: string): void {
-    db.update(sessions)
+  async touch(id: string, userId: string): Promise<void> {
+    await db.update(sessions)
       .set({ updatedAt: new Date() })
-      .where(and(eq(sessions.id, id), eq(sessions.userId, userId)))
-      .run();
+      .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
   }
 }
 

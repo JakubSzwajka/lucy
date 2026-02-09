@@ -39,75 +39,72 @@ function parseRecord(record: typeof systemPrompts.$inferSelect): SystemPrompt {
 }
 
 export class SystemPromptService {
-  private ensureSeedPrompts(userId: string): void {
-    const existing = db
+  private async ensureSeedPrompts(userId: string): Promise<void> {
+    const existing = await db
       .select()
       .from(systemPrompts)
-      .where(eq(systemPrompts.userId, userId))
-      .all();
+      .where(eq(systemPrompts.userId, userId));
 
     if (existing.length > 0) return;
 
     for (const seed of SEED_PROMPTS) {
       const now = new Date();
-      db.insert(systemPrompts).values({
+      await db.insert(systemPrompts).values({
         id: uuidv4(),
         userId,
         name: seed.name,
         content: seed.content,
         createdAt: now,
         updatedAt: now,
-      }).run();
+      });
     }
   }
 
-  getAll(userId: string): SystemPrompt[] {
-    this.ensureSeedPrompts(userId);
-    const records = db
+  async getAll(userId: string): Promise<SystemPrompt[]> {
+    await this.ensureSeedPrompts(userId);
+    const records = await db
       .select()
       .from(systemPrompts)
       .where(eq(systemPrompts.userId, userId))
-      .orderBy(asc(systemPrompts.name))
-      .all();
+      .orderBy(asc(systemPrompts.name));
     return records.map(parseRecord);
   }
 
-  getById(id: string, userId: string): SystemPrompt | null {
-    this.ensureSeedPrompts(userId);
-    const [record] = db
+  async getById(id: string, userId: string): Promise<SystemPrompt | null> {
+    await this.ensureSeedPrompts(userId);
+    const [record] = await db
       .select()
       .from(systemPrompts)
-      .where(and(eq(systemPrompts.id, id), eq(systemPrompts.userId, userId)))
-      .all();
+      .where(and(eq(systemPrompts.id, id), eq(systemPrompts.userId, userId)));
     return record ? parseRecord(record) : null;
   }
 
-  create(data: SystemPromptCreate, userId: string): { prompt?: SystemPrompt; error?: string } {
+  async create(data: SystemPromptCreate, userId: string): Promise<{ prompt?: SystemPrompt; error?: string }> {
     if (!data.name || !data.content) {
       return { error: "Name and content are required" };
     }
 
-    this.ensureSeedPrompts(userId);
+    await this.ensureSeedPrompts(userId);
 
     const now = new Date();
     const id = uuidv4();
 
-    db.insert(systemPrompts).values({
+    await db.insert(systemPrompts).values({
       id,
       userId,
       name: data.name,
       content: data.content,
       createdAt: now,
       updatedAt: now,
-    }).run();
+    });
 
-    return { prompt: this.getById(id, userId)! };
+    return { prompt: (await this.getById(id, userId))! };
   }
 
-  update(id: string, data: SystemPromptUpdate, userId: string): { prompt?: SystemPrompt; notFound?: boolean } {
-    this.ensureSeedPrompts(userId);
+  async update(id: string, data: SystemPromptUpdate, userId: string): Promise<{ prompt?: SystemPrompt; notFound?: boolean }> {
+    await this.ensureSeedPrompts(userId);
 
-    const existing = this.getById(id, userId);
+    const existing = await this.getById(id, userId);
     if (!existing) {
       return { notFound: true };
     }
@@ -116,27 +113,26 @@ export class SystemPromptService {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.content !== undefined) updateData.content = data.content;
 
-    db.update(systemPrompts)
+    await db.update(systemPrompts)
       .set(updateData)
-      .where(and(eq(systemPrompts.id, id), eq(systemPrompts.userId, userId)))
-      .run();
+      .where(and(eq(systemPrompts.id, id), eq(systemPrompts.userId, userId)));
 
-    return { prompt: this.getById(id, userId)! };
+    return { prompt: (await this.getById(id, userId))! };
   }
 
-  delete(id: string, userId: string): { success: boolean; notFound?: boolean } {
-    this.ensureSeedPrompts(userId);
+  async delete(id: string, userId: string): Promise<{ success: boolean; notFound?: boolean }> {
+    await this.ensureSeedPrompts(userId);
 
-    const existing = this.getById(id, userId);
+    const existing = await this.getById(id, userId);
     if (!existing) {
       return { success: false, notFound: true };
     }
 
     // If this prompt is the default, clear the default setting
     const settingsService = getSettingsService();
-    settingsService.clearDefaultSystemPrompt(id, userId);
+    await settingsService.clearDefaultSystemPrompt(id, userId);
 
-    db.delete(systemPrompts).where(and(eq(systemPrompts.id, id), eq(systemPrompts.userId, userId))).run();
+    await db.delete(systemPrompts).where(and(eq(systemPrompts.id, id), eq(systemPrompts.userId, userId)));
 
     return { success: true };
   }

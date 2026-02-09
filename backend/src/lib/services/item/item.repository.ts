@@ -114,38 +114,36 @@ function parseItemRecord(record: ItemRecord): Item {
  * Repository for item data access
  */
 export class ItemRepository {
-  findById(id: string): Item | null {
-    const [record] = db.select().from(items).where(eq(items.id, id)).all();
+  async findById(id: string): Promise<Item | null> {
+    const [record] = await db.select().from(items).where(eq(items.id, id));
     return record ? parseItemRecord(record) : null;
   }
 
-  findByAgentId(agentId: string): Item[] {
-    const records = db
+  async findByAgentId(agentId: string): Promise<Item[]> {
+    const records = await db
       .select()
       .from(items)
       .where(eq(items.agentId, agentId))
-      .orderBy(asc(items.sequence))
-      .all();
+      .orderBy(asc(items.sequence));
     return records.map(parseItemRecord);
   }
 
-  findByCallId(callId: string): Item | null {
-    const [record] = db.select().from(items).where(eq(items.callId, callId)).all();
+  async findByCallId(callId: string): Promise<Item | null> {
+    const [record] = await db.select().from(items).where(eq(items.callId, callId));
     return record ? parseItemRecord(record) : null;
   }
 
-  getNextSequence(agentId: string): number {
-    const [maxSeq] = db
+  async getNextSequence(agentId: string): Promise<number> {
+    const [maxSeq] = await db
       .select({ max: sql<number>`MAX(${items.sequence})` })
       .from(items)
-      .where(eq(items.agentId, agentId))
-      .all();
+      .where(eq(items.agentId, agentId));
     return (maxSeq?.max ?? -1) + 1;
   }
 
-  create(agentId: string, data: CreateItemData): Item {
+  async create(agentId: string, data: CreateItemData): Promise<Item> {
     const id = uuidv4();
-    const sequence = this.getNextSequence(agentId);
+    const sequence = await this.getNextSequence(agentId);
 
     let itemData: NewItem;
 
@@ -198,49 +196,56 @@ export class ItemRepository {
         break;
     }
 
-    db.insert(items).values(itemData).run();
-    return this.findById(id)!;
+    await db.insert(items).values(itemData);
+    return (await this.findById(id))!;
   }
 
-  updateToolCallStatus(callId: string, status: ToolCallStatus): boolean {
-    const result = db
+  async updateToolCallStatus(callId: string, status: ToolCallStatus): Promise<boolean> {
+    const existing = await this.findByCallId(callId);
+    if (!existing) {
+      return false;
+    }
+
+    await db
       .update(items)
       .set({ toolStatus: status })
-      .where(eq(items.callId, callId))
-      .run();
-    return result.changes > 0;
+      .where(eq(items.callId, callId));
+    return true;
   }
 
-  delete(id: string): boolean {
-    const result = db.delete(items).where(eq(items.id, id)).run();
-    return result.changes > 0;
+  async delete(id: string): Promise<boolean> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      return false;
+    }
+
+    await db.delete(items).where(eq(items.id, id));
+    return true;
   }
 
   /**
    * Check if agent exists (scoped to user via agent's userId)
    */
-  agentExists(agentId: string, userId: string): { exists: boolean; sessionId?: string } {
-    const [agent] = db.select().from(agents).where(and(eq(agents.id, agentId), eq(agents.userId, userId))).all();
+  async agentExists(agentId: string, userId: string): Promise<{ exists: boolean; sessionId?: string }> {
+    const [agent] = await db.select().from(agents).where(and(eq(agents.id, agentId), eq(agents.userId, userId)));
     return agent ? { exists: true, sessionId: agent.sessionId } : { exists: false };
   }
 
-  updateSessionTimestamp(sessionId: string): void {
-    db.update(sessions)
+  async updateSessionTimestamp(sessionId: string): Promise<void> {
+    await db.update(sessions)
       .set({ updatedAt: new Date() })
-      .where(eq(sessions.id, sessionId))
-      .run();
+      .where(eq(sessions.id, sessionId));
   }
 
-  getSessionTitle(sessionId: string): string | null {
-    const [session] = db.select().from(sessions).where(eq(sessions.id, sessionId)).all();
+  async getSessionTitle(sessionId: string): Promise<string | null> {
+    const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId));
     return session?.title || null;
   }
 
-  updateSessionTitle(sessionId: string, title: string): void {
-    db.update(sessions)
+  async updateSessionTitle(sessionId: string, title: string): Promise<void> {
+    await db.update(sessions)
       .set({ title })
-      .where(eq(sessions.id, sessionId))
-      .run();
+      .where(eq(sessions.id, sessionId));
   }
 }
 

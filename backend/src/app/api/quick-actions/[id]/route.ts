@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const { id } = await params;
   const service = getQuickActionService();
-  const action = service.getById(id, userId);
+  const action = await service.getById(id, userId);
 
   if (!action) {
     return NextResponse.json({ error: "Quick action not found" }, { status: 404 });
@@ -33,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const body = await request.json();
   const service = getQuickActionService();
 
-  const result = service.update(id, {
+  const result = await service.update(id, {
     name: body.name,
     content: body.content,
     icon: body.icon,
@@ -61,7 +61,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const service = getQuickActionService();
 
-  const result = service.delete(id, userId);
+  const result = await service.delete(id, userId);
 
   if (result.notFound) {
     return NextResponse.json({ error: "Quick action not found" }, { status: 404 });

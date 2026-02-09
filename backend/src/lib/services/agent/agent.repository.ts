@@ -56,26 +56,25 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
   /**
    * Find an agent by ID (scoped to user)
    */
-  findById(id: string, userId: string): Agent | null {
-    const [record] = db.select().from(agents).where(and(eq(agents.id, id), eq(agents.userId, userId))).all();
+  async findById(id: string, userId: string): Promise<Agent | null> {
+    const [record] = await db.select().from(agents).where(and(eq(agents.id, id), eq(agents.userId, userId)));
     return record ? parseAgentRecord(record) : null;
   }
 
   /**
    * Find an agent by ID with its items
    */
-  findByIdWithItems(id: string, userId: string): AgentWithItems | null {
-    const agent = this.findById(id, userId);
+  async findByIdWithItems(id: string, userId: string): Promise<AgentWithItems | null> {
+    const agent = await this.findById(id, userId);
     if (!agent) {
       return null;
     }
 
-    const agentItems = db
+    const agentItems = await db
       .select()
       .from(items)
       .where(eq(items.agentId, id))
-      .orderBy(asc(items.sequence))
-      .all();
+      .orderBy(asc(items.sequence));
 
     return {
       ...agent,
@@ -86,60 +85,61 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
   /**
    * Find all agents for a session
    */
-  findBySessionId(sessionId: string, userId: string): Agent[] {
-    const records = db
+  async findBySessionId(sessionId: string, userId: string): Promise<Agent[]> {
+    const records = await db
       .select()
       .from(agents)
       .where(and(eq(agents.sessionId, sessionId), eq(agents.userId, userId)))
-      .orderBy(asc(agents.createdAt))
-      .all();
+      .orderBy(asc(agents.createdAt));
     return records.map(parseAgentRecord);
   }
 
   /**
    * Find all agents for a session with their items
    */
-  findBySessionIdWithItems(sessionId: string, userId: string): AgentWithItems[] {
-    const sessionAgents = this.findBySessionId(sessionId, userId);
+  async findBySessionIdWithItems(sessionId: string, userId: string): Promise<AgentWithItems[]> {
+    const sessionAgents = await this.findBySessionId(sessionId, userId);
 
-    return sessionAgents.map((agent) => {
-      const agentItems = db
+    const results: AgentWithItems[] = [];
+    for (const agent of sessionAgents) {
+      const agentItems = await db
         .select()
         .from(items)
         .where(eq(items.agentId, agent.id))
-        .orderBy(asc(items.sequence))
-        .all();
+        .orderBy(asc(items.sequence));
 
-      return {
+      results.push({
         ...agent,
         items: agentItems.map(parseItemRecord),
-      };
-    });
+      });
+    }
+
+    return results;
   }
 
   /**
    * Find all agents (scoped to user)
    */
-  findAll(userId: string): Agent[] {
-    const records = db.select().from(agents).where(eq(agents.userId, userId)).orderBy(asc(agents.createdAt)).all();
+  async findAll(userId: string): Promise<Agent[]> {
+    const records = await db.select().from(agents).where(eq(agents.userId, userId)).orderBy(asc(agents.createdAt));
     return records.map(parseAgentRecord);
   }
 
   /**
    * Check if session exists (scoped to user)
    */
-  sessionExists(sessionId: string, userId: string): boolean {
-    const [session] = db.select().from(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId))).all();
+  async sessionExists(sessionId: string, userId: string): Promise<boolean> {
+    const [session] = await db.select().from(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
     return !!session;
   }
 
   /**
    * Create a new agent
    */
-  create(data: AgentCreate, userId: string): Agent {
+  async create(data: AgentCreate, userId: string): Promise<Agent> {
     const id = uuidv4();
 
-    db.insert(agents).values({
+    await db.insert(agents).values({
       id,
       userId,
       sessionId: data.sessionId,
@@ -151,16 +151,16 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
       model: data.model || null,
       config: data.config || null,
       status: "pending",
-    }).run();
+    });
 
-    return this.findById(id, userId)!;
+    return (await this.findById(id, userId))!;
   }
 
   /**
    * Update an agent
    */
-  update(id: string, data: AgentUpdate, userId: string): Agent | null {
-    const existing = this.findById(id, userId);
+  async update(id: string, data: AgentUpdate, userId: string): Promise<Agent | null> {
+    const existing = await this.findById(id, userId);
     if (!existing) {
       return null;
     }
@@ -176,7 +176,7 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
     if (data.completedAt !== undefined) updateData.completedAt = data.completedAt;
 
     if (Object.keys(updateData).length > 0) {
-      db.update(agents).set(updateData).where(and(eq(agents.id, id), eq(agents.userId, userId))).run();
+      await db.update(agents).set(updateData).where(and(eq(agents.id, id), eq(agents.userId, userId)));
     }
 
     return this.findById(id, userId);
@@ -185,21 +185,30 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
   /**
    * Update agent status
    */
-  updateStatus(id: string, status: AgentStatus, userId: string): boolean {
-    const result = db
+  async updateStatus(id: string, status: AgentStatus, userId: string): Promise<boolean> {
+    const existing = await this.findById(id, userId);
+    if (!existing) {
+      return false;
+    }
+
+    await db
       .update(agents)
       .set({ status })
-      .where(and(eq(agents.id, id), eq(agents.userId, userId)))
-      .run();
-    return result.changes > 0;
+      .where(and(eq(agents.id, id), eq(agents.userId, userId)));
+    return true;
   }
 
   /**
    * Delete an agent (cascades to items)
    */
-  delete(id: string, userId: string): boolean {
-    const result = db.delete(agents).where(and(eq(agents.id, id), eq(agents.userId, userId))).run();
-    return result.changes > 0;
+  async delete(id: string, userId: string): Promise<boolean> {
+    const existing = await this.findById(id, userId);
+    if (!existing) {
+      return false;
+    }
+
+    await db.delete(agents).where(and(eq(agents.id, id), eq(agents.userId, userId)));
+    return true;
   }
 }
 

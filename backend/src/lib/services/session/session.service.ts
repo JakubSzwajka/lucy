@@ -44,29 +44,29 @@ export class SessionService {
   /**
    * Get all sessions
    */
-  getAll(userId: string): Session[] {
+  async getAll(userId: string): Promise<Session[]> {
     return this.repository.findAll(userId);
   }
 
   /**
    * Get a session by ID
    */
-  getById(id: string, userId: string): Session | null {
+  async getById(id: string, userId: string): Promise<Session | null> {
     return this.repository.findById(id, userId);
   }
 
   /**
    * Get a session with its agent tree and items
    */
-  getWithAgents(id: string, userId: string): SessionWithAgents | null {
-    const session = this.repository.findById(id, userId);
+  async getWithAgents(id: string, userId: string): Promise<SessionWithAgents | null> {
+    const session = await this.repository.findById(id, userId);
     if (!session) {
       return null;
     }
 
     // Get agent tree using AgentService
     const agentService = getAgentService();
-    const agentTree = agentService.getTreeBySessionId(id, userId);
+    const agentTree = await agentService.getTreeBySessionId(id, userId);
 
     return {
       ...session,
@@ -81,8 +81,8 @@ export class SessionService {
   /**
    * Create a new session with root agent
    */
-  create(userId: string, data: CreateSessionOptions = {}): CreateSessionResult {
-    const session = this.repository.create(data, userId);
+  async create(userId: string, data: CreateSessionOptions = {}): Promise<CreateSessionResult> {
+    const session = await this.repository.create(data, userId);
     return { session };
   }
 
@@ -93,8 +93,8 @@ export class SessionService {
   /**
    * Update a session
    */
-  update(id: string, data: SessionUpdate, userId: string): UpdateSessionResult {
-    const session = this.repository.update(id, data, userId);
+  async update(id: string, data: SessionUpdate, userId: string): Promise<UpdateSessionResult> {
+    const session = await this.repository.update(id, data, userId);
     if (!session) {
       return { notFound: true };
     }
@@ -104,23 +104,23 @@ export class SessionService {
   /**
    * Update session title
    */
-  updateTitle(id: string, title: string, userId: string): UpdateSessionResult {
-    const existing = this.repository.findById(id, userId);
+  async updateTitle(id: string, title: string, userId: string): Promise<UpdateSessionResult> {
+    const existing = await this.repository.findById(id, userId);
     if (!existing) {
       return { notFound: true };
     }
-    this.repository.updateTitle(id, title, userId);
-    return { session: this.repository.findById(id, userId)! };
+    await this.repository.updateTitle(id, title, userId);
+    return { session: (await this.repository.findById(id, userId))! };
   }
 
   /**
    * Auto-generate title from first user message if still default
    */
-  maybeGenerateTitle(id: string, content: string, userId: string): void {
-    const session = this.repository.findById(id, userId);
+  async maybeGenerateTitle(id: string, content: string, userId: string): Promise<void> {
+    const session = await this.repository.findById(id, userId);
     if (session && session.title === "New Chat") {
       const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
-      this.repository.updateTitle(id, title, userId);
+      await this.repository.updateTitle(id, title, userId);
     }
   }
 
@@ -131,8 +131,8 @@ export class SessionService {
   /**
    * Delete a session
    */
-  delete(id: string, userId: string): { success: boolean; notFound?: boolean } {
-    const deleted = this.repository.delete(id, userId);
+  async delete(id: string, userId: string): Promise<{ success: boolean; notFound?: boolean }> {
+    const deleted = await this.repository.delete(id, userId);
     if (!deleted) {
       return { success: false, notFound: true };
     }
@@ -146,21 +146,21 @@ export class SessionService {
   /**
    * Update session timestamp
    */
-  touch(id: string, userId: string): void {
-    this.repository.touch(id, userId);
+  async touch(id: string, userId: string): Promise<void> {
+    await this.repository.touch(id, userId);
   }
 
   /**
    * Archive a session
    */
-  archive(id: string, userId: string): UpdateSessionResult {
+  async archive(id: string, userId: string): Promise<UpdateSessionResult> {
     return this.update(id, { status: "archived" }, userId);
   }
 
   /**
    * Reactivate an archived session
    */
-  reactivate(id: string, userId: string): UpdateSessionResult {
+  async reactivate(id: string, userId: string): Promise<UpdateSessionResult> {
     return this.update(id, { status: "active" }, userId);
   }
 }

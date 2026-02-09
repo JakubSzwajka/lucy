@@ -51,7 +51,7 @@ When to create a plan:
       source: { type: "builtin", moduleId: "plan" },
 
       execute: async (args, context) => {
-        const result = planService.create({
+        const result = await planService.create({
           sessionId: context.sessionId,
           agentId: context.agentId,
           title: args.title,
@@ -151,7 +151,7 @@ The plan status is automatically derived from step statuses unless explicitly se
       execute: async (args, context) => {
         const { planId, ...updates } = args;
 
-        const result = planService.update(planId, updates, context.userId);
+        const result = await planService.update(planId, updates, context.userId);
 
         if (result.notFound) {
           return { success: false, error: "Plan not found" };
@@ -161,7 +161,7 @@ The plan status is automatically derived from step statuses unless explicitly se
           return { success: false, error: result.error };
         }
 
-        const progress = planService.getProgress(planId, context.userId);
+        const progress = await planService.getProgress(planId, context.userId);
 
         return {
           success: true,
@@ -192,13 +192,13 @@ The plan status is automatically derived from step statuses unless explicitly se
       source: { type: "builtin", moduleId: "plan" },
 
       execute: async (_args, context) => {
-        const plan = planService.getBySessionId(context.sessionId, context.userId);
+        const plan = await planService.getBySessionId(context.sessionId, context.userId);
 
         if (!plan) {
           return { hasPlan: false, message: "No plan exists for this session" };
         }
 
-        const progress = planService.getProgress(plan.id, context.userId);
+        const progress = await planService.getProgress(plan.id, context.userId);
 
         return {
           hasPlan: true,

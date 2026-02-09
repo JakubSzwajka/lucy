@@ -35,21 +35,21 @@ export class ItemService {
     this.repository = repository || getItemRepository();
   }
 
-  getByAgentId(agentId: string): Item[] {
+  async getByAgentId(agentId: string): Promise<Item[]> {
     return this.repository.findByAgentId(agentId);
   }
 
-  getById(id: string): Item | null {
+  async getById(id: string): Promise<Item | null> {
     return this.repository.findById(id);
   }
 
-  getByCallId(callId: string): Item | null {
+  async getByCallId(callId: string): Promise<Item | null> {
     return this.repository.findByCallId(callId);
   }
 
-  create(agentId: string, data: CreateItemData, userId?: string): CreateItemResult {
+  async create(agentId: string, data: CreateItemData, userId?: string): Promise<CreateItemResult> {
     if (userId) {
-      const agentCheck = this.repository.agentExists(agentId, userId);
+      const agentCheck = await this.repository.agentExists(agentId, userId);
       if (!agentCheck.exists) {
         return { notFound: true };
       }
@@ -60,16 +60,16 @@ export class ItemService {
       return { error: validation.error };
     }
 
-    const item = this.repository.create(agentId, data);
+    const item = await this.repository.create(agentId, data);
 
     // Update session timestamp
     if (userId) {
-      const agentCheck = this.repository.agentExists(agentId, userId);
+      const agentCheck = await this.repository.agentExists(agentId, userId);
       if (agentCheck.sessionId) {
-        this.repository.updateSessionTimestamp(agentCheck.sessionId);
+        await this.repository.updateSessionTimestamp(agentCheck.sessionId);
 
         if (data.type === "message" && data.role === "user") {
-          this.maybeUpdateSessionTitle(agentCheck.sessionId, data.content);
+          await this.maybeUpdateSessionTitle(agentCheck.sessionId, data.content);
         }
       }
     }
@@ -77,22 +77,22 @@ export class ItemService {
     return { item };
   }
 
-  createMessage(
+  async createMessage(
     agentId: string,
     role: "user" | "assistant" | "system",
     content: string,
     userId?: string
-  ): CreateItemResult {
+  ): Promise<CreateItemResult> {
     return this.create(agentId, { type: "message", role, content }, userId);
   }
 
-  createToolCall(
+  async createToolCall(
     agentId: string,
     callId: string,
     toolName: string,
     toolArgs?: Record<string, unknown> | null,
     status: ToolCallStatus = "running"
-  ): CreateItemResult {
+  ): Promise<CreateItemResult> {
     return this.create(agentId, {
       type: "tool_call",
       callId,
@@ -102,12 +102,12 @@ export class ItemService {
     });
   }
 
-  createToolResult(
+  async createToolResult(
     agentId: string,
     callId: string,
     output?: unknown,
     error?: string
-  ): CreateItemResult {
+  ): Promise<CreateItemResult> {
     return this.create(agentId, {
       type: "tool_result",
       callId,
@@ -116,11 +116,11 @@ export class ItemService {
     });
   }
 
-  createReasoning(
+  async createReasoning(
     agentId: string,
     content: string,
     summary?: string
-  ): CreateItemResult {
+  ): Promise<CreateItemResult> {
     return this.create(agentId, {
       type: "reasoning",
       reasoningContent: content,
@@ -128,7 +128,7 @@ export class ItemService {
     });
   }
 
-  updateToolCallStatus(callId: string, status: ToolCallStatus): boolean {
+  async updateToolCallStatus(callId: string, status: ToolCallStatus): Promise<boolean> {
     return this.repository.updateToolCallStatus(callId, status);
   }
 
@@ -178,11 +178,11 @@ export class ItemService {
     return { valid: true };
   }
 
-  private maybeUpdateSessionTitle(sessionId: string, content: string): void {
-    const currentTitle = this.repository.getSessionTitle(sessionId);
+  private async maybeUpdateSessionTitle(sessionId: string, content: string): Promise<void> {
+    const currentTitle = await this.repository.getSessionTitle(sessionId);
     if (currentTitle === "New Chat") {
       const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
-      this.repository.updateSessionTitle(sessionId, title);
+      await this.repository.updateSessionTitle(sessionId, title);
     }
   }
 }

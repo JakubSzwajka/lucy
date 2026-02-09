@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const { userId } = authResult.user;
 
   const sessionService = getSessionService();
-  const sessions = sessionService.getAll(userId);
+  const sessions = await sessionService.getAll(userId);
   return NextResponse.json(sessions);
 }
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const sessionService = getSessionService();
 
-  const result = sessionService.create(userId, {
+  const result = await sessionService.create(userId, {
     title: body.title,
     agentName: body.agentName,
     systemPrompt: body.systemPrompt,

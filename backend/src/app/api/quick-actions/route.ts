@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const service = getQuickActionService();
   const { searchParams } = new URL(request.url);
   const enabled = parseEnabledParam(searchParams.get("enabled"));
-  const actions = service.getAll(userId, enabled);
+  const actions = await service.getAll(userId, enabled);
   return NextResponse.json(actions);
 }
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   const { name, content, icon, sortOrder, enabled } = await request.json();
   const service = getQuickActionService();
 
-  const result = service.create({ name, content, icon, sortOrder, enabled }, userId);
+  const result = await service.create({ name, content, icon, sortOrder, enabled }, userId);
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 400 });

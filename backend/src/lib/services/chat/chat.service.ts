@@ -29,7 +29,7 @@ export class ChatService {
     const { modelId, thinkingEnabled } = options;
 
     const sessionService = getSessionService();
-    const session = sessionService.getById(sessionId, userId);
+    const session = await sessionService.getById(sessionId, userId);
 
     if (!session) {
       return { error: "Session not found" as const, status: 404 as const };
@@ -59,8 +59,8 @@ export class ChatService {
       }
 
       content = content || "";
-      itemService.createMessage(rootAgentId, "user", content, userId);
-      sessionService.maybeGenerateTitle(sessionId, content, userId);
+      await itemService.createMessage(rootAgentId, "user", content, userId);
+      await sessionService.maybeGenerateTitle(sessionId, content, userId);
     }
 
     // Prepare chat context
@@ -103,7 +103,7 @@ export class ChatService {
     const { modelId, thinkingEnabled = true } = options;
 
     const agentService = getAgentService();
-    const agent = agentService.getById(agentId, userId);
+    const agent = await agentService.getById(agentId, userId);
     if (!agent) {
       return null;
     }
@@ -132,12 +132,12 @@ export class ChatService {
       userId,
     });
 
-    agentService.update(agentId, {
+    await agentService.update(agentId, {
       status: "running",
       startedAt: agent.startedAt || new Date(),
     }, userId);
 
-    this.touchSession(agent.sessionId, userId);
+    await this.touchSession(agent.sessionId, userId);
 
     return {
       agent,
@@ -162,18 +162,17 @@ export class ChatService {
   async getDefaultSystemPrompt(userId: string): Promise<string | null> {
     try {
       const settingsId = `default-${userId}`;
-      const [currentSettings] = db
+      const [currentSettings] = await db
         .select()
         .from(settings)
-        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)))
-        .all();
+        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
 
       if (!currentSettings?.defaultSystemPromptId) {
         return null;
       }
 
       const systemPromptService = getSystemPromptService();
-      const prompt = systemPromptService.getById(currentSettings.defaultSystemPromptId, userId);
+      const prompt = await systemPromptService.getById(currentSettings.defaultSystemPromptId, userId);
 
       return prompt?.content || null;
     } catch {
@@ -240,9 +239,9 @@ export class ChatService {
   async finalizeChat(agentId: string, userId: string): Promise<ChatFinishResult> {
     try {
       const agentService = getAgentService();
-      const agent = agentService.getById(agentId, userId);
+      const agent = await agentService.getById(agentId, userId);
       if (agent) {
-        agentService.update(agentId, {
+        await agentService.update(agentId, {
           status: "waiting",
           turnCount: agent.turnCount + 1,
         }, userId);
@@ -257,8 +256,8 @@ export class ChatService {
     }
   }
 
-  private touchSession(sessionId: string, userId: string): void {
-    getSessionService().touch(sessionId, userId);
+  private async touchSession(sessionId: string, userId: string): Promise<void> {
+    await getSessionService().touch(sessionId, userId);
   }
 }
 

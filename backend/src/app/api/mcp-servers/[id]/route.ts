@@ -15,7 +15,7 @@ export async function GET(
   const { id } = await params;
   const mcpService = getMcpService();
 
-  const server = mcpService.getById(id, userId);
+  const server = await mcpService.getById(id, userId);
 
   if (!server) {
     return NextResponse.json({ error: "MCP server not found" }, { status: 404 });
@@ -37,7 +37,7 @@ export async function PATCH(
   const body: McpServerUpdate = await request.json();
   const mcpService = getMcpService();
 
-  const result = mcpService.update(id, body, userId);
+  const result = await mcpService.update(id, body, userId);
 
   if (result.notFound) {
     return NextResponse.json({ error: "MCP server not found" }, { status: 404 });
@@ -58,7 +58,7 @@ export async function DELETE(
   const { id } = await params;
   const mcpService = getMcpService();
 
-  const result = mcpService.delete(id, userId);
+  const result = await mcpService.delete(id, userId);
 
   if (result.notFound) {
     return NextResponse.json({ error: "MCP server not found" }, { status: 404 });

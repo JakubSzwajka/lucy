@@ -41,24 +41,24 @@ export class AgentService {
   // Query Operations
   // -------------------------------------------------------------------------
 
-  getById(id: string, userId: string): Agent | null {
+  async getById(id: string, userId: string): Promise<Agent | null> {
     return this.repository.findById(id, userId);
   }
 
-  getByIdWithItems(id: string, userId: string): AgentWithItems | null {
+  async getByIdWithItems(id: string, userId: string): Promise<AgentWithItems | null> {
     return this.repository.findByIdWithItems(id, userId);
   }
 
-  getBySessionId(sessionId: string, userId: string): Agent[] {
+  async getBySessionId(sessionId: string, userId: string): Promise<Agent[]> {
     return this.repository.findBySessionId(sessionId, userId);
   }
 
-  getBySessionIdWithItems(sessionId: string, userId: string): AgentWithItems[] {
+  async getBySessionIdWithItems(sessionId: string, userId: string): Promise<AgentWithItems[]> {
     return this.repository.findBySessionIdWithItems(sessionId, userId);
   }
 
-  getTreeBySessionId(sessionId: string, userId: string): AgentWithItems[] {
-    const agentsWithItems = this.repository.findBySessionIdWithItems(sessionId, userId);
+  async getTreeBySessionId(sessionId: string, userId: string): Promise<AgentWithItems[]> {
+    const agentsWithItems = await this.repository.findBySessionIdWithItems(sessionId, userId);
     return this.buildAgentTree(agentsWithItems);
   }
 
@@ -66,16 +66,16 @@ export class AgentService {
   // Create Operations
   // -------------------------------------------------------------------------
 
-  create(data: AgentCreate, userId: string): CreateAgentResult {
+  async create(data: AgentCreate, userId: string): Promise<CreateAgentResult> {
     if (!data.sessionId || !data.name) {
       return { error: "sessionId and name are required" };
     }
 
-    if (!this.repository.sessionExists(data.sessionId, userId)) {
+    if (!(await this.repository.sessionExists(data.sessionId, userId))) {
       return { notFound: true, error: "Session not found" };
     }
 
-    const agent = this.repository.create(data, userId);
+    const agent = await this.repository.create(data, userId);
     return { agent };
   }
 
@@ -83,7 +83,7 @@ export class AgentService {
   // Update Operations
   // -------------------------------------------------------------------------
 
-  update(id: string, data: AgentUpdate, userId: string): UpdateAgentResult {
+  async update(id: string, data: AgentUpdate, userId: string): Promise<UpdateAgentResult> {
     const allowedFields: (keyof AgentUpdate)[] = [
       "status",
       "waitingForCallId",
@@ -105,35 +105,35 @@ export class AgentService {
       return { error: "No valid fields to update" };
     }
 
-    const agent = this.repository.update(id, filteredData, userId);
+    const agent = await this.repository.update(id, filteredData, userId);
     if (!agent) {
       return { notFound: true };
     }
     return { agent };
   }
 
-  updateStatus(id: string, status: AgentStatus, userId: string): UpdateAgentResult {
-    const updated = this.repository.updateStatus(id, status, userId);
+  async updateStatus(id: string, status: AgentStatus, userId: string): Promise<UpdateAgentResult> {
+    const updated = await this.repository.updateStatus(id, status, userId);
     if (!updated) {
       return { notFound: true };
     }
-    return { agent: this.repository.findById(id, userId)! };
+    return { agent: (await this.repository.findById(id, userId))! };
   }
 
-  markRunning(id: string, userId: string): UpdateAgentResult {
+  async markRunning(id: string, userId: string): Promise<UpdateAgentResult> {
     return this.update(id, { status: "running", startedAt: new Date() }, userId);
   }
 
-  markCompleted(id: string, userId: string, result?: string): UpdateAgentResult {
+  async markCompleted(id: string, userId: string, result?: string): Promise<UpdateAgentResult> {
     return this.update(id, { status: "completed", completedAt: new Date(), result }, userId);
   }
 
-  markFailed(id: string, error: string, userId: string): UpdateAgentResult {
+  async markFailed(id: string, error: string, userId: string): Promise<UpdateAgentResult> {
     return this.update(id, { status: "failed", completedAt: new Date(), error }, userId);
   }
 
-  incrementTurnCount(id: string, userId: string): UpdateAgentResult {
-    const agent = this.repository.findById(id, userId);
+  async incrementTurnCount(id: string, userId: string): Promise<UpdateAgentResult> {
+    const agent = await this.repository.findById(id, userId);
     if (!agent) {
       return { notFound: true };
     }
@@ -144,8 +144,8 @@ export class AgentService {
   // Delete Operations
   // -------------------------------------------------------------------------
 
-  delete(id: string, userId: string): { success: boolean; notFound?: boolean } {
-    const deleted = this.repository.delete(id, userId);
+  async delete(id: string, userId: string): Promise<{ success: boolean; notFound?: boolean }> {
+    const deleted = await this.repository.delete(id, userId);
     if (!deleted) {
       return { success: false, notFound: true };
     }
