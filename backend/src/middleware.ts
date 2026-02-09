@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const origins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:8888").split(",").map(o => o.trim());
+  const corsOrigins = process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:8888";
   const origin = request.headers.get("origin") || "";
-  const isAllowed = origins.includes(origin);
+  const isAllowed = corsOrigins === "*" || corsOrigins.split(",").map(o => o.trim()).includes(origin);
 
   if (request.method === "OPTIONS") {
     const response = new NextResponse(null, { status: 204 });
