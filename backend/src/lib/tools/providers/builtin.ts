@@ -69,13 +69,12 @@ export class BuiltinToolProvider implements ToolProvider {
   async refresh(): Promise<void> {
     this.tools = [];
 
+    // 1. Load tools from integration-backed modules (existing behavior)
     for (const integration of allIntegrations) {
-      // Skip unconfigured integrations
       if (!integration.isConfigured()) {
         continue;
       }
 
-      // Find all tool modules that use this integration
       const toolModules = getToolModulesByIntegration(integration.id);
       if (toolModules.length === 0) {
         console.warn(`[Tools] No module found for integration ${integration.id}`);
@@ -83,14 +82,12 @@ export class BuiltinToolProvider implements ToolProvider {
       }
 
       try {
-        // Create client using integration's factory
         const client = integration.createClient();
         if (!client) {
           console.warn(`[Tools] Integration ${integration.id} returned null client`);
           continue;
         }
 
-        // Create tools from all modules that use this integration
         for (const toolModule of toolModules) {
           const moduleTools = toolModule.createTools(client);
           this.tools.push(...moduleTools);
@@ -101,6 +98,21 @@ export class BuiltinToolProvider implements ToolProvider {
         }
       } catch (error) {
         console.error(`[Tools] Failed to initialize integration ${integration.id}:`, error);
+      }
+    }
+
+    // 2. Load tools from internal modules (no integration needed)
+    const internalModules = allToolModules.filter((m) => m.integrationId === null);
+    for (const toolModule of internalModules) {
+      try {
+        const moduleTools = toolModule.createTools(null);
+        this.tools.push(...moduleTools);
+
+        console.log(
+          `[Tools] Loaded ${moduleTools.length} from ${toolModule.name} (internal)`
+        );
+      } catch (error) {
+        console.error(`[Tools] Failed to initialize internal module ${toolModule.id}:`, error);
       }
     }
   }

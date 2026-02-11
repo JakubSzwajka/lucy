@@ -1,5 +1,7 @@
 "use client";
 
+import { StatsTab } from "@/components/memory/StatsTab";
+
 const cards = [
   {
     label: "ACTIVE_SESSIONS",
@@ -52,6 +54,15 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-dark">{card.description}</p>
             </div>
           ))}
+        </div>
+
+        {/* Memory Stats */}
+        <div className="mt-8 border border-border rounded-lg bg-background-secondary">
+          <div className="px-5 pt-5">
+            <span className="label-sm text-muted-darker block mb-2">{"// MEMORY_STATS"}</span>
+            <h2 className="text-sm font-medium mb-2">Memory Overview</h2>
+          </div>
+          <StatsTab />
         </div>
       </div>
     </div>

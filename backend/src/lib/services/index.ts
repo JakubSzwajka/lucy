@@ -86,3 +86,14 @@ export type {
   ConversationSearchOptions,
   ContextItem,
 } from "./conversation-search";
+
+// Memory Service
+export { MemoryService, getMemoryService } from "@/lib/memory";
+export type {
+  Memory,
+  MemoryEvidence,
+  MemoryStats,
+  CreateMemoryInput,
+  UpdateMemoryInput,
+  MemoryFilters,
+} from "@/lib/memory";

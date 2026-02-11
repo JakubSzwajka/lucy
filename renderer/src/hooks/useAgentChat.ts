@@ -6,7 +6,7 @@ import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { api, API_BASE_URL } from "@/lib/api/client";
 import {
   mergeWithStreaming,
-} from "@/lib/services/item/item.transformer";
+} from "@/lib/utils/item-transformer";
 import { extractPlanFromMessages } from "./usePlanStream";
 import type { Plan } from "@/components/plan";
 import type { UIMessage, ChatStatus } from "ai";

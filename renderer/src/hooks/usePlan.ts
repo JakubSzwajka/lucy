@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/query/keys";
 import type { Plan } from "@/components/plan";
 
 interface UsePlanOptions {
@@ -20,49 +22,32 @@ export function usePlan({
   sessionId,
   streamPlan = null,
 }: UsePlanOptions): UsePlanReturn {
-  const [dbPlan, setDbPlan] = useState<Plan | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
   const prevStreamPlanRef = useRef<Plan | null>(streamPlan);
 
-  const fetchPlan = useCallback(async () => {
-    if (!sessionId) {
-      setDbPlan(null);
-      return;
-    }
-
-    try {
+  const { data: dbPlan = null, isLoading, error: queryError } = useQuery({
+    queryKey: sessionId ? queryKeys.plans.bySession(sessionId) : ["plans", "none"],
+    queryFn: async () => {
+      if (!sessionId) return null;
       const data = await api.request<{ plan: Plan | null }>(`/api/sessions/${sessionId}/plans`);
-      setDbPlan(data.plan);
-      setError(null);
-    } catch (err) {
-      console.error("[Plan] Failed to fetch:", err);
-      setError("Failed to fetch plan");
-    }
-  }, [sessionId]);
-
-  // Initial fetch on mount / sessionId change
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern: setIsLoading gates UI loading state before async fetch
-    setIsLoading(true);
-    fetchPlan().finally(() => setIsLoading(false));
-  }, [fetchPlan]);
+      return data.plan;
+    },
+    enabled: !!sessionId,
+  });
 
   // Re-fetch from DB when streamPlan transitions from non-null to null
-  // (stream ended, session switch, etc.)
   useEffect(() => {
-    if (prevStreamPlanRef.current && !streamPlan) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchPlan sets state internally after async DB fetch
-      fetchPlan();
+    if (prevStreamPlanRef.current && !streamPlan && sessionId) {
+      qc.invalidateQueries({ queryKey: queryKeys.plans.bySession(sessionId) });
     }
     prevStreamPlanRef.current = streamPlan;
-  }, [streamPlan, fetchPlan]);
+  }, [streamPlan, sessionId, qc]);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
-    await fetchPlan();
-    setIsLoading(false);
-  }, [fetchPlan]);
+    if (sessionId) {
+      await qc.invalidateQueries({ queryKey: queryKeys.plans.bySession(sessionId) });
+    }
+  }, [sessionId, qc]);
 
   // Stream wins when available
   const plan = streamPlan ?? dbPlan;
@@ -70,7 +55,7 @@ export function usePlan({
   return {
     plan,
     isLoading,
-    error,
+    error: queryError ? "Failed to fetch plan" : null,
     refresh,
   };
 }

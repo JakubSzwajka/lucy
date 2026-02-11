@@ -38,10 +38,10 @@ export class SettingsService {
       await db.insert(settings).values({
         id: settingsId,
         userId,
-        defaultModelId: "gpt-4o",
+        defaultModelId: null,
         defaultSystemPromptId: null,
         enabledModels: JSON.stringify(getAllModelIds()),
-      });
+      }).onConflictDoNothing();
 
       const [created] = await db
         .select()

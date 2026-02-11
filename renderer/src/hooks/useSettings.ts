@@ -1,76 +1,75 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/query/keys";
 import type { UserSettings, SettingsUpdate } from "@/types";
 
+function parseSettings(data: Record<string, unknown>): UserSettings {
+  return {
+    ...data,
+    createdAt: new Date(data.createdAt as string),
+    updatedAt: new Date(data.updatedAt as string),
+  } as UserSettings;
+}
+
 export function useSettings() {
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const qc = useQueryClient();
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      setError(null);
+  const { data: settings = null, isLoading, error } = useQuery({
+    queryKey: queryKeys.settings,
+    queryFn: async () => {
       const data = await api.request<Record<string, unknown>>("/api/settings");
-      setSettings({
-        ...data,
-        createdAt: new Date(data.createdAt as string),
-        updatedAt: new Date(data.updatedAt as string),
-      } as UserSettings);
-    } catch (err) {
-      console.error("[Settings] Failed to fetch:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      return parseSettings(data);
+    },
+  });
 
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+  const updateMutation = useMutation({
+    mutationFn: async (updates: SettingsUpdate) => {
+      const data = await api.request<Record<string, unknown>>("/api/settings", {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+      return parseSettings(data);
+    },
+    onMutate: async (updates) => {
+      await qc.cancelQueries({ queryKey: queryKeys.settings });
+      const previous = qc.getQueryData<UserSettings>(queryKeys.settings);
+      if (previous) {
+        qc.setQueryData<UserSettings>(queryKeys.settings, {
+          ...previous,
+          ...updates,
+          updatedAt: new Date(),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(queryKeys.settings, context.previous);
+      }
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(queryKeys.settings, data);
+    },
+  });
 
   const updateSettings = useCallback(
     async (updates: SettingsUpdate) => {
-      if (!settings) return;
-
-      // Optimistic update
-      const previousSettings = settings;
-      setSettings({
-        ...settings,
-        ...updates,
-        updatedAt: new Date(),
-      });
-
-      try {
-        const data = await api.request<Record<string, unknown>>("/api/settings", {
-          method: "PATCH",
-          body: JSON.stringify(updates),
-        });
-        setSettings({
-          ...data,
-          createdAt: new Date(data.createdAt as string),
-          updatedAt: new Date(data.updatedAt as string),
-        } as UserSettings);
-      } catch (err) {
-        // Rollback on error
-        setSettings(previousSettings);
-        console.error("[Settings] Failed to update:", err);
-        throw err;
-      }
+      await updateMutation.mutateAsync(updates);
     },
-    [settings]
+    [updateMutation]
   );
 
   const refreshSettings = useCallback(() => {
-    setIsLoading(true);
-    fetchSettings();
-  }, [fetchSettings]);
+    qc.invalidateQueries({ queryKey: queryKeys.settings });
+  }, [qc]);
 
   return {
     settings,
     isLoading,
-    error,
+    error: error ?? null,
     updateSettings,
     refreshSettings,
   };

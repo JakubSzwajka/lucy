@@ -12,12 +12,12 @@ lucy-nextjs/
 │   └── helpers/             # Electron utilities
 ├── renderer/                # Next.js frontend (Electron-embedded)
 │   ├── src/
-│   │   ├── app/             # Pages and API routes (local, no auth)
+│   │   ├── app/             # Pages (login, register, chat)
 │   │   │   ├── login/          # Login page
 │   │   │   └── register/       # Register page
 │   │   ├── components/      # React components
 │   │   ├── hooks/           # Custom hooks
-│   │   ├── lib/             # Services, database, AI providers
+│   │   ├── lib/             # Utilities, API client
 │   │   │   └── api/            # API client for cloud backend
 │   │   └── types/           # TypeScript types
 │   ├── public/
@@ -40,7 +40,7 @@ lucy-nextjs/
 |---|---|---|
 | **Auth** | None (local single-user) | JWT on every route |
 | **Multi-user** | No | Yes (`userId` on all tables) |
-| **Database** | SQLite only | SQLite (dev) or Postgres (prod) |
+| **Database** | None (cloud-only) | SQLite (dev) or Postgres (prod) |
 | **Runs as** | Embedded in Electron | Standalone Next.js server |
 | **Frontend** | Full React UI (calls cloud backend API) | Landing page only |
 | **Port** | Electron-managed | 3001 |
@@ -52,9 +52,6 @@ lucy-nextjs/
 |---------|-------------|
 | `npm run dev` | Start development mode (Electron + Next.js hot reload) |
 | `npm run build` | Build production app (creates DMG/installer) |
-| `npm rebuild better-sqlite3` | Rebuild native module for Node.js (run before dev if issues) |
-| `npm run db:push` | Push schema changes to database |
-| `npm run db:studio` | Open Drizzle Studio for database inspection |
 
 ### Cloud Backend (`cd backend/`)
 | Command | Description |
@@ -69,8 +66,6 @@ lucy-nextjs/
 ### Desktop App - Before First Run
 ```bash
 npm install
-npm run db:push          # Initialize database schema
-npm rebuild better-sqlite3  # Rebuild native module for system Node
 npm run dev
 ```
 
@@ -93,11 +88,6 @@ npm run dev                  # Starts Electron + Next.js on port 8888
 ```
 The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_API_URL` in `renderer/.env.local` to change the backend URL.
 
-### Native Module Note
-`better-sqlite3` is a native module that must be compiled for the correct runtime:
-- **Development**: Uses system Node.js → run `npm rebuild better-sqlite3`
-- **Production build**: Automatically rebuilt for Electron by electron-builder
-
 ## Project Structure Conventions
 
 ### Main Process (`main/`)
@@ -116,8 +106,8 @@ The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_
 - Co-locate component, styles, and tests in the same directory
 - Use named exports for components
 
-### API Routes
-Both `renderer/` and `backend/` expose the same API surface. Backend routes add JWT auth + userId scoping.
+### API Routes (backend only)
+All API routes live in `backend/src/app/api/` with JWT auth + userId scoping.
 
 | Route | Description |
 |-------|-------------|
@@ -125,21 +115,19 @@ Both `renderer/` and `backend/` expose the same API surface. Backend routes add 
 | `/api/sessions/[id]/chat` | AI chat streaming (SSE) |
 | `/api/sessions/[id]/plans` | Plans for a session |
 | `/api/providers` | Available AI providers |
-| `/api/settings` | App settings (per-user in backend) |
+| `/api/settings` | App settings (per-user) |
 | `/api/system-prompts` | System prompt management |
 | `/api/quick-actions` | Quick action management |
 | `/api/mcp-servers` | MCP server management |
 | `/api/tools` | Tool listing |
 | `/api/openapi` | OpenAPI spec |
-| `/api/auth/*` | Register/login/verify (backend only) |
-| `/api/health` | DB connectivity check (backend only) |
+| `/api/auth/*` | Register/login/verify |
+| `/api/health` | DB connectivity check |
 
 ### Database
-- **Desktop**: SQLite via `better-sqlite3` + Drizzle ORM, schema in `renderer/src/lib/db/schema.ts`
-- **Backend**: SQLite (dev) or PostgreSQL (prod) via `DATABASE_PROVIDER` env, schema in `backend/src/lib/db/schema.ts`
-- In dev: Database at project root (`lucy.db`)
-- In desktop prod: Database in user data directory (via `LUCY_USER_DATA_PATH`)
-- In backend prod: PostgreSQL via `DATABASE_URL`
+- **Backend only**: SQLite (dev) or PostgreSQL (prod) via `DATABASE_PROVIDER` env, schema in `backend/src/lib/db/schema.ts`
+- In dev: Database at `backend/lucy.db`
+- In prod: PostgreSQL via `DATABASE_URL`
 
 **Schema (shared structure, backend adds userId):**
 - `users` - User accounts (backend only)
@@ -165,6 +153,8 @@ Three tsconfig files:
 - Root `tsconfig.json` - Main process (CommonJS, targets Electron Node)
 - `renderer/tsconfig.json` - Next.js frontend app (ESM, React JSX)
 - `backend/tsconfig.json` - Next.js backend app (ESM, `@/*` → `./src/*`)
+
+The renderer has no local database or services — all data flows through the API client to the cloud backend.
 
 ## Error Handling
 
@@ -199,10 +189,9 @@ Three tsconfig files:
 
 ### Desktop App
 Production build uses custom script (`scripts/build.js`) that:
-1. Builds Next.js in standalone mode (preserves API routes)
+1. Builds Next.js in standalone mode
 2. Compiles main process TypeScript
-3. Copies native modules
-4. Packages with electron-builder
+3. Packages with electron-builder
 
 Outputs in `dist/`:
 - `Lucy-{version}-arm64.dmg` - macOS Apple Silicon

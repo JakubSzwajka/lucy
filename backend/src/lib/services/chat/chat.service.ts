@@ -16,6 +16,7 @@ import { getItemService } from "../item";
 import { persistStepContent } from "./step-persistence.service";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, ModelMessage, ChatFinishResult } from "./types";
 import type { Agent, ModelConfig } from "@/types";
+import { getContextRetrievalService } from "@/lib/memory/context-retrieval.service";
 
 // ============================================================================
 // Chat Service
@@ -115,7 +116,21 @@ export class ChatService {
     const modelConfig = getModelConfig(effectiveModelId) || DEFAULT_MODEL;
     const languageModel = getLanguageModel(modelConfig);
 
-    const systemPrompt = await this.resolveSystemPrompt(agent, userId);
+    let systemPrompt = await this.resolveSystemPrompt(agent, userId);
+
+    // Inject memory context after system prompt
+    try {
+      const contextService = getContextRetrievalService();
+      const contextResult = await contextService.getRelevantMemories(userId, agent.sessionId);
+      const memorySection = contextService.formatMemoryContext(contextResult);
+      if (memorySection) {
+        systemPrompt = systemPrompt
+          ? `${systemPrompt}\n\n${memorySection}`
+          : memorySection;
+      }
+    } catch {
+      // Memory injection is non-critical; don't block chat
+    }
 
     const isThinkingActive = (modelConfig.supportsReasoning && thinkingEnabled) ?? false;
 

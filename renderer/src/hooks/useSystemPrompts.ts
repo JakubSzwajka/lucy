@@ -1,94 +1,94 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/query/keys";
 import type { SystemPrompt, SystemPromptCreate, SystemPromptUpdate } from "@/types";
 
+function parsePrompt(p: SystemPrompt): SystemPrompt {
+  return { ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) };
+}
+
+const sortPrompts = (list: SystemPrompt[]) =>
+  [...list].sort((a, b) => a.name.localeCompare(b.name));
+
 export function useSystemPrompts() {
-  const [prompts, setPrompts] = useState<SystemPrompt[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const qc = useQueryClient();
 
-  const fetchPrompts = useCallback(async () => {
-    try {
-      setError(null);
+  const { data: prompts = [], isLoading, error } = useQuery({
+    queryKey: queryKeys.systemPrompts.all,
+    queryFn: async () => {
       const data = await api.request<SystemPrompt[]>("/api/system-prompts");
-      setPrompts(
-        data.map((p) => ({
-          ...p,
-          createdAt: new Date(p.createdAt),
-          updatedAt: new Date(p.updatedAt),
-        }))
-      );
-    } catch (err) {
-      console.error("[SystemPrompts] Failed to fetch:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      return sortPrompts(data.map(parsePrompt));
+    },
+  });
 
-  useEffect(() => {
-    fetchPrompts();
-  }, [fetchPrompts]);
-
-  const createPrompt = useCallback(
-    async (data: SystemPromptCreate): Promise<SystemPrompt> => {
+  const createMutation = useMutation({
+    mutationFn: async (input: SystemPromptCreate) => {
       const created = await api.request<SystemPrompt>("/api/system-prompts", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify(input),
       });
-      const prompt: SystemPrompt = {
-        ...created,
-        createdAt: new Date(created.createdAt),
-        updatedAt: new Date(created.updatedAt),
-      };
-
-      setPrompts((prev) => [...prev, prompt].sort((a, b) => a.name.localeCompare(b.name)));
-      return prompt;
+      return parsePrompt(created);
     },
-    []
-  );
+    onSuccess: (prompt) => {
+      qc.setQueryData<SystemPrompt[]>(queryKeys.systemPrompts.all, (prev) =>
+        sortPrompts([...(prev ?? []), prompt])
+      );
+    },
+  });
 
-  const updatePrompt = useCallback(
-    async (id: string, data: SystemPromptUpdate): Promise<SystemPrompt> => {
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: SystemPromptUpdate }) => {
       const updated = await api.request<SystemPrompt>(`/api/system-prompts/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      const prompt: SystemPrompt = {
-        ...updated,
-        createdAt: new Date(updated.createdAt),
-        updatedAt: new Date(updated.updatedAt),
-      };
-
-      setPrompts((prev) =>
-        prev
-          .map((p) => (p.id === id ? prompt : p))
-          .sort((a, b) => a.name.localeCompare(b.name))
-      );
-      return prompt;
+      return parsePrompt(updated);
     },
-    []
+    onSuccess: (prompt) => {
+      qc.setQueryData<SystemPrompt[]>(queryKeys.systemPrompts.all, (prev) =>
+        sortPrompts((prev ?? []).map((p) => (p.id === prompt.id ? prompt : p)))
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.request(`/api/system-prompts/${id}`, { method: "DELETE" });
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.setQueryData<SystemPrompt[]>(queryKeys.systemPrompts.all, (prev) =>
+        (prev ?? []).filter((p) => p.id !== id)
+      );
+    },
+  });
+
+  const createPrompt = useCallback(
+    (data: SystemPromptCreate) => createMutation.mutateAsync(data),
+    [createMutation]
   );
 
-  const deletePrompt = useCallback(async (id: string): Promise<void> => {
-    await api.request(`/api/system-prompts/${id}`, {
-      method: "DELETE",
-    });
+  const updatePrompt = useCallback(
+    (id: string, data: SystemPromptUpdate) => updateMutation.mutateAsync({ id, data }),
+    [updateMutation]
+  );
 
-    setPrompts((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  const deletePrompt = useCallback(
+    (id: string) => deleteMutation.mutateAsync(id).then(() => {}),
+    [deleteMutation]
+  );
 
   const refreshPrompts = useCallback(() => {
-    setIsLoading(true);
-    fetchPrompts();
-  }, [fetchPrompts]);
+    qc.invalidateQueries({ queryKey: queryKeys.systemPrompts.all });
+  }, [qc]);
 
   return {
     prompts,
     isLoading,
-    error,
+    error: error ?? null,
     createPrompt,
     updatePrompt,
     deletePrompt,

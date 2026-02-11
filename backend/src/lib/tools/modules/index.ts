@@ -12,11 +12,13 @@
 import type { AnyToolModule } from "../types";
 import { notesModule } from "./notes";
 import { memoryModule } from "./memory";
+import { continuityModule } from "./continuity";
 import { planModule } from "./plan";
 
 // Re-export individual modules
 export { notesModule } from "./notes";
 export { memoryModule } from "./memory";
+export { continuityModule } from "./continuity";
 export { planModule } from "./plan";
 
 /**
@@ -30,6 +32,7 @@ export { planModule } from "./plan";
 export const allToolModules: AnyToolModule[] = [
   notesModule,
   memoryModule,
+  continuityModule,
   planModule,
 ];
 
@@ -45,7 +48,7 @@ export function getToolModule(id: string): AnyToolModule | undefined {
  * Returns the first module that uses the given integration.
  */
 export function getToolModuleByIntegration(integrationId: string): AnyToolModule | undefined {
-  return allToolModules.find((m) => m.integrationId === integrationId);
+  return allToolModules.find((m) => m.integrationId !== null && m.integrationId === integrationId);
 }
 
 /**
@@ -53,5 +56,5 @@ export function getToolModuleByIntegration(integrationId: string): AnyToolModule
  * Returns all modules that reference the integration ID.
  */
 export function getToolModulesByIntegration(integrationId: string): AnyToolModule[] {
-  return allToolModules.filter((m) => m.integrationId === integrationId);
+  return allToolModules.filter((m) => m.integrationId !== null && m.integrationId === integrationId);
 }

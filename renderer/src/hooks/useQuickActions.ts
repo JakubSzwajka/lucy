@@ -1,98 +1,94 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/query/keys";
 import type { QuickAction, QuickActionCreate, QuickActionUpdate } from "@/types";
 
+function parseAction(a: QuickAction): QuickAction {
+  return { ...a, createdAt: new Date(a.createdAt), updatedAt: new Date(a.updatedAt) };
+}
+
+const sortActions = (list: QuickAction[]) =>
+  [...list].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+
 export function useQuickActions() {
-  const [actions, setActions] = useState<QuickAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const qc = useQueryClient();
 
-  const fetchActions = useCallback(async () => {
-    try {
-      setError(null);
+  const { data: actions = [], isLoading, error } = useQuery({
+    queryKey: queryKeys.quickActions.all,
+    queryFn: async () => {
       const data = await api.request<QuickAction[]>("/api/quick-actions");
-      setActions(
-        data.map((a) => ({
-          ...a,
-          createdAt: new Date(a.createdAt),
-          updatedAt: new Date(a.updatedAt),
-        }))
-      );
-    } catch (err) {
-      console.error("[QuickActions] Failed to fetch:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      return sortActions(data.map(parseAction));
+    },
+  });
 
-  useEffect(() => {
-    fetchActions();
-  }, [fetchActions]);
-
-  const createAction = useCallback(
-    async (data: QuickActionCreate): Promise<QuickAction> => {
+  const createMutation = useMutation({
+    mutationFn: async (input: QuickActionCreate) => {
       const created = await api.request<QuickAction>("/api/quick-actions", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify(input),
       });
-      const action: QuickAction = {
-        ...created,
-        createdAt: new Date(created.createdAt),
-        updatedAt: new Date(created.updatedAt),
-      };
-
-      setActions((prev) =>
-        [...prev, action].sort(
-          (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)
-        )
-      );
-      return action;
+      return parseAction(created);
     },
-    []
-  );
+    onSuccess: (action) => {
+      qc.setQueryData<QuickAction[]>(queryKeys.quickActions.all, (prev) =>
+        sortActions([...(prev ?? []), action])
+      );
+    },
+  });
 
-  const updateAction = useCallback(
-    async (id: string, data: QuickActionUpdate): Promise<QuickAction> => {
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: QuickActionUpdate }) => {
       const updated = await api.request<QuickAction>(`/api/quick-actions/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      const action: QuickAction = {
-        ...updated,
-        createdAt: new Date(updated.createdAt),
-        updatedAt: new Date(updated.updatedAt),
-      };
-
-      setActions((prev) =>
-        prev
-          .map((a) => (a.id === id ? action : a))
-          .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
-      );
-      return action;
+      return parseAction(updated);
     },
-    []
+    onSuccess: (action) => {
+      qc.setQueryData<QuickAction[]>(queryKeys.quickActions.all, (prev) =>
+        sortActions((prev ?? []).map((a) => (a.id === action.id ? action : a)))
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.request(`/api/quick-actions/${id}`, { method: "DELETE" });
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.setQueryData<QuickAction[]>(queryKeys.quickActions.all, (prev) =>
+        (prev ?? []).filter((a) => a.id !== id)
+      );
+    },
+  });
+
+  const createAction = useCallback(
+    (data: QuickActionCreate) => createMutation.mutateAsync(data),
+    [createMutation]
   );
 
-  const deleteAction = useCallback(async (id: string): Promise<void> => {
-    await api.request(`/api/quick-actions/${id}`, {
-      method: "DELETE",
-    });
+  const updateAction = useCallback(
+    (id: string, data: QuickActionUpdate) => updateMutation.mutateAsync({ id, data }),
+    [updateMutation]
+  );
 
-    setActions((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+  const deleteAction = useCallback(
+    (id: string) => deleteMutation.mutateAsync(id).then(() => {}),
+    [deleteMutation]
+  );
 
   const refreshActions = useCallback(() => {
-    setIsLoading(true);
-    fetchActions();
-  }, [fetchActions]);
+    qc.invalidateQueries({ queryKey: queryKeys.quickActions.all });
+  }, [qc]);
 
   return {
     actions,
     isLoading,
-    error,
+    error: error ?? null,
     createAction,
     updateAction,
     deleteAction,

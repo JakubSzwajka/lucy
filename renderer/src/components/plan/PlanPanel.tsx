@@ -20,7 +20,7 @@ import {
   MinusCircleIcon,
   ListTodoIcon,
 } from "lucide-react";
-import type { PlanStepStatus, PlanStatus } from "@/lib/db/schema";
+import type { PlanStepStatus, PlanStatus } from "@/types/plan";
 
 // ============================================================================
 // Types

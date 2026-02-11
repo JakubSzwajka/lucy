@@ -10,23 +10,6 @@ import type { SystemPrompt, SystemPromptCreate, SystemPromptUpdate } from "@/typ
 // ============================================================================
 
 // Seed prompts to create on first access if storage is empty
-const SEED_PROMPTS = [
-  {
-    name: "Helpful Assistant",
-    content:
-      "You are a helpful, harmless, and honest AI assistant. You provide clear, accurate, and thoughtful responses to help users with their questions and tasks.",
-  },
-  {
-    name: "Code Expert",
-    content:
-      "You are an expert programmer and software engineer. Help users write clean, efficient code, debug issues, explain concepts, and follow best practices. Always consider security, performance, and maintainability.",
-  },
-  {
-    name: "Writing Assistant",
-    content:
-      "You are a skilled writer and editor. Help users improve their writing by offering suggestions for clarity, grammar, style, and structure. Adapt your tone and advice based on the context and audience of the writing.",
-  },
-];
 
 function parseRecord(record: typeof systemPrompts.$inferSelect): SystemPrompt {
   return {
@@ -39,29 +22,7 @@ function parseRecord(record: typeof systemPrompts.$inferSelect): SystemPrompt {
 }
 
 export class SystemPromptService {
-  private async ensureSeedPrompts(userId: string): Promise<void> {
-    const existing = await db
-      .select()
-      .from(systemPrompts)
-      .where(eq(systemPrompts.userId, userId));
-
-    if (existing.length > 0) return;
-
-    for (const seed of SEED_PROMPTS) {
-      const now = new Date();
-      await db.insert(systemPrompts).values({
-        id: uuidv4(),
-        userId,
-        name: seed.name,
-        content: seed.content,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-  }
-
   async getAll(userId: string): Promise<SystemPrompt[]> {
-    await this.ensureSeedPrompts(userId);
     const records = await db
       .select()
       .from(systemPrompts)
@@ -71,7 +32,6 @@ export class SystemPromptService {
   }
 
   async getById(id: string, userId: string): Promise<SystemPrompt | null> {
-    await this.ensureSeedPrompts(userId);
     const [record] = await db
       .select()
       .from(systemPrompts)
@@ -83,8 +43,6 @@ export class SystemPromptService {
     if (!data.name || !data.content) {
       return { error: "Name and content are required" };
     }
-
-    await this.ensureSeedPrompts(userId);
 
     const now = new Date();
     const id = uuidv4();
@@ -102,8 +60,6 @@ export class SystemPromptService {
   }
 
   async update(id: string, data: SystemPromptUpdate, userId: string): Promise<{ prompt?: SystemPrompt; notFound?: boolean }> {
-    await this.ensureSeedPrompts(userId);
-
     const existing = await this.getById(id, userId);
     if (!existing) {
       return { notFound: true };
@@ -121,8 +77,6 @@ export class SystemPromptService {
   }
 
   async delete(id: string, userId: string): Promise<{ success: boolean; notFound?: boolean }> {
-    await this.ensureSeedPrompts(userId);
-
     const existing = await this.getById(id, userId);
     if (!existing) {
       return { success: false, notFound: true };

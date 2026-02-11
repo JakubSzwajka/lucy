@@ -1,70 +1,85 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/query/keys";
 import type { Session } from "@/types";
 
+function parseSession(s: Record<string, unknown>): Session {
+  return {
+    ...s,
+    createdAt: new Date(s.createdAt as string),
+    updatedAt: new Date(s.updatedAt as string),
+  } as Session;
+}
+
 export function useSessions() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const qc = useQueryClient();
 
-  const fetchSessions = useCallback(async () => {
-    try {
+  const { data: sessions = [], isLoading } = useQuery({
+    queryKey: queryKeys.sessions.all,
+    queryFn: async () => {
       const data = await api.request<Record<string, unknown>[]>("/api/sessions");
-      setSessions(
-        data.map((s) => ({
-          ...s,
-          createdAt: new Date(s.createdAt as string),
-          updatedAt: new Date(s.updatedAt as string),
-        })) as Session[]
-      );
-    } catch (error) {
-      console.error("[Sessions] Failed to fetch:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      return data.map(parseSession);
+    },
+  });
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
-
-  const createSession = useCallback(async (title?: string) => {
-    try {
-      const newSession = await api.request<Record<string, unknown>>("/api/sessions", {
+  const createMutation = useMutation({
+    mutationFn: async (title?: string) => {
+      const data = await api.request<Record<string, unknown>>("/api/sessions", {
         method: "POST",
         body: JSON.stringify({ title }),
       });
-      const session: Session = {
-        ...newSession,
-        createdAt: new Date(newSession.createdAt as string),
-        updatedAt: new Date(newSession.updatedAt as string),
-      } as Session;
-      setSessions((prev) => [session, ...prev]);
-      return session;
-    } catch (error) {
-      console.error("[Sessions] Failed to create:", error);
-    }
-    return null;
-  }, []);
+      return parseSession(data);
+    },
+    onSuccess: (session) => {
+      qc.setQueryData<Session[]>(queryKeys.sessions.all, (prev) =>
+        prev ? [session, ...prev] : [session]
+      );
+    },
+  });
 
-  const deleteSession = useCallback(async (id: string) => {
-    try {
-      await api.request(`/api/sessions/${id}`, {
-        method: "DELETE",
-      });
-      setSessions((prev) => prev.filter((s) => s.id !== id));
-      return true;
-    } catch (error) {
-      console.error("[Sessions] Failed to delete:", error);
-    }
-    return false;
-  }, []);
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.request(`/api/sessions/${id}`, { method: "DELETE" });
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.setQueryData<Session[]>(queryKeys.sessions.all, (prev) =>
+        prev ? prev.filter((s) => s.id !== id) : []
+      );
+    },
+  });
+
+  const createSession = useCallback(
+    async (title?: string) => {
+      try {
+        return await createMutation.mutateAsync(title);
+      } catch (error) {
+        console.error("[Sessions] Failed to create:", error);
+        return null;
+      }
+    },
+    [createMutation]
+  );
+
+  const deleteSession = useCallback(
+    async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch (error) {
+        console.error("[Sessions] Failed to delete:", error);
+        return false;
+      }
+    },
+    [deleteMutation]
+  );
 
   const refreshSessions = useCallback(() => {
-    setIsLoading(true);
-    fetchSessions();
-  }, [fetchSessions]);
+    qc.invalidateQueries({ queryKey: queryKeys.sessions.all });
+  }, [qc]);
 
   return {
     sessions,

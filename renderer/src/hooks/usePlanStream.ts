@@ -1,7 +1,7 @@
 import type { UIMessage } from "ai";
 import { isToolUIPart, getToolName } from "ai";
 import type { Plan, PlanStep } from "@/components/plan";
-import type { PlanStatus, PlanStepStatus } from "@/lib/db/schema";
+import type { PlanStatus, PlanStepStatus } from "@/types/plan";
 
 /**
  * Extract the latest plan state from streaming messages.

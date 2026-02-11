@@ -40,43 +40,41 @@ export default function MainLayout({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const { settings } = useSettings();
 
-  const [selectedModel, setSelectedModel] = useState(
-    () => settings?.defaultModelId || DEFAULT_MODEL.id
-  );
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Track whether settings default model has been applied
-  const appliedDefaultModelRef = useRef(false);
+  // Track whether we've resolved the initial model
+  const resolvedModelRef = useRef(false);
 
-  // Apply default model from settings when settings load (only once)
+  // Resolve selected model: settings.defaultModelId > first enabled+available > DEFAULT_MODEL
   useEffect(() => {
-    if (settings?.defaultModelId && !appliedDefaultModelRef.current) {
-      appliedDefaultModelRef.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- applying default model from async-loaded settings
+    if (resolvedModelRef.current) return;
+    if (!settings) return; // wait for settings to load
+
+    if (settings.defaultModelId) {
+      resolvedModelRef.current = true;
       setSelectedModel(settings.defaultModelId);
+      return;
     }
-  }, [settings?.defaultModelId]);
 
-  const selectedModelRef = useRef(selectedModel);
-  useEffect(() => {
-    selectedModelRef.current = selectedModel;
-  }, [selectedModel]);
+    if (!availableProviders) return; // wait for providers to load
+
+    resolvedModelRef.current = true;
+    const enabledSet = new Set(settings.enabledModels);
+    const firstAvailable = AVAILABLE_MODELS.find(
+      m => enabledSet.has(m.id) && availableProviders[m.provider]
+    );
+    if (firstAvailable) {
+      setSelectedModel(firstAvailable.id);
+    }
+  }, [settings, availableProviders]);
 
   useEffect(() => {
     async function fetchProviders() {
       try {
         const providers = await api.request<AvailableProviders>("/api/providers");
         setAvailableProviders(providers);
-
-        // If current selected model's provider is unavailable, select first available model
-        const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModelRef.current);
-        if (currentModel && !providers[currentModel.provider]) {
-          const firstAvailable = AVAILABLE_MODELS.find(m => providers[m.provider]);
-          if (firstAvailable) {
-            setSelectedModel(firstAvailable.id);
-          }
-        }
       } catch (error) {
         console.error("[App] Failed to fetch available providers:", error);
       }

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const { userId } = authResult.user;
 
   const settingsService = getSettingsService();
-  const currentSettings = settingsService.get(userId);
+  const currentSettings = await settingsService.get(userId);
   return NextResponse.json(currentSettings);
 }
 
@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json();
   const settingsService = getSettingsService();
 
-  const updated = settingsService.update({
+  const updated = await settingsService.update({
     defaultModelId: body.defaultModelId,
     defaultSystemPromptId: body.defaultSystemPromptId,
     enabledModels: body.enabledModels,

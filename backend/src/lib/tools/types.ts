@@ -160,7 +160,7 @@ export interface ToolModule<TClient = unknown> {
   description: string;
 
   // Which integration provides the client
-  integrationId: string; // e.g., "obsidian", "filesystem"
+  integrationId: string | null; // e.g., "obsidian", "filesystem", or null for internal modules
 
   // Factory: client → tools
   createTools: (client: TClient) => AnyToolDefinition[];

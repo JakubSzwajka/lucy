@@ -45,11 +45,16 @@ class APIClient {
     });
 
     if (response.status === 401) {
-      this.clearToken();
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
+      // Don't redirect if this is an auth endpoint (login/register) — let the caller handle the error
+      const isAuthEndpoint = endpoint.startsWith("/api/auth/");
+      if (!isAuthEndpoint) {
+        this.clearToken();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
       }
-      throw new Error("Unauthorized");
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || "Unauthorized");
     }
 
     if (!response.ok) {
@@ -57,6 +62,7 @@ class APIClient {
       throw new Error(body.error || `Request failed: ${response.status}`);
     }
 
+    if (response.status === 204) return undefined as T;
     return response.json();
   }
 
@@ -78,10 +84,137 @@ class APIClient {
     }
 
     if (!response.ok) {
-      throw new Error(`Stream request failed: ${response.status}`);
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Stream request failed: ${response.status}`);
     }
 
     return response;
+  }
+
+  // Memory extraction
+  async extractMemories(sessionId: string, model?: { provider: string; modelId: string }) {
+    return this.request<{
+      memories: Array<{
+        type: string;
+        content: string;
+        confidenceScore: number;
+        confidenceLevel: string;
+        evidence: string;
+        tags: string[];
+        existingMemoryId?: string;
+        suggestedConnections?: Array<{ existingMemoryId: string; relationshipType: string }>;
+      }>;
+      questions: Array<{
+        content: string;
+        context: string;
+        curiosityType: string;
+        curiosityScore: number;
+        timing: string;
+        sourceMemoryIndices: number[];
+      }>;
+      metadata: {
+        sessionId: string;
+        messagesAnalyzed: number;
+        modelUsed: string;
+        durationMs: number;
+      };
+    }>("/api/memories/extract", {
+      method: "POST",
+      body: JSON.stringify({ sessionId, model }),
+    });
+  }
+
+  // Memory CRUD
+  async listMemories(params?: Record<string, string>) {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return this.request<Record<string, unknown>[]>(`/api/memories${qs}`);
+  }
+
+  async getMemory(id: string) {
+    return this.request<Record<string, unknown>>(`/api/memories/${id}`);
+  }
+
+  async createMemory(input: Record<string, unknown>) {
+    return this.request<Record<string, unknown>>("/api/memories", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateMemory(id: string, updates: Record<string, unknown>) {
+    return this.request<Record<string, unknown>>(`/api/memories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteMemory(id: string) {
+    return this.request<void>(`/api/memories/${id}`, { method: "DELETE" });
+  }
+
+  // Questions
+  async listQuestions(params?: Record<string, string>) {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return this.request<Record<string, unknown>[]>(`/api/questions${qs}`);
+  }
+
+  async resolveQuestion(id: string, answer: string) {
+    return this.request<Record<string, unknown>>(`/api/questions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ answer }),
+    });
+  }
+
+  async deleteQuestion(id: string) {
+    return this.request<void>(`/api/questions/${id}`, { method: "DELETE" });
+  }
+
+  // Identity
+  async getIdentity() {
+    return this.request<Record<string, unknown> | null>("/api/identity");
+  }
+
+  async generateIdentity() {
+    return this.request<Record<string, unknown>>("/api/identity/generate", {
+      method: "POST",
+    });
+  }
+
+  async getIdentityHistory() {
+    return this.request<Record<string, unknown>[]>("/api/identity/history");
+  }
+
+  async confirmExtraction(input: {
+    sessionId: string;
+    approvedMemories: Array<{
+      type: string;
+      content: string;
+      confidenceScore: number;
+      confidenceLevel: string;
+      evidence: string;
+      tags: string[];
+      existingMemoryId?: string;
+      approved: boolean;
+      edited?: Record<string, unknown>;
+    }>;
+    approvedQuestions: Array<{
+      content: string;
+      context: string;
+      curiosityType: string;
+      curiosityScore: number;
+      timing: string;
+      sourceMemoryIndices: number[];
+      approved: boolean;
+    }>;
+  }) {
+    return this.request<{
+      memoriesSaved: number;
+      questionsGenerated: number;
+      reflection: Record<string, unknown>;
+    }>("/api/memories/extract/confirm", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
 }
 

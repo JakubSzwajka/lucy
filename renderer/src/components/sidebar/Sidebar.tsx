@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { SessionItem } from "./SessionItem";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import type { Session } from "@/types";
 
 const COMMAND_CENTER_NAV = [
@@ -69,6 +70,16 @@ const COMMAND_CENTER_NAV = [
       </svg>
     ),
   },
+  {
+    href: "/settings/memory",
+    label: "Memory",
+    matchPrefix: "/settings/memory",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    ),
+  },
 ];
 
 interface SidebarProps {
@@ -92,6 +103,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth();
   const isOnSettings = pathname?.startsWith("/settings");
   const isOnDashboard = pathname?.startsWith("/dashboard");
   const isOnChat = !isOnSettings && !isOnDashboard;
@@ -343,12 +355,49 @@ export function Sidebar({
         </>
       )}
 
-      {/* Footer */}
-      {!collapsed && (
-        <div className="border-t border-border p-4">
-          <span className="label-sm text-muted-darker block text-center">
-            POWERED BY AI // 2026
-          </span>
+      {/* Footer - User Info */}
+      {user && (
+        <div className="border-t border-border p-3">
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className="w-8 h-8 rounded-full bg-background-secondary flex items-center justify-center text-xs mono text-foreground"
+                title={user.name || user.email}
+              >
+                {(user.name || user.email)[0].toUpperCase()}
+              </div>
+              <button
+                onClick={logout}
+                className="p-1.5 rounded hover:bg-background transition-colors text-muted-dark hover:text-foreground"
+                title="Log out"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-background-secondary flex items-center justify-center text-xs mono text-foreground flex-shrink-0">
+                {(user.name || user.email)[0].toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                {user.name && (
+                  <div className="text-xs text-foreground truncate">{user.name}</div>
+                )}
+                <div className="text-[11px] text-muted-dark truncate">{user.email}</div>
+              </div>
+              <button
+                onClick={logout}
+                className="p-1.5 rounded hover:bg-background transition-colors text-muted-dark hover:text-foreground flex-shrink-0"
+                title="Log out"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </aside>
