@@ -10,6 +10,7 @@ import {
   initializeToolRegistry,
   getMcpProvider,
 } from "@/lib/tools";
+import { EnvironmentContextService } from "./environment-context.service";
 import { getAgentService } from "../agent";
 import { getSessionService } from "../session";
 import { getItemService } from "../item";
@@ -130,6 +131,19 @@ export class ChatService {
       }
     } catch {
       // Memory injection is non-critical; don't block chat
+    }
+
+    // Inject environment context (date/time, location, etc.)
+    try {
+      const envService = new EnvironmentContextService();
+      const envSection = envService.buildContext();
+      if (envSection) {
+        systemPrompt = systemPrompt
+          ? `${systemPrompt}\n\n${envSection}`
+          : envSection;
+      }
+    } catch {
+      // Environment context is non-critical; don't block chat
     }
 
     const isThinkingActive = (modelConfig.supportsReasoning && thinkingEnabled) ?? false;

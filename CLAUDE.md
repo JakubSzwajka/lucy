@@ -6,37 +6,40 @@ Lucy is an **AI assistant** that runs as both a **desktop app** (Electron + Next
 
 ```
 lucy-nextjs/
-├── main/                    # Electron main process
-│   ├── background.ts        # App entry, window management, IPC
-│   ├── preload.ts           # Context bridge for renderer
-│   └── helpers/             # Electron utilities
-├── renderer/                # Next.js frontend (Electron-embedded)
-│   ├── src/
-│   │   ├── app/             # Pages (login, register, chat)
-│   │   │   ├── login/          # Login page
-│   │   │   └── register/       # Register page
-│   │   ├── components/      # React components
-│   │   ├── hooks/           # Custom hooks
-│   │   ├── lib/             # Utilities, API client
-│   │   │   └── api/            # API client for cloud backend
-│   │   └── types/           # TypeScript types
-│   ├── public/
-│   └── next.config.js
-├── backend/                 # Standalone cloud API server (NEW)
+├── desktop/                 # Desktop app (Electron + Next.js frontend)
+│   ├── main/                # Electron main process
+│   │   ├── background.ts    # App entry, window management, IPC
+│   │   ├── preload.ts       # Context bridge for renderer
+│   │   └── helpers/         # Electron utilities
+│   ├── renderer/            # Next.js frontend (Electron-embedded)
+│   │   ├── src/
+│   │   │   ├── app/         # Pages (login, register, chat)
+│   │   │   ├── components/  # React components
+│   │   │   ├── hooks/       # Custom hooks
+│   │   │   ├── lib/         # Utilities, API client
+│   │   │   └── types/       # TypeScript types
+│   │   ├── public/
+│   │   └── next.config.js
+│   ├── scripts/             # Build & dev scripts
+│   ├── resources/           # App icons
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── electron-builder.yml
+├── backend/                 # Standalone cloud API server
 │   ├── src/
 │   │   ├── app/             # API routes (auth-protected, multi-user)
 │   │   └── lib/             # Services, database, auth, AI providers
 │   ├── next.config.js       # Standalone output
-│   ├── drizzle.config.ts    # Dual SQLite/Postgres support
+│   ├── drizzle.config.ts    # Postgres support
 │   └── package.json         # Independent dependencies
-├── scripts/
-│   └── build.js             # Custom production build script (desktop)
-└── resources/               # App icons
+├── package.json             # Minimal root (convenience scripts)
+├── CLAUDE.md
+└── README.md
 ```
 
 ### Two Stacks
 
-| | Desktop (`renderer/`) | Cloud (`backend/`) |
+| | Desktop (`desktop/renderer/`) | Cloud (`backend/`) |
 |---|---|---|
 | **Auth** | None (local single-user) | JWT on every route |
 | **Multi-user** | No | Yes (`userId` on all tables) |
@@ -47,11 +50,21 @@ lucy-nextjs/
 
 ## Commands
 
-### Desktop App (root)
+### Root (convenience)
+| Command | Description |
+|---------|-------------|
+| `npm run dev:desktop` | Start desktop app (Electron + Next.js hot reload) |
+| `npm run dev:backend` | Start backend server on port 3001 |
+| `npm run build:desktop` | Build production desktop app (creates DMG/installer) |
+| `npm run build:backend` | Build backend for production |
+| `npm run lint` | Lint both desktop and backend |
+
+### Desktop App (`cd desktop/`)
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start development mode (Electron + Next.js hot reload) |
 | `npm run build` | Build production app (creates DMG/installer) |
+| `npm run lint` | Lint renderer code |
 
 ### Cloud Backend (`cd backend/`)
 | Command | Description |
@@ -65,6 +78,7 @@ lucy-nextjs/
 
 ### Desktop App - Before First Run
 ```bash
+cd desktop
 npm install
 npm run dev
 ```
@@ -84,19 +98,19 @@ npm run dev                  # Starts on port 3001
 cd backend && npm run dev    # Starts on port 3001
 
 # Terminal 2: Start desktop app
-npm run dev                  # Starts Electron + Next.js on port 8888
+cd desktop && npm run dev    # Starts Electron + Next.js on port 8888
 ```
-The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_API_URL` in `renderer/.env.local` to change the backend URL.
+The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_API_URL` in `desktop/renderer/.env.local` to change the backend URL.
 
 ## Project Structure Conventions
 
-### Main Process (`main/`)
+### Main Process (`desktop/main/`)
 - Handles Electron lifecycle, window management, and system integration
 - IPC handlers for communication with renderer
 - Keep minimal; most logic should be in renderer
 
-### Renderer (`renderer/src/`)
-- Use `@/` path alias for imports (resolves to `renderer/src/`)
+### Renderer (`desktop/renderer/src/`)
+- Use `@/` path alias for imports (resolves to `desktop/renderer/src/`)
 - Organize by feature/domain, not by file type
 - Keep components close to where they're used
 
@@ -150,8 +164,8 @@ All API routes live in `backend/src/app/api/` with JWT auth + userId scoping.
 - Never use `any`; use `unknown` and narrow with type guards
 
 Three tsconfig files:
-- Root `tsconfig.json` - Main process (CommonJS, targets Electron Node)
-- `renderer/tsconfig.json` - Next.js frontend app (ESM, React JSX)
+- `desktop/tsconfig.json` - Main process (CommonJS, targets Electron Node)
+- `desktop/renderer/tsconfig.json` - Next.js frontend app (ESM, React JSX)
 - `backend/tsconfig.json` - Next.js backend app (ESM, `@/*` → `./src/*`)
 
 The renderer has no local database or services — all data flows through the API client to the cloud backend.
@@ -188,12 +202,12 @@ The renderer has no local database or services — all data flows through the AP
 ## Build & Distribution
 
 ### Desktop App
-Production build uses custom script (`scripts/build.js`) that:
+Production build uses custom script (`desktop/scripts/build.js`) that:
 1. Builds Next.js in standalone mode
 2. Compiles main process TypeScript
 3. Packages with electron-builder
 
-Outputs in `dist/`:
+Outputs in `desktop/dist/`:
 - `Lucy-{version}-arm64.dmg` - macOS Apple Silicon
 - `Lucy-{version}.dmg` - macOS Intel
 
@@ -215,6 +229,7 @@ Outputs in `dist/`:
 - [x] Landing page
 - [x] **Validation**: Backend compiles and runs, health endpoint + auth flow verified
 - [x] **Frontend auth integration**: Login/register pages, AuthProvider, API client, all hooks rewired to backend
+- [x] **Desktop separation**: Desktop app moved to `desktop/` subdirectory
 
 ### TODO (Next Phases)
 - [ ] **PostgreSQL schema**: Generate and test Drizzle migrations for Postgres dialect

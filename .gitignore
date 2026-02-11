@@ -1,8 +1,5 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
-/renderer/node_modules
+node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -16,12 +13,11 @@
 .playwright/
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
 /build
-dist/
 
 # misc
 .DS_Store
@@ -34,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
 
 # vercel
@@ -70,14 +66,17 @@ storybook-static/
 # Turbo
 .turbo/
 
-# Electron
-/app
-/dist
+# Electron (desktop)
+/desktop/app
+/desktop/dist
 *.dmg
 *.AppImage
 *.exe
 *.snap
 
 # Renderer Next.js
-/renderer/.next/
-/renderer/out/
+/desktop/renderer/.next/
+/desktop/renderer/out/
+
+# Backend Next.js
+/backend/.next/

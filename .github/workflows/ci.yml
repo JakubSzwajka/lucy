@@ -20,13 +20,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install dependencies
+      - name: Install desktop dependencies
         run: npm ci
+        working-directory: desktop
 
-      - name: Lint
+      - name: Lint desktop
         run: npm run lint
+        working-directory: desktop
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Lint backend
+        run: npm run lint
+        working-directory: backend
 
   typecheck:
     name: Type Check
@@ -37,16 +46,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install dependencies
+      - name: Install desktop dependencies
         run: npm ci
+        working-directory: desktop
 
       - name: Type check (main process)
         run: npx tsc --noEmit -p tsconfig.json
+        working-directory: desktop
 
       - name: Type check (renderer)
         run: npx tsc --noEmit -p renderer/tsconfig.json
+        working-directory: desktop
 
       - name: Install backend dependencies
         run: npm ci
@@ -102,10 +113,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm ci
+        working-directory: desktop
 
       - name: Install Railway CLI
         run: npm i -g @railway/cli
@@ -120,10 +131,12 @@ jobs:
 
       - name: Build Next.js
         run: npx next build renderer
+        working-directory: desktop
         env:
           NEXT_PUBLIC_API_URL: ${{ steps.backend-url.outputs.url }}
 
       - name: Prepare standalone
+        working-directory: desktop
         run: |
           mkdir -p app/standalone
           cp -r renderer/.next/standalone/ app/standalone/
@@ -134,6 +147,7 @@ jobs:
           echo '{"name":"lucy-standalone","version":"1.0.0","main":"server.js"}' > app/standalone/package.json
 
       - name: Copy native modules
+        working-directory: desktop
         run: |
           for mod in better-sqlite3 bindings file-uri-to-path prebuild-install; do
             if [ -d "node_modules/$mod" ]; then
@@ -143,9 +157,11 @@ jobs:
 
       - name: Compile main process
         run: npx tsc
+        working-directory: desktop
 
       - name: Build Electron (macOS)
         run: npx electron-builder --config electron-builder.yml --mac
+        working-directory: desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -154,8 +170,8 @@ jobs:
         with:
           name: macos-builds
           path: |
-            dist/*.dmg
-            dist/*.zip
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
 
   publish-release:
     name: Publish GitHub Release
@@ -210,5 +226,5 @@ jobs:
             --service $SERVICE
 
       - name: Deploy backend
-        run: railway up --service $SERVICE 
+        run: railway up --service $SERVICE
         working-directory: backend

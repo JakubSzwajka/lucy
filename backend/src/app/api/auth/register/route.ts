@@ -1,7 +1,9 @@
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
