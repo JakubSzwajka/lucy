@@ -23,6 +23,7 @@ import {
 } from "./types";
 import type { CreateConnectionInput } from "./types";
 import type { Item } from "@/types";
+import { getMemorySettings } from "./settings";
 
 // ============================================================================
 // Extraction types
@@ -158,10 +159,23 @@ export class ExtractionService {
     const existingMemories = await this.store.loadMemories(userId, { limit: 100, status: "active" });
 
     // 4. Build prompt and call LLM
-    const defaultModel = { id: "extraction-default", name: "GPT-4o Mini", provider: "openai" as const, modelId: "gpt-4o-mini", maxContextTokens: 128000 };
-    const modelConfig = options?.model
-      ? { id: "extraction-custom", name: options.model.modelId, provider: options.model.provider as "openai" | "anthropic" | "google", modelId: options.model.modelId, maxContextTokens: 128000 }
-      : defaultModel;
+    // Resolve model: explicit option > user setting > hardcoded default
+    const userSettings = await getMemorySettings(userId);
+    const fallbackModel = { id: "extraction-default", name: "GPT-4o Mini", provider: "openai" as const, modelId: "gpt-4o-mini", maxContextTokens: 128000 };
+    let modelConfig: { id: string; name: string; provider: "openai" | "anthropic" | "google"; modelId: string; maxContextTokens: number };
+    if (options?.model) {
+      modelConfig = { id: "extraction-custom", name: options.model.modelId, provider: options.model.provider as "openai" | "anthropic" | "google", modelId: options.model.modelId, maxContextTokens: 128000 };
+    } else if (userSettings.extractionModel) {
+      // Format: "provider/modelId" e.g. "openai/gpt-4o-mini"
+      const parts = userSettings.extractionModel.split("/");
+      if (parts.length === 2) {
+        modelConfig = { id: "extraction-setting", name: parts[1], provider: parts[0] as "openai" | "anthropic" | "google", modelId: parts[1], maxContextTokens: 128000 };
+      } else {
+        modelConfig = fallbackModel;
+      }
+    } else {
+      modelConfig = fallbackModel;
+    }
     const modelUsed = `${modelConfig.provider}/${modelConfig.modelId}`;
     const model = getLanguageModel(modelConfig);
 

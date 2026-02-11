@@ -29,4 +29,5 @@ export const queryKeys = {
     active: ["identity"] as const,
     history: ["identity", "history"] as const,
   },
+  memorySettings: ["memorySettings"] as const,
 };

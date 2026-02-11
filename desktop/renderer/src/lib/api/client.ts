@@ -184,6 +184,18 @@ class APIClient {
     return this.request<Record<string, unknown>[]>("/api/identity/history");
   }
 
+  // Memory Settings
+  async getMemorySettings() {
+    return this.request<Record<string, unknown>>("/api/memory-settings");
+  }
+
+  async updateMemorySettings(input: Record<string, unknown>) {
+    return this.request<Record<string, unknown>>("/api/memory-settings", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  }
+
   async confirmExtraction(input: {
     sessionId: string;
     approvedMemories: Array<{

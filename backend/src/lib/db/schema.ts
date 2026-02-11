@@ -563,6 +563,32 @@ export const identityDocuments = pgTable("identity_documents", {
 ]);
 
 // ============================================================================
+// MEMORY SETTINGS - Per-user configuration for memory system
+// ============================================================================
+
+export const memorySettings = pgTable("memory_settings", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id)
+    .unique(),
+  autoExtract: boolean("auto_extract").notNull().default(false),
+  autoSaveThreshold: real("auto_save_threshold").notNull().default(0.8),
+  defaultScope: text("default_scope").notNull().default("global"),
+  maxContextMemories: integer("max_context_memories").notNull().default(20),
+  questionsPerSession: integer("questions_per_session").notNull().default(3),
+  extractionModel: text("extraction_model"),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => [
+  index("memory_settings_user_idx").on(table.userId),
+]);
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -633,3 +659,6 @@ export type QuestionLinkType = (typeof questionLinkTypeEnum)[number];
 
 export type IdentityDocumentRecord = typeof identityDocuments.$inferSelect;
 export type NewIdentityDocument = typeof identityDocuments.$inferInsert;
+
+export type MemorySettingsRecord = typeof memorySettings.$inferSelect;
+export type NewMemorySettings = typeof memorySettings.$inferInsert;

@@ -3,8 +3,11 @@ export { QuestionService, getQuestionService } from "./question.service";
 export { IdentityService, getIdentityService } from "./identity.service";
 export { getMemoryStore } from "./storage";
 export type { MemoryStore } from "./storage/memory-store.interface";
+export { getMemorySettings } from "./settings";
 export type {
   Memory,
+  MemorySettings,
+  UpdateMemorySettingsInput,
   MemoryEvidence,
   MemoryConnection,
   Question,

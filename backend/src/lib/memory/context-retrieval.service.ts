@@ -3,6 +3,7 @@ import type { MemoryStore } from "./storage/memory-store.interface";
 import type { Memory, Question, IdentityDocument } from "./types";
 import { getItemService } from "@/lib/services/item";
 import { getSessionService } from "@/lib/services/session";
+import { getMemorySettings } from "./settings";
 
 // ============================================================================
 // Types
@@ -45,8 +46,11 @@ export class ContextRetrievalService {
     sessionId: string,
     options: ContextOptions = {}
   ): Promise<ContextResult> {
+    // Load user's memory settings for defaults
+    const userSettings = await getMemorySettings(userId);
+
     const {
-      maxMemories = 20,
+      maxMemories = userSettings.maxContextMemories,
       minConfidence = 0.4,
       lastNMessages = 5,
     } = options;
@@ -133,7 +137,7 @@ export class ContextRetrievalService {
     // 9. Fetch pending questions to surface
     let questions: Question[] = [];
     try {
-      questions = await this.store.getQuestionsToSurface(userId, 3);
+      questions = await this.store.getQuestionsToSurface(userId, userSettings.questionsPerSession);
     } catch {
       // Non-critical; continue without questions
     }
