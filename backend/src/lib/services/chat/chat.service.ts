@@ -15,6 +15,7 @@ import { getAgentService } from "../agent";
 import { getSessionService } from "../session";
 import { getItemService } from "../item";
 import { persistStepContent } from "./step-persistence.service";
+import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, ModelMessage, ChatFinishResult } from "./types";
 import type { Agent, ModelConfig } from "@/types";
 import { getContextRetrievalService } from "@/lib/memory/context-retrieval.service";
@@ -65,6 +66,19 @@ export class ChatService {
       await sessionService.maybeGenerateTitle(sessionId, content, userId);
     }
 
+    // Extract user input text for tracing
+    const userInputText = (() => {
+      if (!lastUserMessage) return undefined;
+      if (typeof lastUserMessage.content === "string") return lastUserMessage.content;
+      if (Array.isArray(lastUserMessage.parts)) {
+        return (lastUserMessage.parts as Record<string, unknown>[])
+          .filter((part) => part.type === "text")
+          .map((part) => part.text as string)
+          .join("");
+      }
+      return undefined;
+    })();
+
     // Prepare chat context
     const context = await this.prepareChat(rootAgentId, userId, { modelId, thinkingEnabled });
     if (!context) {
@@ -76,29 +90,50 @@ export class ChatService {
     const messagesWithSystem = this.prependSystemPrompt(modelMessages, context.systemPrompt);
 
     const hasTools = Object.keys(context.tools).length > 0;
+    const agentName = context.agent.name || "assistant";
 
-    // Stream AI response
-    const result = streamText({
-      model: context.languageModel,
-      messages: messagesWithSystem,
-      tools: hasTools ? context.tools as ToolSet : undefined,
-      stopWhen: hasTools ? stepCountIs(10) : stepCountIs(1),
-      maxOutputTokens: context.maxOutputTokens,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      providerOptions: context.providerOptions as any,
-      onStepFinish: async ({ content, reasoning }) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await persistStepContent(rootAgentId, content as any[], reasoning);
-      },
-      onFinish: async () => {
-        await this.finalizeChat(rootAgentId, userId);
-      },
-      experimental_telemetry: {
-        isEnabled: true,
-      },
-    });
+    // Stream AI response wrapped in a Langfuse agent observation for rich tracing
+    return await startActiveObservation(agentName, async (span) => {
+      updateActiveTrace({ name: agentName, input: userInputText });
+      return await propagateAttributes({
+        userId,
+        sessionId,
+        metadata: { agentId: rootAgentId, model: context.modelConfig.id, depth: "0" },
+      }, async () => {
+        const result = streamText({
+          model: context.languageModel,
+          messages: messagesWithSystem,
+          tools: hasTools ? context.tools as ToolSet : undefined,
+          stopWhen: hasTools ? stepCountIs(10) : stepCountIs(1),
+          maxOutputTokens: context.maxOutputTokens,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          providerOptions: context.providerOptions as any,
+          onStepFinish: async ({ content, reasoning }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await persistStepContent(rootAgentId, content as any[], reasoning);
+          },
+          onFinish: async ({ text }) => {
+            span.update({ output: text || "completed" });
+            updateActiveTrace({ output: text });
+            await this.finalizeChat(rootAgentId, userId);
+          },
+          experimental_telemetry: {
+            isEnabled: true,
+            functionId: context.modelConfig.id,
+            metadata: {
+              sessionId,
+              userId,
+              agentId: rootAgentId,
+              model: context.modelConfig.id,
+              depth: 0,
+            },
+          },
+        });
 
-    return { stream: result };
+        span.update({ input: userInputText });
+        return { stream: result };
+      });
+    }, { asType: "agent" });
   }
 
   async prepareChat(agentId: string, userId: string, options: ChatPrepareOptions = {}): Promise<ChatContext | null> {

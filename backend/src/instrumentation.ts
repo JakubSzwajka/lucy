@@ -7,7 +7,9 @@ import { LangfuseSpanProcessor } from "@langfuse/otel";
  */
 class AiOnlySpanProcessor extends LangfuseSpanProcessor {
   onEnd(span: Parameters<LangfuseSpanProcessor["onEnd"]>[0]): void {
-    if (span.name.startsWith("ai.")) {
+    const isAiSpan = span.name.startsWith("ai.");
+    const isLangfuseObservation = span.attributes["langfuse.observation.type"] !== undefined;
+    if (isAiSpan || isLangfuseObservation) {
       super.onEnd(span);
     }
   }
