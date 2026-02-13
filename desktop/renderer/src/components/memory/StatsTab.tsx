@@ -2,7 +2,7 @@
 
 import { useMemories } from "@/hooks/useMemories";
 import { memoryTypes, memoryStatuses, confidenceLevels } from "@/types/memory";
-import type { Memory, MemoryType, MemoryStatus, ConfidenceLevel } from "@/types/memory";
+import type { Memory, MemoryType } from "@/types/memory";
 
 const TYPE_COLORS: Record<MemoryType, string> = {
   fact: "bg-blue-500",

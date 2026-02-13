@@ -10,6 +10,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard client-only mount gate to avoid auth hydration flicker
     setMounted(true);
   }, []);
 

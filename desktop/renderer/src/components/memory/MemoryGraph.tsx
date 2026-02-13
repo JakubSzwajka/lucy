@@ -29,8 +29,6 @@ const TYPE_COLORS: Record<MemoryType, string> = {
 };
 
 const TAG_COLOR = "#6b7280";
-const HIGHLIGHT_OPACITY = "ff";
-const DIM_OPACITY = "18";
 
 function MemoryNode({ data }: { data: { label: string; type: MemoryType; confidence: number; selected?: boolean; dimmed?: boolean } }) {
   const opacity = data.dimmed ? 0.25 : 1;
@@ -396,7 +394,7 @@ export function MemoryGraph() {
   }, [graphData, selectedNodeId]);
 
   const [nodes, , onNodesChange] = useNodesState(highlightedNodes);
-  const [edges, , onEdgesChange] = useEdgesState(highlightedEdges);
+  const [_edges, , onEdgesChange] = useEdgesState(highlightedEdges);
 
   // Keep nodes/edges in sync with highlighting changes
   const displayNodes = useMemo(() => {

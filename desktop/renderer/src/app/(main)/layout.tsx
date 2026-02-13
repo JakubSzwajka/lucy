@@ -54,6 +54,7 @@ export default function MainLayout({
 
     if (settings.defaultModelId) {
       resolvedModelRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization after async settings load
       setSelectedModel(settings.defaultModelId);
       return;
     }
