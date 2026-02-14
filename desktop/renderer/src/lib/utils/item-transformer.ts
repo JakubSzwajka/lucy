@@ -5,6 +5,7 @@ import type {
   TextContentPart,
   ReasoningContentPart,
   ToolCallContentPart,
+  FileContentPart,
 } from "@/types";
 import {
   type UIMessage,
@@ -55,6 +56,13 @@ export class ItemTransformer {
           id: `${message.id}-text-${index}`,
           text: part.text,
         } satisfies TextContentPart);
+      } else if (part.type === "file") {
+        contentParts.push({
+          type: "file",
+          id: `${message.id}-file-${index}`,
+          url: (part as { url?: string }).url || "",
+          mediaType: (part as { mediaType?: string }).mediaType || "",
+        } satisfies FileContentPart);
       } else if (isToolUIPart(part)) {
         let status: "running" | "completed" | "failed" = "running";
         if (part.state === "output-available") {
