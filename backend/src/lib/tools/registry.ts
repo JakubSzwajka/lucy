@@ -298,7 +298,7 @@ export class ToolRegistry {
       case "builtin":
         return `builtin__${source.moduleId}__${name}`;
       case "delegate":
-        return `delegate__${source.configId}__${name}`;
+        return name;
     }
   }
 

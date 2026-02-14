@@ -1,4 +1,5 @@
 import { generateText, ToolSet } from "ai";
+import { startActiveObservation, propagateAttributes } from "@langfuse/tracing";
 import { getChatService } from "../chat";
 import { getAgentService } from "../agent";
 import { getItemService, itemsToChatMessages } from "../item";
@@ -35,108 +36,135 @@ export class AgentExecutionService {
 
     const childAgentId = createResult.agent.id;
 
-    try {
-      await itemService.createMessage(childAgentId, "user", task, userId);
+    // Resolve agent config name for tracing
+    const agentConfigService = getAgentConfigService();
+    const agentConfig = agentConfigId ? await agentConfigService.getById(agentConfigId, userId) : null;
+    const agentName = agentConfig?.name || "sub-agent";
 
-      const chatService = getChatService();
-      const context = await chatService.prepareChat(childAgentId, userId);
-      if (!context) {
-        throw new Error("Failed to prepare chat context for child agent");
-      }
+    // Wrap entire sub-agent execution in a Langfuse agent observation
+    return await startActiveObservation(agentName, async (span) => {
+      return await propagateAttributes({
+        userId,
+        sessionId,
+        metadata: { agentId: childAgentId, parentAgentId, agentConfigId, depth: "1" },
+      }, async () => {
+        try {
+          await itemService.createMessage(childAgentId, "user", task, userId);
 
-      const agentConfigService = getAgentConfigService();
-      const agentConfig = agentConfigId ? await agentConfigService.getById(agentConfigId, userId) : null;
-      const maxTurns = agentConfig?.maxTurns || MAX_TURNS_DEFAULT;
-      const hasTools = Object.keys(context.tools).length > 0;
-      let reachedMaxTurns = false;
+          const chatService = getChatService();
+          const context = await chatService.prepareChat(childAgentId, userId);
+          if (!context) {
+            throw new Error("Failed to prepare chat context for child agent");
+          }
 
-      for (let turn = 0; turn < maxTurns; turn++) {
-        const items = await itemService.getByAgentId(childAgentId);
-        const chatMessages = itemsToChatMessages(items);
+          const maxTurns = agentConfig?.maxTurns || MAX_TURNS_DEFAULT;
+          const hasTools = Object.keys(context.tools).length > 0;
+          let reachedMaxTurns = false;
 
-        const messages = chatService.prependSystemPrompt(
-          chatMessages.map(m => ({
-            role: m.role as "user" | "assistant" | "system",
-            content: m.content || "",
-          })),
-          context.systemPrompt
-        );
+          for (let turn = 0; turn < maxTurns; turn++) {
+            const items = await itemService.getByAgentId(childAgentId);
+            const chatMessages = itemsToChatMessages(items);
 
-        const result = await generateText({
-          model: context.languageModel,
-          messages,
-          tools: hasTools ? context.tools as ToolSet : undefined,
-          maxOutputTokens: context.maxOutputTokens,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          providerOptions: context.providerOptions as any,
-        });
+            const messages = chatService.prependSystemPrompt(
+              chatMessages.map(m => ({
+                role: m.role as "user" | "assistant" | "system",
+                content: m.content || "",
+              })),
+              context.systemPrompt
+            );
 
-        // Persist assistant text
-        if (result.text) {
-          await itemService.createMessage(childAgentId, "assistant", result.text);
-        }
+            const result = await generateText({
+              model: context.languageModel,
+              messages,
+              tools: hasTools ? context.tools as ToolSet : undefined,
+              maxOutputTokens: context.maxOutputTokens,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              providerOptions: context.providerOptions as any,
+              experimental_telemetry: {
+                isEnabled: true,
+                functionId: context.modelConfig.id,
+                metadata: {
+                  sessionId,
+                  userId,
+                  agentId: childAgentId,
+                  parentAgentId,
+                  model: context.modelConfig.id,
+                  depth: 1,
+                  turn,
+                },
+              },
+            });
 
-        // Persist tool calls and results from steps
-        if (result.steps) {
-          for (const step of result.steps) {
-            for (const tc of step.toolCalls) {
-              await itemService.createToolCall(
-                childAgentId,
-                tc.toolCallId,
-                tc.toolName,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tc as any).args as Record<string, unknown> | undefined,
-                "completed"
-              );
+            // Persist assistant text
+            if (result.text) {
+              await itemService.createMessage(childAgentId, "assistant", result.text);
             }
-            for (const tr of step.toolResults) {
-              await itemService.createToolResult(
-                childAgentId,
-                tr.toolCallId,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tr as any).result
-              );
+
+            // Persist tool calls and results from steps
+            if (result.steps) {
+              for (const step of result.steps) {
+                for (const tc of step.toolCalls) {
+                  await itemService.createToolCall(
+                    childAgentId,
+                    tc.toolCallId,
+                    tc.toolName,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (tc as any).args as Record<string, unknown> | undefined,
+                    "completed"
+                  );
+                }
+                for (const tr of step.toolResults) {
+                  await itemService.createToolResult(
+                    childAgentId,
+                    tr.toolCallId,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (tr as any).result
+                  );
+                }
+              }
+            }
+
+            await agentService.update(childAgentId, { turnCount: turn + 1 }, userId);
+
+            const lastStep = result.steps?.[result.steps.length - 1];
+            if (!lastStep?.toolCalls?.length) {
+              break;
+            }
+
+            if (turn === maxTurns - 1) {
+              reachedMaxTurns = true;
             }
           }
+
+          const finalItems = await itemService.getByAgentId(childAgentId);
+          const lastAssistantItem = [...finalItems].reverse().find(
+            (i): i is MessageItem => i.type === "message" && i.role === "assistant"
+          );
+          let finalResult = lastAssistantItem?.content || "Task completed without response.";
+          if (reachedMaxTurns) {
+            finalResult += " [max turns reached]";
+          }
+
+          await agentService.update(childAgentId, {
+            status: "completed",
+            result: finalResult,
+            completedAt: new Date(),
+          }, userId);
+
+          span.update({ output: finalResult });
+          return finalResult;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Sub-agent execution failed";
+          await agentService.update(childAgentId, {
+            status: "failed",
+            error: errorMessage,
+            completedAt: new Date(),
+          }, userId);
+          span.update({ output: `Error: ${errorMessage}` });
+          return `Error: ${errorMessage}`;
         }
-
-        await agentService.update(childAgentId, { turnCount: turn + 1 }, userId);
-
-        const lastStep = result.steps?.[result.steps.length - 1];
-        if (!lastStep?.toolCalls?.length) {
-          break;
-        }
-
-        if (turn === maxTurns - 1) {
-          reachedMaxTurns = true;
-        }
-      }
-
-      const finalItems = await itemService.getByAgentId(childAgentId);
-      const lastAssistantItem = [...finalItems].reverse().find(
-        (i): i is MessageItem => i.type === "message" && i.role === "assistant"
-      );
-      let finalResult = lastAssistantItem?.content || "Task completed without response.";
-      if (reachedMaxTurns) {
-        finalResult += " [max turns reached]";
-      }
-
-      await agentService.update(childAgentId, {
-        status: "completed",
-        result: finalResult,
-        completedAt: new Date(),
-      }, userId);
-
-      return finalResult;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Sub-agent execution failed";
-      await agentService.update(childAgentId, {
-        status: "failed",
-        error: errorMessage,
-        completedAt: new Date(),
-      }, userId);
-      return `Error: ${errorMessage}`;
-    }
+      });
+    }, { asType: "agent" });
   }
 
   async continueSubAgent(
@@ -166,101 +194,124 @@ export class AgentExecutionService {
       return "Error: Failed to prepare chat context";
     }
 
-    const hasTools = Object.keys(context.tools).length > 0;
+    const agentConfigService = getAgentConfigService();
+    const agentConfig = agent.agentConfigId ? await agentConfigService.getById(agent.agentConfigId, userId) : null;
+    const agentName = agentConfig?.name || "sub-agent";
 
-    try {
-      const agentConfigService = getAgentConfigService();
-      const agentConfig = agent.agentConfigId ? await agentConfigService.getById(agent.agentConfigId, userId) : null;
-      const maxTurns = agentConfig?.maxTurns || MAX_TURNS_DEFAULT;
-      let reachedMaxTurns = false;
+    return await startActiveObservation(`${agentName} (continue)`, async (span) => {
+      return await propagateAttributes({
+        userId,
+        metadata: { agentId: childAgentId, parentAgentId, depth: "1" },
+      }, async () => {
+        const hasTools = Object.keys(context.tools).length > 0;
 
-      for (let turn = 0; turn < maxTurns; turn++) {
-        const items = await itemService.getByAgentId(childAgentId);
-        const chatMessages = itemsToChatMessages(items);
+        try {
+          const maxTurns = agentConfig?.maxTurns || MAX_TURNS_DEFAULT;
+          let reachedMaxTurns = false;
 
-        const messages = chatService.prependSystemPrompt(
-          chatMessages.map(m => ({
-            role: m.role as "user" | "assistant" | "system",
-            content: m.content || "",
-          })),
-          context.systemPrompt
-        );
+          for (let turn = 0; turn < maxTurns; turn++) {
+            const items = await itemService.getByAgentId(childAgentId);
+            const chatMessages = itemsToChatMessages(items);
 
-        const result = await generateText({
-          model: context.languageModel,
-          messages,
-          tools: hasTools ? context.tools as ToolSet : undefined,
-          maxOutputTokens: context.maxOutputTokens,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          providerOptions: context.providerOptions as any,
-        });
+            const messages = chatService.prependSystemPrompt(
+              chatMessages.map(m => ({
+                role: m.role as "user" | "assistant" | "system",
+                content: m.content || "",
+              })),
+              context.systemPrompt
+            );
 
-        if (result.text) {
-          await itemService.createMessage(childAgentId, "assistant", result.text);
-        }
+            const result = await generateText({
+              model: context.languageModel,
+              messages,
+              tools: hasTools ? context.tools as ToolSet : undefined,
+              maxOutputTokens: context.maxOutputTokens,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              providerOptions: context.providerOptions as any,
+              experimental_telemetry: {
+                isEnabled: true,
+                functionId: context.modelConfig.id,
+                metadata: {
+                  userId,
+                  agentId: childAgentId,
+                  parentAgentId,
+                  model: context.modelConfig.id,
+                  depth: 1,
+                  turn,
+                },
+              },
+            });
 
-        if (result.steps) {
-          for (const step of result.steps) {
-            for (const tc of step.toolCalls) {
-              await itemService.createToolCall(
-                childAgentId,
-                tc.toolCallId,
-                tc.toolName,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tc as any).args as Record<string, unknown> | undefined,
-                "completed"
-              );
+            if (result.text) {
+              await itemService.createMessage(childAgentId, "assistant", result.text);
             }
-            for (const tr of step.toolResults) {
-              await itemService.createToolResult(
-                childAgentId,
-                tr.toolCallId,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tr as any).result
-              );
+
+            if (result.steps) {
+              for (const step of result.steps) {
+                for (const tc of step.toolCalls) {
+                  await itemService.createToolCall(
+                    childAgentId,
+                    tc.toolCallId,
+                    tc.toolName,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (tc as any).args as Record<string, unknown> | undefined,
+                    "completed"
+                  );
+                }
+                for (const tr of step.toolResults) {
+                  await itemService.createToolResult(
+                    childAgentId,
+                    tr.toolCallId,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (tr as any).result
+                  );
+                }
+              }
+            }
+
+            await agentService.update(childAgentId, {
+              turnCount: (agent.turnCount || 0) + turn + 1,
+            }, userId);
+
+            const lastStep = result.steps?.[result.steps.length - 1];
+            if (!lastStep?.toolCalls?.length) {
+              break;
+            }
+
+            if (turn === maxTurns - 1) {
+              reachedMaxTurns = true;
             }
           }
+
+          const finalItems = await itemService.getByAgentId(childAgentId);
+          const lastAssistantItem = [...finalItems].reverse().find(
+            (i): i is MessageItem => i.type === "message" && i.role === "assistant"
+          );
+          let finalResult = lastAssistantItem?.content || "Task completed without response.";
+          if (reachedMaxTurns) {
+            finalResult += " [max turns reached]";
+          }
+
+          await agentService.update(childAgentId, {
+            status: "completed",
+            result: finalResult,
+            completedAt: new Date(),
+          }, userId);
+
+          span.update({ output: finalResult });
+          return finalResult;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Continue failed";
+          await agentService.update(childAgentId, {
+            status: "failed",
+            error: errorMessage,
+            completedAt: new Date(),
+          }, userId);
+          span.update({ output: `Error: ${errorMessage}` });
+          return `Error: ${errorMessage}`;
         }
-
-        await agentService.update(childAgentId, {
-          turnCount: (agent.turnCount || 0) + turn + 1,
-        }, userId);
-
-        const lastStep = result.steps?.[result.steps.length - 1];
-        if (!lastStep?.toolCalls?.length) {
-          break;
-        }
-
-        if (turn === maxTurns - 1) {
-          reachedMaxTurns = true;
-        }
-      }
-
-      const finalItems = await itemService.getByAgentId(childAgentId);
-      const lastAssistantItem = [...finalItems].reverse().find(
-        (i): i is MessageItem => i.type === "message" && i.role === "assistant"
-      );
-      let finalResult = lastAssistantItem?.content || "Task completed without response.";
-      if (reachedMaxTurns) {
-        finalResult += " [max turns reached]";
-      }
-
-      await agentService.update(childAgentId, {
-        status: "completed",
-        result: finalResult,
-        completedAt: new Date(),
-      }, userId);
-
-      return finalResult;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Continue failed";
-      await agentService.update(childAgentId, {
-        status: "failed",
-        error: errorMessage,
-        completedAt: new Date(),
-      }, userId);
-      return `Error: ${errorMessage}`;
-    }
+      });
+    }, { asType: "agent" });
   }
 }
 
