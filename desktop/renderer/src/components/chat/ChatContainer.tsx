@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { StreamDebugPanel } from "./StreamDebugPanel";
@@ -11,6 +11,7 @@ import { useMcpStatus } from "@/hooks/useMcpStatus";
 import { usePlan } from "@/hooks/usePlan";
 import { getModelConfig } from "@/lib/ai/models";
 import type { FileUIPart } from "ai";
+import { isTextUIPart } from "ai";
 import type { AvailableProviders } from "@/types";
 
 interface ChatContainerProps {
@@ -34,6 +35,29 @@ export function ChatContainer({
     sessionId,
     model: selectedModel,
   });
+
+  // Desktop notification when stream ends
+  const prevStatusRef = useRef(status);
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+    if (prev === "streaming" && status === "ready") {
+      const electron = (window as Record<string, unknown>).electron as
+        | { invoke: (channel: string, data: Record<string, string>) => void }
+        | undefined;
+      if (!electron) return;
+      const lastAssistant = [...rawMessages].reverse().find((m) => m.role === "assistant");
+      const text = lastAssistant?.parts
+        ?.filter(isTextUIPart)
+        .map((p) => p.text)
+        .join("") || "";
+      const firstSentences = text.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ").slice(0, 200);
+      electron.invoke("show-notification", {
+        title: "Lucy",
+        body: firstSentences || "Response complete",
+      });
+    }
+  }, [status, rawMessages]);
 
   // Stream debug panel
   const [debugPanelOpen, setDebugPanelOpen] = useState(false);

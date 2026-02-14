@@ -2,7 +2,7 @@ import path from "path";
 import dotenv from "dotenv";
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, Notification } from "electron";
 import { createWindow } from "./helpers";
 import { spawn, ChildProcess } from "child_process";
 import { initTts } from "./tts";
@@ -124,6 +124,12 @@ ipcMain.on("maximize-window", () => {
 
 ipcMain.on("close-window", () => {
   mainWindow?.close();
+});
+
+ipcMain.handle("show-notification", (_event, { title, body }: { title: string; body: string }) => {
+  if (!mainWindow?.isFocused()) {
+    new Notification({ title, body }).show();
+  }
 });
 
 // App lifecycle
