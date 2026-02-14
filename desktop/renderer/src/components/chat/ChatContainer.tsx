@@ -29,7 +29,7 @@ export function ChatContainer({
 }: ChatContainerProps) {
   const [prefill, setPrefill] = useState<{ text: string; nonce: number } | null>(null);
 
-  const { messages, agent, streamPlan, sendMessage, isLoading, rawMessages, status } = useSessionChat({
+  const { messages, agent, childSessions, streamPlan, sendMessage, isLoading, rawMessages, status } = useSessionChat({
     sessionId,
     model: selectedModel,
   });
@@ -124,6 +124,7 @@ export function ChatContainer({
           messages={messages}
           isLoading={isLoading}
           onQuickAction={handleQuickActionPrefill}
+          childSessions={childSessions}
         />
 
         {/* Plan Panel (shows above input when plan exists) */}

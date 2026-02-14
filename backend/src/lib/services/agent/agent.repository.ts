@@ -24,9 +24,7 @@ function parseAgentRecord(record: AgentRecord): Agent {
   return {
     id: record.id,
     sessionId: record.sessionId,
-    parentId: record.parentId,
     agentConfigId: record.agentConfigId,
-    sourceCallId: record.sourceCallId,
     name: record.name,
     task: record.task,
     systemPrompt: record.systemPrompt,
@@ -145,8 +143,6 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
       userId,
       agentConfigId: data.agentConfigId,
       sessionId: data.sessionId,
-      parentId: data.parentId || null,
-      sourceCallId: data.sourceCallId || null,
       name: data.name,
       task: data.task || null,
       systemPrompt: data.systemPrompt || null,

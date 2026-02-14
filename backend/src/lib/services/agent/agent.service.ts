@@ -58,8 +58,7 @@ export class AgentService {
   }
 
   async getTreeBySessionId(sessionId: string, userId: string): Promise<AgentWithItems[]> {
-    const agentsWithItems = await this.repository.findBySessionIdWithItems(sessionId, userId);
-    return this.buildAgentTree(agentsWithItems);
+    return this.repository.findBySessionIdWithItems(sessionId, userId);
   }
 
   // -------------------------------------------------------------------------
@@ -152,23 +151,6 @@ export class AgentService {
     return { success: true };
   }
 
-  // -------------------------------------------------------------------------
-  // Tree Building
-  // -------------------------------------------------------------------------
-
-  private buildAgentTree(agentsWithItems: AgentWithItems[]): AgentWithItems[] {
-    const rootAgents = agentsWithItems.filter((a) => !a.parentId);
-    const childAgents = agentsWithItems.filter((a) => a.parentId);
-
-    const buildTree = (agent: AgentWithItems): AgentWithItems => {
-      const children = childAgents
-        .filter((c) => c.parentId === agent.id)
-        .map(buildTree);
-      return { ...agent, children: children.length > 0 ? children : undefined };
-    };
-
-    return rootAgents.map(buildTree);
-  }
 }
 
 // ============================================================================

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState, useCallback, useMemo } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -26,12 +27,73 @@ import {
   type ToolPart,
 } from "@/components/ai-elements/tool";
 import { QuickActions } from "./QuickActions";
-import type { ChatMessage, ContentPart } from "@/types";
+import { api } from "@/lib/api/client";
+import type { ChatMessage, ContentPart, ChildSessionSummary, SessionWithAgents, Item, MessageItem } from "@/types";
+
+// Expandable card showing a child session's conversation
+function ChildSessionCard({ childSession }: { childSession: ChildSessionSummary }) {
+  const [expanded, setExpanded] = useState(false);
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const toggle = useCallback(() => {
+    if (!expanded && !loaded) {
+      setLoading(true);
+      api.request<SessionWithAgents>(`/api/sessions/${childSession.id}`)
+        .then((data) => {
+          const rootAgent = data.agents?.find((a) => a.id === data.rootAgentId) || data.agents?.[0];
+          const items: Item[] = rootAgent?.items || [];
+          const msgItems = items.filter((i): i is MessageItem => i.type === "message");
+          setMessages(msgItems.map((m) => ({ role: m.role, content: m.content })));
+          setLoaded(true);
+        })
+        .catch((err) => {
+          console.error("[ChildSession] Failed to load:", err);
+          setMessages([{ role: "system", content: "Failed to load sub-agent conversation." }]);
+          setLoaded(true);
+        })
+        .finally(() => setLoading(false));
+    }
+    setExpanded((v) => !v);
+  }, [expanded, loaded, childSession.id]);
+
+  return (
+    <div className="border border-border rounded-md overflow-hidden my-1">
+      <button
+        onClick={toggle}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/50 transition-colors"
+      >
+        <span className="text-muted-foreground">{expanded ? "▼" : "▶"}</span>
+        <span className="label-dark">SUB-AGENT //</span>
+        <span className="text-foreground font-medium truncate">{childSession.title}</span>
+        <span className="ml-auto text-muted-dark">[{childSession.status}]</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-border px-3 py-2 bg-muted/20 space-y-2 max-h-80 overflow-y-auto">
+          {loading && (
+            <div className="text-xs text-muted-foreground">Loading...</div>
+          )}
+          {!loading && messages.map((msg, i) => (
+            <div key={i} className="text-xs">
+              <span className="label-dark uppercase">{msg.role}:</span>
+              <div className="mt-0.5 text-foreground whitespace-pre-wrap">{msg.content}</div>
+            </div>
+          ))}
+          {!loading && messages.length === 0 && loaded && (
+            <div className="text-xs text-muted-foreground">No messages in sub-agent session.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading?: boolean;
   onQuickAction?: (content: string) => void;
+  childSessions?: ChildSessionSummary[];
 }
 
 function SessionDivider() {
@@ -80,9 +142,10 @@ function StreamingIndicator() {
 interface MessageItemProps {
   message: ChatMessage;
   isStreaming?: boolean;
+  childSessionsByCallId?: Map<string, ChildSessionSummary>;
 }
 
-function MessageItem({ message, isStreaming }: MessageItemProps) {
+function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageItemProps) {
   const isUser = message.role === "user";
   const hasParts = message.parts && message.parts.length > 0;
   const hasContent = message.content && message.content.trim().length > 0;
@@ -106,13 +169,18 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
             <Reasoning
               key={part.id}
               isStreaming={isStreaming}
-              defaultOpen={isStreaming}
+              defaultOpen={false}
             >
               <ReasoningTrigger />
               <ReasoningContent>{part.content}</ReasoningContent>
             </Reasoning>
           );
         case "tool_call": {
+          // Check if this tool call spawned a child session
+          const childSession = childSessionsByCallId?.get(part.callId);
+          if (childSession) {
+            return <ChildSessionCard key={part.id} childSession={childSession} />;
+          }
           const state = mapToolStatus(part.status);
           return (
             <Tool key={part.id}>
@@ -180,7 +248,17 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
   );
 }
 
-export function MessageList({ messages, isLoading, onQuickAction }: MessageListProps) {
+export function MessageList({ messages, isLoading, onQuickAction, childSessions }: MessageListProps) {
+  // Build a map from sourceCallId → child session for quick lookup
+  const childSessionsByCallId = useMemo(() => {
+    const map = new Map<string, ChildSessionSummary>();
+    if (childSessions) {
+      for (const cs of childSessions) {
+        if (cs.sourceCallId) map.set(cs.sourceCallId, cs);
+      }
+    }
+    return map;
+  }, [childSessions]);
   if (messages.length === 0) {
     return (
       <ConversationEmptyState>
@@ -220,6 +298,7 @@ export function MessageList({ messages, isLoading, onQuickAction }: MessageListP
               key={message.id}
               message={message}
               isStreaming={isAssistantStreaming}
+              childSessionsByCallId={childSessionsByCallId}
             />
           );
         })}

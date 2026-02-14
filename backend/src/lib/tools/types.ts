@@ -28,23 +28,11 @@ export type ToolSource = McpToolSource | BuiltinToolSource | DelegateToolSource;
 // Tool Execution Context
 // ============================================================================
 
-export interface ChildAgentConfig {
-  name: string;
-  task: string;
-  model?: string;
-  systemPrompt?: string;
-  parentId: string;
-  sourceCallId: string;
-}
-
 export interface ToolExecutionContext {
   agentId: string;
   sessionId: string;
   callId: string;
   userId: string;
-
-  // For tools that spawn sub-agents
-  createChildAgent?: (config: ChildAgentConfig) => Promise<string>;
 
   // For tools that need to store state within the session
   getState: <T>(key: string) => T | undefined;

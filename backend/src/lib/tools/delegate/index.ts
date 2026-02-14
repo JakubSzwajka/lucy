@@ -1,14 +1,16 @@
 import { z } from "zod";
 import type { ToolDefinition, DelegateToolSource } from "../types";
-import { getAgentExecutionService } from "@/lib/services/agent/agent-execution.service";
 import type { AgentConfigWithTools } from "@/types";
 import { getAgentConfigService } from "@/lib/services";
+import { getSessionService } from "@/lib/services/session";
+import { getItemService } from "@/lib/services/item";
+import { getChatService } from "@/lib/services/chat";
 
 export async function generateDelegateTools(
   agentConfig: AgentConfigWithTools,
   sessionId: string,
   userId: string,
-  parentAgentId: string
+  _parentAgentId: string
 ): Promise<ToolDefinition[]> {
   const delegateEntries = agentConfig.tools.filter(t => t.toolType === "delegate");
   if (delegateEntries.length === 0) return [];
@@ -16,7 +18,7 @@ export async function generateDelegateTools(
   const tools: ToolDefinition[] = [];
   const agentConfigService = getAgentConfigService();
   const targetConfigs = await agentConfigService.getByIds(delegateEntries.map(e => e.toolRef), userId);
-  
+
   for (const entry of targetConfigs) {
     const formattedName = entry.name.toLowerCase().replace(/ /g, "_");
     const toolName = `delegate_to_${formattedName}`;
@@ -37,43 +39,67 @@ export async function generateDelegateTools(
       source,
       execute: async (args, context) => {
         const { task } = args as { task: string };
-        const executionService = getAgentExecutionService();
-        return executionService.executeSubAgent(
-          parentAgentId,
-          sessionId,
-          userId,
-          targetConfigId,
-          task,
-          context.callId
-        );
+
+        const childSession = await getSessionService().create(userId, {
+          title: task.slice(0, 80),
+          agentConfigId: targetConfigId,
+          parentSessionId: sessionId,
+          sourceCallId: context.callId,
+        });
+
+        const rootAgentId = childSession.session?.rootAgentId;
+        if (!childSession.session || !rootAgentId) {
+          return "Error: Failed to create child session";
+        }
+
+        await getItemService().createMessage(rootAgentId, "user", task, userId);
+
+        try {
+          const result = await getChatService().runAgent(rootAgentId, userId, [], {
+            sessionId: childSession.session.id,
+            streaming: false,
+            maxTurns: entry.maxTurns,
+          });
+          return result.streaming ? "Error: Unexpected streaming result" : result.result;
+        } catch (error) {
+          return `Error: ${error instanceof Error ? error.message : "Sub-agent execution failed"}`;
+        }
       },
     });
-
   }
 
-
-  // Add continue_agent tool
+  // Continue a conversation with a previously delegated sub-agent
   tools.push({
-    name: "continue_agent",
-    description: "Continue a conversation with a previously delegated sub-agent",
+    name: "continue_session",
+    description: "Continue a conversation with a previously delegated sub-agent session",
     inputSchema: z.object({
-      agentId: z.string().describe("The ID of the sub-agent to continue"),
+      sessionId: z.string().describe("The ID of the child session to continue"),
       message: z.string().describe("The follow-up message to send"),
     }),
     source: {
       type: "delegate",
       configId: "continue",
-      configName: "continue_agent",
+      configName: "continue_session",
     },
     execute: async (args) => {
-      const { agentId, message } = args as { agentId: string; message: string };
-      const executionService = getAgentExecutionService();
-      return executionService.continueSubAgent(
-        agentId,
-        parentAgentId,
-        userId,
-        message
-      );
+      const { sessionId: childSessionId, message } = args as { sessionId: string; message: string };
+
+      const session = await getSessionService().getById(childSessionId, userId);
+      if (!session) return "Error: Session not found";
+      if (session.parentSessionId !== sessionId) return "Error: Session is not a child of the calling session";
+      if (!session.rootAgentId) return "Error: Session has no root agent";
+
+      await getItemService().createMessage(session.rootAgentId, "user", message, userId);
+
+      try {
+        const result = await getChatService().runAgent(session.rootAgentId, userId, [], {
+          sessionId: childSessionId,
+          streaming: false,
+        });
+        return result.streaming ? "Error: Unexpected streaming result" : result.result;
+      } catch (error) {
+        return `Error: ${error instanceof Error ? error.message : "Continue failed"}`;
+      }
     },
   });
 

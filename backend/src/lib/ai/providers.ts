@@ -44,3 +44,30 @@ export function getLanguageModel(config: ModelConfig) {
   }
   return model;
 }
+
+  export function buildProviderOptions(modelConfig: ModelConfig, thinkingEnabled: boolean): unknown {
+    if (!modelConfig.supportsReasoning || !thinkingEnabled) {
+      return undefined;
+    }
+
+    if (modelConfig.provider === "openai") {
+      return {
+        openai: {
+          reasoningEffort: "medium" as const,
+        },
+      };
+    }
+
+    if (modelConfig.provider === "anthropic") {
+      return {
+        anthropic: {
+          thinking: {
+            type: "enabled" as const,
+            budgetTokens: 10000,
+          },
+        },
+      };
+    }
+
+    return undefined;
+  }

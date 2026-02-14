@@ -84,6 +84,10 @@ export const sessions = pgTable("sessions", {
   // Session lifecycle
   status: text("status", { enum: ["active", "archived"] }).notNull().default("active"),
 
+  // Recursive session hierarchy
+  parentSessionId: text("parent_session_id"),
+  sourceCallId: text("source_call_id"),
+
   createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
@@ -92,6 +96,7 @@ export const sessions = pgTable("sessions", {
     .$defaultFn(() => new Date()),
 }, (table) => [
   index("sessions_user_idx").on(table.userId),
+  index("sessions_parent_idx").on(table.parentSessionId),
 ]);
 
 // ============================================================================
@@ -112,10 +117,6 @@ export const agents = pgTable("agents", {
   sessionId: text("session_id")
     .notNull()
     .references(() => sessions.id, { onDelete: "cascade" }),
-  parentId: text("parent_id"),
-
-  // If spawned by a tool call, which one?
-  sourceCallId: text("source_call_id"),
 
   // Optional agent config template used for this agent
   agentConfigId: text("agent_config_id")
@@ -144,7 +145,6 @@ export const agents = pgTable("agents", {
   completedAt: timestamp("completed_at"),
 }, (table) => [
   index("agents_session_idx").on(table.sessionId),
-  index("agents_parent_idx").on(table.parentId),
   index("agents_user_idx").on(table.userId),
 ]);
 

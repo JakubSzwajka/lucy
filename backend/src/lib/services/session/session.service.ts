@@ -1,7 +1,7 @@
 import { SessionRepository, getSessionRepository } from "./session.repository";
 import { getAgentService } from "../agent/agent.service";
 import { getAgentConfigService } from "../agent-config";
-import type { Session, SessionCreate, SessionUpdate, SessionWithAgents } from "@/types";
+import type { Session, SessionCreate, SessionUpdate, SessionWithAgents, ChildSessionSummary } from "@/types";
 
 // ============================================================================
 // Session Service Types
@@ -12,6 +12,8 @@ export interface CreateSessionOptions extends SessionCreate {
   systemPrompt?: string;
   model?: string;
   agentConfigId?: string;
+  parentSessionId?: string;
+  sourceCallId?: string;
 }
 
 export interface CreateSessionResult {
@@ -58,7 +60,14 @@ export class SessionService {
   }
 
   /**
-   * Get a session with its agent tree and items
+   * Get direct child sessions of a session
+   */
+  async getChildSessions(sessionId: string, userId: string): Promise<Session[]> {
+    return this.repository.findByParentSessionId(sessionId, userId);
+  }
+
+  /**
+   * Get a session with its agent tree, items, and child session summaries
    */
   async getWithAgents(id: string, userId: string): Promise<SessionWithAgents | null> {
     const session = await this.repository.findById(id, userId);
@@ -70,9 +79,20 @@ export class SessionService {
     const agentService = getAgentService();
     const agentTree = await agentService.getTreeBySessionId(id, userId);
 
+    // Get child session summaries
+    const childSessions = await this.repository.findByParentSessionId(id, userId);
+    const childSessionSummaries: ChildSessionSummary[] = childSessions.map((cs) => ({
+      id: cs.id,
+      title: cs.title,
+      status: cs.status,
+      sourceCallId: cs.sourceCallId ?? null,
+      createdAt: cs.createdAt,
+    }));
+
     return {
       ...session,
       agents: agentTree,
+      childSessions: childSessionSummaries,
     };
   }
 
@@ -157,9 +177,15 @@ export class SessionService {
   // -------------------------------------------------------------------------
 
   /**
-   * Delete a session
+   * Delete a session and all its child sessions (cascade)
    */
   async delete(id: string, userId: string): Promise<{ success: boolean; notFound?: boolean }> {
+    // Delete child sessions first (recursive)
+    const children = await this.repository.findByParentSessionId(id, userId);
+    for (const child of children) {
+      await this.delete(child.id, userId);
+    }
+
     const deleted = await this.repository.delete(id, userId);
     if (!deleted) {
       return { success: false, notFound: true };
@@ -179,9 +205,13 @@ export class SessionService {
   }
 
   /**
-   * Archive a session
+   * Archive a session and all its child sessions (cascade)
    */
   async archive(id: string, userId: string): Promise<UpdateSessionResult> {
+    const children = await this.repository.findByParentSessionId(id, userId);
+    for (const child of children) {
+      await this.archive(child.id, userId);
+    }
     return this.update(id, { status: "archived" }, userId);
   }
 

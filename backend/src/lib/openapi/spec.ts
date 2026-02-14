@@ -713,8 +713,6 @@ export const openApiSpec: Record<string, any> = {
         properties: {
           id: { type: "string", format: "uuid" },
           sessionId: { type: "string", format: "uuid" },
-          parentId: { type: "string", nullable: true },
-          sourceCallId: { type: "string", nullable: true },
           name: { type: "string" },
           task: { type: "string", nullable: true },
           systemPrompt: { type: "string", nullable: true },

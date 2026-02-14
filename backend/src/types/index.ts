@@ -9,6 +9,8 @@ export interface Session {
   userId: string;
   rootAgentId?: string | null;
   agentConfigId?: string | null;
+  parentSessionId?: string | null;
+  sourceCallId?: string | null;
   title: string;
   status: SessionStatus;
   createdAt: Date;
@@ -18,6 +20,8 @@ export interface Session {
 export interface SessionCreate {
   title?: string;
   agentConfigId?: string;
+  parentSessionId?: string;
+  sourceCallId?: string;
 }
 
 export interface SessionUpdate {
@@ -34,9 +38,7 @@ export type AgentStatus = "pending" | "running" | "waiting" | "completed" | "fai
 export interface Agent {
   id: string;
   sessionId: string;
-  parentId?: string | null;
   agentConfigId: string;
-  sourceCallId?: string | null;
   name: string;
   task?: string | null;
   systemPrompt?: string | null;
@@ -55,8 +57,6 @@ export interface Agent {
 export interface AgentCreate {
   sessionId: string;
   agentConfigId: string;
-  parentId?: string;
-  sourceCallId?: string;
   name: string;
   task?: string;
   systemPrompt?: string;
@@ -177,8 +177,17 @@ export interface ChatMessage {
 // SESSION WITH AGENTS (for loading full session data)
 // ============================================================================
 
+export interface ChildSessionSummary {
+  id: string;
+  title: string;
+  status: SessionStatus;
+  sourceCallId: string | null;
+  createdAt: Date;
+}
+
 export interface SessionWithAgents extends Session {
   agents: AgentWithItems[];
+  childSessions?: ChildSessionSummary[];
 }
 
 export interface AgentWithItems extends Agent {

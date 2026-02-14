@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { sessions, agents } from "@/lib/db/schema";
 import type { SessionRecord } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import type { Repository } from "../repository.types";
 import type { Session, SessionCreate, SessionUpdate, SessionStatus } from "@/types";
@@ -19,6 +19,8 @@ function parseSessionRecord(record: SessionRecord): Session {
     userId: record.userId,
     rootAgentId: record.rootAgentId,
     agentConfigId: record.agentConfigId,
+    parentSessionId: record.parentSessionId,
+    sourceCallId: record.sourceCallId,
     title: record.title,
     status: record.status as SessionStatus,
     createdAt: record.createdAt,
@@ -39,10 +41,19 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
   }
 
   /**
-   * Find all sessions ordered by updatedAt descending (scoped to user)
+   * Find all top-level sessions ordered by updatedAt descending (scoped to user).
+   * Excludes child sessions (those with a parentSessionId).
    */
   async findAll(userId: string): Promise<Session[]> {
-    const records = await db.select().from(sessions).where(eq(sessions.userId, userId)).orderBy(desc(sessions.updatedAt));
+    const records = await db.select().from(sessions).where(and(eq(sessions.userId, userId), isNull(sessions.parentSessionId))).orderBy(desc(sessions.updatedAt));
+    return records.map(parseSessionRecord);
+  }
+
+  /**
+   * Find child sessions of a given parent session (scoped to user)
+   */
+  async findByParentSessionId(parentSessionId: string, userId: string): Promise<Session[]> {
+    const records = await db.select().from(sessions).where(and(eq(sessions.parentSessionId, parentSessionId), eq(sessions.userId, userId))).orderBy(desc(sessions.createdAt));
     return records.map(parseSessionRecord);
   }
 
@@ -60,6 +71,8 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
       title: data.title || "New Chat",
       rootAgentId: agentId,
       agentConfigId: data.agentConfigId || null,
+      parentSessionId: data.parentSessionId || null,
+      sourceCallId: data.sourceCallId || null,
     });
 
     // Create root agent for the session
@@ -70,7 +83,7 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
       name: data.agentName || "assistant",
       systemPrompt: data.systemPrompt || null,
       model: data.model || null,
-      agentConfigId: data.agentConfigId || null,
+      agentConfigId: data.agentConfigId!,
       status: "pending",
     });
 

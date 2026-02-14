@@ -5,7 +5,6 @@ export {
   type BuiltinToolSource,
   type DelegateToolSource,
   type ToolExecutionContext,
-  type ChildAgentConfig,
   type ToolDefinition,
   type ToolProvider,
   type ToolExecutionResult,

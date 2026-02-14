@@ -9,6 +9,8 @@ export interface Session {
   userId?: string | null;
   rootAgentId?: string | null;
   agentConfigId?: string | null;
+  parentSessionId?: string | null;
+  sourceCallId?: string | null;
   title: string;
   status: SessionStatus;
   createdAt: Date;
@@ -175,8 +177,17 @@ export interface ChatMessage {
 // SESSION WITH AGENTS (for loading full session data)
 // ============================================================================
 
+export interface ChildSessionSummary {
+  id: string;
+  title: string;
+  status: SessionStatus;
+  sourceCallId: string | null;
+  createdAt: Date;
+}
+
 export interface SessionWithAgents extends Session {
   agents: AgentWithItems[];
+  childSessions?: ChildSessionSummary[];
 }
 
 export interface AgentWithItems extends Agent {

@@ -2,8 +2,8 @@ import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { getSystemPromptService } from "@/lib/services/config";
 import { eq, and } from "drizzle-orm";
-import { streamText, stepCountIs, ToolSet } from "ai";
-import { getLanguageModel } from "@/lib/ai/providers";
+import { streamText, generateText, stepCountIs, ToolSet } from "ai";
+import { buildProviderOptions, getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
 import {
   getToolRegistry,
@@ -14,11 +14,11 @@ import { EnvironmentContextService } from "./environment-context.service";
 import { getAgentService } from "../agent";
 import { getAgentConfigService } from "../agent-config";
 import { getSessionService } from "../session";
-import { getItemService } from "../item";
+import { getItemService, itemsToChatMessages } from "../item";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
-import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, ModelMessage, ChatFinishResult } from "./types";
-import type { Agent, AgentConfigWithTools, ModelConfig } from "@/types";
+import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingChatMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
+import type { MessageItem, Agent, AgentConfigWithTools } from "@/types";
 import type { ToolFilter } from "@/lib/tools";
 import type { ToolSource, DelegateToolSource } from "@/lib/tools/types";
 import { generateDelegateTools } from "@/lib/tools/delegate";
@@ -32,7 +32,7 @@ export class ChatService {
   /**
    * Execute a full chat turn: persist user message, prepare context, stream AI response.
    */
-  async executeTurn(sessionId: string, userId: string, chatMessages: unknown[], options: ExecuteTurnOptions = {}) {
+  async executeTurn(sessionId: string, userId: string, chatMessages: IncomingChatMessage[], options: ExecuteTurnOptions = {}) {
     const { modelId, thinkingEnabled } = options;
 
     const sessionService = getSessionService();
@@ -47,135 +47,249 @@ export class ChatService {
       return { error: "Session has no root agent" as const, status: 400 as const };
     }
 
-    // Persist latest user message
-    const lastUserMessage = (chatMessages as Record<string, unknown>[])
-      .filter((m) => m.role === "user")
-      .pop();
+    const lastUserMessage = chatMessages.filter((m) => m.role === "user").pop();
+    const userInputText = lastUserMessage ? this.extractTextContent(lastUserMessage) : undefined;
 
     if (lastUserMessage) {
-      const itemService = getItemService();
-      let content = typeof lastUserMessage.content === "string"
-        ? lastUserMessage.content
-        : undefined;
-
-      if (!content && Array.isArray(lastUserMessage.parts)) {
-        content = (lastUserMessage.parts as Record<string, unknown>[])
-          .filter((part) => part.type === "text")
-          .map((part) => part.text as string)
-          .join("");
-      }
-
-      content = content || "";
-      await itemService.createMessage(rootAgentId, "user", content, userId);
-      await sessionService.maybeGenerateTitle(sessionId, content, userId);
-    }
-
-    // Extract user input text for tracing
-    const userInputText = (() => {
-      if (!lastUserMessage) return undefined;
-      if (typeof lastUserMessage.content === "string") return lastUserMessage.content;
-      if (Array.isArray(lastUserMessage.parts)) {
-        return (lastUserMessage.parts as Record<string, unknown>[])
-          .filter((part) => part.type === "text")
-          .map((part) => part.text as string)
-          .join("");
-      }
-      return undefined;
-    })();
-
-    // Prepare chat context
-    const context = await this.prepareChat(rootAgentId, userId, { modelId, thinkingEnabled });
-    if (!context) {
-      return { error: "Agent not found" as const, status: 404 as const };
+      await this.persistUserMessage(rootAgentId, sessionId, userInputText || "", userId);
     }
 
     // Convert and prepare messages
     const modelMessages = this.convertToModelMessages(chatMessages);
-    const messagesWithSystem = this.prependSystemPrompt(modelMessages, context.systemPrompt);
 
+    const runResult = await this.runAgent(rootAgentId, userId, modelMessages, {
+      sessionId,
+      modelId,
+      thinkingEnabled,
+      streaming: true,
+    });
+
+    // runAgent with streaming: true always returns { streaming: true, stream }
+    if (!runResult.streaming) {
+      throw new Error("Unexpected non-streaming result");
+    }
+
+    return { stream: runResult.stream };
+  }
+
+  /**
+   * Unified agent execution — streaming or non-streaming.
+   * Shared logic: prepareChat, system prompt, step persistence, tracing, agent status.
+   */
+  async runAgent(
+    agentId: string,
+    userId: string,
+    messages: ModelMessage[],
+    options: RunAgentOptions,
+  ): Promise<RunAgentResult> {
+    const { sessionId, modelId, thinkingEnabled } = options;
+
+    const context = await this.prepareChat(agentId, userId, { modelId, thinkingEnabled });
+    if (!context) {
+      throw new Error("Agent not found");
+    }
+
+    const messagesWithSystem = this.prependSystemPrompt(messages, context.systemPrompt);
     const hasTools = Object.keys(context.tools).length > 0;
     const agentName = context.agent.name || "assistant";
 
-    // Stream AI response wrapped in a Langfuse agent observation for rich tracing
-    return await startActiveObservation(agentName, async (span) => {
-      updateActiveTrace({ name: agentName, input: userInputText });
-      return await propagateAttributes({
-        userId,
-        sessionId,
-        metadata: { agentId: rootAgentId, model: context.modelConfig.id, depth: "0" },
-      }, async () => {
-        const result = streamText({
-          model: context.languageModel,
-          messages: messagesWithSystem,
-          tools: hasTools ? context.tools as ToolSet : undefined,
-          stopWhen: hasTools ? stepCountIs(10) : stepCountIs(1),
-          maxOutputTokens: context.maxOutputTokens,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          providerOptions: context.providerOptions as any,
-          onStepFinish: async ({ content, reasoning }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await persistStepContent(rootAgentId, content as any[], reasoning);
-          },
-          onFinish: async ({ text }) => {
-            span.update({ output: text || "completed" });
-            updateActiveTrace({ output: text });
-            await this.finalizeChat(rootAgentId, userId);
-          },
-          experimental_telemetry: {
-            isEnabled: true,
-            functionId: context.modelConfig.id,
-            metadata: {
-              sessionId,
-              userId,
-              agentId: rootAgentId,
-              model: context.modelConfig.id,
-              depth: 0,
-            },
-          },
-        });
+    const userInputText = [...messages].reverse().find(m => m.role === "user")?.content;
 
-        span.update({ input: userInputText });
-        return { stream: result };
-      });
-    }, { asType: "agent" });
+    if (options.streaming) {
+      // Streaming mode — returns SSE stream
+      return await startActiveObservation(agentName, async (span) => {
+        updateActiveTrace({ name: agentName, input: userInputText });
+        return await propagateAttributes({
+          userId,
+          sessionId,
+          metadata: { agentId, model: context.modelConfig.id, depth: "0" },
+        }, async () => {
+          const result = streamText({
+            model: context.languageModel,
+            messages: messagesWithSystem,
+            tools: hasTools ? context.tools as ToolSet : undefined,
+            stopWhen: hasTools ? stepCountIs(10) : stepCountIs(1),
+            maxOutputTokens: context.maxOutputTokens,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            providerOptions: context.providerOptions as any,
+            onStepFinish: async ({ content, reasoning }) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await persistStepContent(agentId, content as any[], reasoning);
+            },
+            onFinish: async ({ text }) => {
+              span.update({ output: text || "completed" });
+              updateActiveTrace({ output: text });
+              await this.finalizeChat(agentId, userId);
+            },
+            experimental_telemetry: {
+              isEnabled: true,
+              functionId: context.modelConfig.id,
+              metadata: {
+                sessionId,
+                userId,
+                agentId,
+                model: context.modelConfig.id,
+                depth: 0,
+              },
+            },
+          });
+
+          span.update({ input: userInputText });
+          return { streaming: true as const, stream: result };
+        });
+      }, { asType: "agent" });
+    } else {
+      // Non-streaming mode — generateText loop
+      const maxTurns = options.maxTurns ?? 25;
+      const itemService = getItemService();
+      const agentService = getAgentService();
+
+      return await startActiveObservation(agentName, async (span) => {
+        return await propagateAttributes({
+          userId,
+          sessionId,
+          metadata: { agentId, model: context.modelConfig.id },
+        }, async () => {
+          let reachedMaxTurns = false;
+
+          try {
+            for (let turn = 0; turn < maxTurns; turn++) {
+              // Re-read items each turn to include tool results from previous turns
+              const items = await itemService.getByAgentId(agentId);
+              const chatMessages = itemsToChatMessages(items);
+              const turnMessages = this.prependSystemPrompt(
+                chatMessages.map(m => ({
+                  role: m.role as "user" | "assistant" | "system",
+                  content: m.content || "",
+                })),
+                context.systemPrompt,
+              );
+
+              const result = await generateText({
+                model: context.languageModel,
+                messages: turnMessages,
+                tools: hasTools ? context.tools as ToolSet : undefined,
+                maxOutputTokens: context.maxOutputTokens,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                providerOptions: context.providerOptions as any,
+                experimental_telemetry: {
+                  isEnabled: true,
+                  functionId: context.modelConfig.id,
+                  metadata: {
+                    sessionId,
+                    userId,
+                    agentId,
+                    model: context.modelConfig.id,
+                    turn,
+                  },
+                },
+              });
+
+              // Persist assistant text
+              if (result.text) {
+                await itemService.createMessage(agentId, "assistant", result.text);
+              }
+
+              // Persist tool calls and results from steps
+              if (result.steps) {
+                for (const step of result.steps) {
+                  for (const tc of step.toolCalls) {
+                    await itemService.createToolCall(
+                      agentId,
+                      tc.toolCallId,
+                      tc.toolName,
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      (tc as any).args as Record<string, unknown> | undefined,
+                      "completed",
+                    );
+                  }
+                  for (const tr of step.toolResults) {
+                    await itemService.createToolResult(
+                      agentId,
+                      tr.toolCallId,
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      (tr as any).result,
+                    );
+                  }
+                }
+              }
+
+              await agentService.update(agentId, { turnCount: turn + 1 }, userId);
+
+              const lastStep = result.steps?.[result.steps.length - 1];
+              if (!lastStep?.toolCalls?.length) {
+                break;
+              }
+
+              if (turn === maxTurns - 1) {
+                reachedMaxTurns = true;
+              }
+            }
+
+            // Extract final result
+            const finalItems = await itemService.getByAgentId(agentId);
+            const lastAssistantItem = [...finalItems].reverse().find(
+              (i): i is MessageItem => i.type === "message" && i.role === "assistant",
+            );
+            let finalResult = lastAssistantItem?.content || "Task completed without response.";
+            if (reachedMaxTurns) {
+              finalResult += " [max turns reached]";
+            }
+
+            await agentService.update(agentId, {
+              status: "completed",
+              result: finalResult,
+              completedAt: new Date(),
+            }, userId);
+
+            span.update({ output: finalResult });
+            return { streaming: false as const, result: finalResult, reachedMaxTurns };
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Agent execution failed";
+            await agentService.update(agentId, {
+              status: "failed",
+              error: errorMessage,
+              completedAt: new Date(),
+            }, userId);
+            span.update({ output: `Error: ${errorMessage}` });
+            throw error;
+          }
+        });
+      }, { asType: "agent" });
+    }
+  }
+
+  private async loadAgentWithConfig(agentId: string, userId: string): Promise<{
+    agent: Agent;
+    agentConfig: AgentConfigWithTools | null;
+    toolFilter: ToolFilter | undefined;
+  } | null> {
+    const agent = await getAgentService().getById(agentId, userId);
+    if (!agent) return null;
+
+    let agentConfig: AgentConfigWithTools | null = null;
+    if (agent.agentConfigId) {
+      agentConfig = await getAgentConfigService().getById(agent.agentConfigId, userId);
+    }
+
+    const toolFilter = agentConfig ? this.buildToolFilter(agentConfig) : undefined;
+    return { agent, agentConfig, toolFilter };
+  }
+
+  private async initializeTools(): Promise<void> {
+    await initializeToolRegistry();
+    const mcpProvider = getMcpProvider();
+    if (mcpProvider) {
+      await mcpProvider.refreshServers();
+    }
   }
 
   async prepareChat(agentId: string, userId: string, options: ChatPrepareOptions = {}): Promise<ChatContext | null> {
     const { modelId, thinkingEnabled = true } = options;
 
-    const agentService = getAgentService();
-    const agent = await agentService.getById(agentId, userId);
-    if (!agent) {
-      return null;
-    }
-
-    // Load agent config for tool filtering and resolution
-    let agentConfig: AgentConfigWithTools | null = null;
-    if (agent.agentConfigId) {
-      const agentConfigService = getAgentConfigService();
-      agentConfig = await agentConfigService.getById(agent.agentConfigId, userId);
-    }
-
-    // Build tool filter from agent config
-    let toolFilter: ToolFilter | undefined;
-    if (agentConfig) {
-      console.log(agentConfig.tools);
-      const mcpServerIds = agentConfig.tools
-        .filter(t => t.toolType === "mcp")
-        .map(t => t.toolRef);
-      const builtinModuleIds = agentConfig.tools
-        .filter(t => t.toolType === "builtin")
-        .map(t => t.toolRef);
-      const delegateAgentIds = agentConfig.tools
-        .filter(t => t.toolType === "delegate")
-        .map(t => t.toolRef);
-
-      toolFilter = {
-        ...(mcpServerIds.length > 0 ? { allowedMcpServerIds: mcpServerIds } : {}),
-        ...(builtinModuleIds.length > 0 ? { allowedBuiltinModuleIds: builtinModuleIds } : {}),
-        ...(delegateAgentIds.length > 0 ? { allowedDelegateAgentIds: delegateAgentIds } : {}),
-      };
-    }
+    const loaded = await this.loadAgentWithConfig(agentId, userId);
+    if (!loaded) return null;
+    const { agent, agentConfig, toolFilter } = loaded;
 
     const effectiveModelId = modelId || agent.model || agentConfig?.defaultModelId;
     if (!effectiveModelId) {
@@ -215,11 +329,7 @@ export class ChatService {
 
     const isThinkingActive = (modelConfig.supportsReasoning && thinkingEnabled) ?? false;
 
-    await initializeToolRegistry();
-    const mcpProvider = getMcpProvider();
-    if (mcpProvider) {
-      await mcpProvider.refreshServers();
-    }
+    await this.initializeTools();
 
     const registry = getToolRegistry();
     const tools = await registry.toAiSdkTools({
@@ -234,7 +344,7 @@ export class ChatService {
       if (delegateTools.length > 0) {
         const { tool: aiTool } = await import("ai");
         for (const dt of delegateTools) {
-          const key = `delegate__${dt.source.type === "delegate" ? dt.source.configId : "unknown"}__${dt.name}`;
+          const key = this.buildDelegateToolKey(dt);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (tools as any)[key] = aiTool({
             description: dt.description,
@@ -255,8 +365,7 @@ export class ChatService {
       }
     }
 
-
-    await agentService.update(agentId, {
+    await getAgentService().update(agentId, {
       status: "running",
       startedAt: agent.startedAt || new Date(),
     }, userId);
@@ -268,19 +377,21 @@ export class ChatService {
       languageModel,
       modelConfig,
       tools,
-      providerOptions: this.buildProviderOptions(modelConfig, thinkingEnabled),
+      providerOptions: buildProviderOptions(modelConfig, thinkingEnabled),
       maxOutputTokens: modelConfig.provider === "anthropic" && isThinkingActive ? 16000 : undefined,
       systemPrompt,
       isThinkingActive,
     };
   }
 
-  async resolveSystemPrompt(agent: Agent, userId: string, agentConfig?: AgentConfigWithTools | null): Promise<string | null> {
+  private async resolveSystemPrompt(agent: Agent, userId: string, agentConfig?: AgentConfigWithTools | null): Promise<string | null> {
+    // This method might require simplification if we want to force single prompt per agent
     if (agent.systemPrompt) {
       return agent.systemPrompt;
     }
 
     if (agentConfig?.systemPromptOverride) {
+      // do we have it? 
       return agentConfig.systemPromptOverride;
     }
     if (agentConfig?.systemPromptId) {
@@ -292,7 +403,8 @@ export class ChatService {
     return this.getDefaultSystemPrompt(userId);
   }
 
-  async getDefaultSystemPrompt(userId: string): Promise<string | null> {
+  private async getDefaultSystemPrompt(userId: string): Promise<string | null> {
+    // Might require to be moved to some prompt repository? 
     try {
       const settingsId = `default-${userId}`;
       const [currentSettings] = await db
@@ -313,23 +425,14 @@ export class ChatService {
     }
   }
 
-  convertToModelMessages(chatMessages: unknown[]): ModelMessage[] {
-    return (chatMessages as Record<string, unknown>[]).map((msg) => {
-      let content = msg.content as string | undefined;
-      if (!content && Array.isArray(msg.parts)) {
-        content = (msg.parts as Record<string, unknown>[])
-          .filter((part) => part.type === "text")
-          .map((part) => part.text as string)
-          .join("");
-      }
-      return {
-        role: msg.role as "user" | "assistant" | "system",
-        content: content || "",
-      };
-    });
+  private convertToModelMessages(chatMessages: IncomingChatMessage[]): ModelMessage[] {
+    return chatMessages.map((msg) => ({
+      role: msg.role as "user" | "assistant" | "system",
+      content: this.extractTextContent(msg),
+    }));
   }
 
-  prependSystemPrompt(messages: ModelMessage[], systemPrompt: string | null): ModelMessage[] {
+  private prependSystemPrompt(messages: ModelMessage[], systemPrompt: string | null): ModelMessage[] {
     if (!systemPrompt) {
       return messages;
     }
@@ -342,59 +445,12 @@ export class ChatService {
     return [{ role: "system", content: systemPrompt }, ...messages];
   }
 
-  buildProviderOptions(modelConfig: ModelConfig, thinkingEnabled: boolean): unknown {
-    if (!modelConfig.supportsReasoning || !thinkingEnabled) {
-      return undefined;
-    }
-
-    if (modelConfig.provider === "openai") {
-      return {
-        openai: {
-          reasoningEffort: "medium" as const,
-        },
-      };
-    }
-
-    if (modelConfig.provider === "anthropic") {
-      return {
-        anthropic: {
-          thinking: {
-            type: "enabled" as const,
-            budgetTokens: 10000,
-          },
-        },
-      };
-    }
-
-    return undefined;
-  }
-
   async resolveToolsForAgent(agentId: string, userId: string): Promise<{ key: string; name: string; description: string; source: ToolSource }[]> {
-    const agentService = getAgentService();
-    const agent = await agentService.getById(agentId, userId);
-    if (!agent) return [];
+    const loaded = await this.loadAgentWithConfig(agentId, userId);
+    if (!loaded) return [];
+    const { agent, agentConfig, toolFilter } = loaded;
 
-    let agentConfig: AgentConfigWithTools | null = null;
-    if (agent.agentConfigId) {
-      const agentConfigService = getAgentConfigService();
-      agentConfig = await agentConfigService.getById(agent.agentConfigId, userId);
-    }
-
-    let toolFilter: ToolFilter | undefined;
-    if (agentConfig) {
-      const mcpServerIds = agentConfig.tools.filter(t => t.toolType === "mcp").map(t => t.toolRef);
-      const builtinModuleIds = agentConfig.tools.filter(t => t.toolType === "builtin").map(t => t.toolRef);
-      const delegateAgentIds = agentConfig.tools.filter(t => t.toolType === "delegate").map(t => t.toolRef);
-      toolFilter = {
-        ...(mcpServerIds.length > 0 ? { allowedMcpServerIds: mcpServerIds } : {}),
-        ...(builtinModuleIds.length > 0 ? { allowedBuiltinModuleIds: builtinModuleIds } : {}),
-        ...(delegateAgentIds.length > 0 ? { allowedDelegateAgentIds: delegateAgentIds } : {}),
-      };
-    }
-
-    await initializeToolRegistry();
-    const mcpProvider = getMcpProvider();
-    if (mcpProvider) await mcpProvider.refreshServers();
+    await this.initializeTools();
 
     const registry = getToolRegistry();
     const registeredTools = await registry.getAllTools(toolFilter);
@@ -409,7 +465,7 @@ export class ChatService {
     if (agentConfig) {
       const delegateTools = await generateDelegateTools(agentConfig, agent.sessionId, userId, agentId);
       for (const dt of delegateTools) {
-        const key = `delegate__${dt.source.type === "delegate" ? (dt.source as DelegateToolSource).configId : "unknown"}__${dt.name}`;
+        const key = this.buildDelegateToolKey(dt);
         result.push({ key, name: dt.name, description: dt.description, source: dt.source });
       }
     }
@@ -417,7 +473,7 @@ export class ChatService {
     return result;
   }
 
-  async finalizeChat(agentId: string, userId: string): Promise<ChatFinishResult> {
+  private async finalizeChat(agentId: string, userId: string): Promise<ChatFinishResult> {
     try {
       const agentService = getAgentService();
       const agent = await agentService.getById(agentId, userId);
@@ -435,6 +491,42 @@ export class ChatService {
         error: error instanceof Error ? error.message : "Failed to finalize chat",
       };
     }
+  }
+
+  private buildToolFilter(agentConfig: AgentConfigWithTools): ToolFilter | undefined {
+    const mcpServerIds = agentConfig.tools.filter(t => t.toolType === "mcp").map(t => t.toolRef);
+    const builtinModuleIds = agentConfig.tools.filter(t => t.toolType === "builtin").map(t => t.toolRef);
+    const delegateAgentIds = agentConfig.tools.filter(t => t.toolType === "delegate").map(t => t.toolRef);
+
+    const filter: ToolFilter = {
+      ...(mcpServerIds.length > 0 ? { allowedMcpServerIds: mcpServerIds } : {}),
+      ...(builtinModuleIds.length > 0 ? { allowedBuiltinModuleIds: builtinModuleIds } : {}),
+      ...(delegateAgentIds.length > 0 ? { allowedDelegateAgentIds: delegateAgentIds } : {}),
+    };
+
+    return Object.keys(filter).length > 0 ? filter : undefined;
+  }
+
+  private buildDelegateToolKey(dt: { name: string; source: ToolSource }): string {
+    const configId = dt.source.type === "delegate" ? (dt.source as DelegateToolSource).configId : "unknown";
+    return `delegate__${configId}__${dt.name}`;
+  }
+
+  private extractTextContent(msg: IncomingChatMessage): string {
+    if (typeof msg.content === "string") return msg.content;
+    if (Array.isArray(msg.parts)) {
+      return msg.parts
+        .filter((part) => part.type === "text")
+        .map((part) => part.text ?? "")
+        .join("");
+    }
+    return "";
+  }
+
+  private async persistUserMessage(agentId: string, sessionId: string, content: string, userId: string): Promise<void> {
+    const itemService = getItemService();
+    await itemService.createMessage(agentId, "user", content, userId);
+    await getSessionService().maybeGenerateTitle(sessionId, content, userId);
   }
 
   private async touchSession(sessionId: string, userId: string): Promise<void> {

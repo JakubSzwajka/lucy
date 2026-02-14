@@ -10,7 +10,7 @@ import {
 import { extractPlanFromMessages } from "./usePlanStream";
 import type { Plan } from "@/components/plan";
 import type { UIMessage, ChatStatus } from "ai";
-import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents } from "@/types";
+import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents, ChildSessionSummary } from "@/types";
 
 interface UseSessionChatOptions {
   sessionId: string | null;
@@ -25,6 +25,7 @@ interface UseSessionChatReturn {
   messages: ChatMessage[];
   items: Item[];
   agent: Agent | null;
+  childSessions: ChildSessionSummary[];
   streamPlan: Plan | null;
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   isLoading: boolean;
@@ -40,6 +41,7 @@ export function useSessionChat({
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadedItems, setLoadedItems] = useState<Item[]>([]);
   const [agent, setAgent] = useState<Agent | null>(null);
+  const [childSessions, setChildSessions] = useState<ChildSessionSummary[]>([]);
 
   const prevSessionIdRef = useRef<string | null>(null);
   const modelRef = useRef(model);
@@ -111,6 +113,7 @@ export function useSessionChat({
             data.agents?.find((a) => a.id === data.rootAgentId) ||
             data.agents?.[0];
           setAgent(rootAgent || null);
+          setChildSessions(data.childSessions || []);
 
           // Get items from root agent
           const rootItems = rootAgent?.items || [];
@@ -137,6 +140,7 @@ export function useSessionChat({
       setMessages([]);
       setLoadedItems([]);
       setAgent(null);
+      setChildSessions([]);
       setIsInitialized(true);
     }
   }, [sessionId, setMessages]);
@@ -171,6 +175,7 @@ export function useSessionChat({
     messages,
     items,
     agent,
+    childSessions,
     streamPlan,
     sendMessage,
     isLoading,

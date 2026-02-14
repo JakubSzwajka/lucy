@@ -1,4 +1,4 @@
-import type { LanguageModel } from "ai";
+import type { LanguageModel, StreamTextResult } from "ai";
 import type { ModelConfig, Agent } from "@/types";
 
 // ============================================================================
@@ -36,6 +36,15 @@ export interface ChatContext {
 }
 
 /**
+ * Incoming chat message from the client (loose shape from AI SDK frontend)
+ */
+export interface IncomingChatMessage {
+  role: string;
+  content?: string;
+  parts?: { type: string; text?: string }[];
+}
+
+/**
  * Model message format for streamText
  */
 export interface ModelMessage {
@@ -50,3 +59,23 @@ export interface ChatFinishResult {
   success: boolean;
   error?: string;
 }
+
+/**
+ * Options for runAgent — discriminated union on streaming mode
+ */
+export type RunAgentOptions = {
+  sessionId: string;
+  modelId?: string;
+  thinkingEnabled?: boolean;
+} & (
+  | { streaming: true }
+  | { streaming: false; maxTurns?: number }
+);
+
+/**
+ * Result of runAgent — discriminated union matching options
+ */
+export type RunAgentResult =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { streaming: true; stream: StreamTextResult<any, any> }
+  | { streaming: false; result: string; reachedMaxTurns: boolean };
