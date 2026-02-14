@@ -114,9 +114,15 @@ export class PostgresMemoryStore implements MemoryStore {
   }
 
   async searchMemories(userId: string, query: string, opts?: SearchOptions): Promise<Memory[]> {
+    // Split query into individual words and OR-match each (case-insensitive)
+    const words = query.split(/\s+/).filter((w) => w.length > 0);
+    const wordConditions = words.length > 0
+      ? words.map((w) => ilike(memories.content, `%${w}%`))
+      : [ilike(memories.content, `%${query}%`)];
+
     const conditions = [
       eq(memories.userId, userId),
-      ilike(memories.content, `%${query}%`),
+      or(...wordConditions)!,
     ];
 
     if (opts?.minConfidence !== undefined) {
