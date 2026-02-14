@@ -45,7 +45,7 @@ export function SessionItem({
   return (
     <div
       className={cn(
-        "group p-4 border-b border-border cursor-pointer transition-colors",
+        "group px-4 py-2.5 border-b border-border cursor-pointer transition-colors",
         isActive
           ? "bg-background-secondary/50"
           : "hover:bg-background-secondary/30"
@@ -59,7 +59,10 @@ export function SessionItem({
         </span>
       </div>
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium truncate flex-1 pr-2">
+        <div className="text-sm font-medium truncate flex-1 pr-2 flex items-center gap-1.5">
+          {session.agentConfigId && (
+            <span className="w-2 h-2 rounded-full bg-foreground/40 flex-shrink-0" />
+          )}
           {session.title}
         </div>
         <button

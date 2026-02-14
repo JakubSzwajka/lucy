@@ -35,10 +35,12 @@ interface RegisteredToolInfo {
   name: string;
   description: string;
   source: {
-    type: "mcp" | "builtin";
+    type: "mcp" | "builtin" | "delegate";
     serverId?: string;
     serverName?: string;
     moduleId?: string;
+    configId?: string;
+    configName?: string;
   };
 }
 
@@ -66,6 +68,8 @@ interface ChatInputProps {
   thinkingEnabled: boolean;
   onThinkingChange: (enabled: boolean) => void;
   supportsThinking: boolean;
+  // Session context
+  sessionId?: string | null;
   // MCP props
   mcpServers?: McpServer[];
   enabledMcpServers?: McpServerStatus[];
@@ -87,6 +91,7 @@ function ChatInputInner({
   thinkingEnabled,
   onThinkingChange,
   supportsThinking,
+  sessionId,
   mcpServers = [],
   enabledMcpServers = [],
   onMcpToggle,
@@ -105,13 +110,15 @@ function ChatInputInner({
     }
   }, [prefillNonce, prefillText, textInput]);
 
-  // Fetch registered tools
+  // Fetch registered tools (session-aware when sessionId is available)
   useEffect(() => {
-    api.request<{ tools: RegisteredToolInfo[] }>("/api/tools")
-      .then((data) => setTools(data.tools || []))
-      .catch(() => setTools([]))
-      .finally(() => setIsToolsLoading(false));
-  }, []);
+    let cancelled = false;
+    const url = sessionId ? `/api/tools?sessionId=${sessionId}` : "/api/tools";
+    api.request<{ tools: RegisteredToolInfo[] }>(url)
+      .then((data) => { if (!cancelled) { setTools(data.tools || []); setIsToolsLoading(false); } })
+      .catch(() => { if (!cancelled) { setTools([]); setIsToolsLoading(false); } });
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   // MCP helpers
   const enabledMcpIds = new Set(enabledMcpServers.map((s) => s.serverId));
@@ -287,6 +294,24 @@ function ChatInputInner({
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium">{tool.name}</span>
                           <span className="text-xs text-muted-darkest">({tool.source.serverName || tool.source.serverId})</span>
+                        </div>
+                        <div className="text-xs text-muted-dark line-clamp-1">{tool.description}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {tools.filter((t) => t.source.type === "delegate").length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 border-b border-border mb-1 mt-1">
+                      <span className="text-xs text-muted-dark uppercase tracking-wide">
+                        Delegate ({tools.filter((t) => t.source.type === "delegate").length})
+                      </span>
+                    </div>
+                    {tools.filter((t) => t.source.type === "delegate").map((tool) => (
+                      <div key={tool.key} className="px-2 py-1.5 hover:bg-background-secondary rounded transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{tool.name}</span>
+                          <span className="text-xs text-muted-darkest">({tool.source.configName || tool.source.configId})</span>
                         </div>
                         <div className="text-xs text-muted-dark line-clamp-1">{tool.description}</div>
                       </div>

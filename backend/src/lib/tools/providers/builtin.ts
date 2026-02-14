@@ -19,7 +19,12 @@ export class BuiltinToolProvider implements ToolProvider {
   readonly name = "builtin";
   private tools: ToolDefinition[] = [];
 
-  async getTools(): Promise<ToolDefinition[]> {
+  async getTools(filter?: { allowedModuleIds?: string[] }): Promise<ToolDefinition[]> {
+    if (filter?.allowedModuleIds) {
+      return this.tools.filter(
+        (t) => t.source.type === "builtin" && filter.allowedModuleIds!.includes(t.source.moduleId)
+      );
+    }
     return this.tools;
   }
 

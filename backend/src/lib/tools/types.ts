@@ -16,7 +16,13 @@ export interface BuiltinToolSource {
   moduleId: string; // e.g., "notes", "filesystem"
 }
 
-export type ToolSource = McpToolSource | BuiltinToolSource;
+export interface DelegateToolSource {
+  type: "delegate";
+  configId: string;
+  configName: string;
+}
+
+export type ToolSource = McpToolSource | BuiltinToolSource | DelegateToolSource;
 
 // ============================================================================
 // Tool Execution Context
@@ -76,6 +82,15 @@ export interface ToolDefinition<
 }
 
 // ============================================================================
+// Tool Filter
+// ============================================================================
+
+export interface ToolFilter {
+  allowedMcpServerIds?: string[];
+  allowedBuiltinModuleIds?: string[];
+}
+
+// ============================================================================
 // Tool Provider Interface
 // ============================================================================
 
@@ -83,7 +98,7 @@ export interface ToolProvider {
   readonly name: string;
 
   // Get all tools from this provider
-  getTools(): Promise<ToolDefinition[]>;
+  getTools(filter?: { allowedServerIds?: string[]; allowedModuleIds?: string[] }): Promise<ToolDefinition[]>;
 
   // Optional: Check if provider is available/connected
   isAvailable?(): Promise<boolean>;

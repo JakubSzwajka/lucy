@@ -29,5 +29,9 @@ export const queryKeys = {
     active: ["identity"] as const,
     history: ["identity", "history"] as const,
   },
+  agentConfigs: {
+    all: ["agentConfigs"] as const,
+    detail: (id: string) => ["agentConfigs", id] as const,
+  },
   memorySettings: ["memorySettings"] as const,
 };

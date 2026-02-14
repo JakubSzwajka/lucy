@@ -1,3 +1,5 @@
+import type { AgentConfigWithTools, AgentConfigCreate, AgentConfigUpdate } from "@/types";
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -194,6 +196,33 @@ class APIClient {
       method: "PATCH",
       body: JSON.stringify(input),
     });
+  }
+
+  // Agent Configs
+  async listAgentConfigs() {
+    return this.request<AgentConfigWithTools[]>("/api/agent-configs");
+  }
+
+  async getAgentConfig(id: string) {
+    return this.request<AgentConfigWithTools>(`/api/agent-configs/${id}`);
+  }
+
+  async createAgentConfig(input: AgentConfigCreate) {
+    return this.request<AgentConfigWithTools>("/api/agent-configs", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateAgentConfig(id: string, input: AgentConfigUpdate) {
+    return this.request<AgentConfigWithTools>(`/api/agent-configs/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deleteAgentConfig(id: string) {
+    return this.request<void>(`/api/agent-configs/${id}`, { method: "DELETE" });
   }
 
   async confirmExtraction(input: {

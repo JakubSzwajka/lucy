@@ -8,6 +8,7 @@ export interface Session {
   id: string;
   userId: string;
   rootAgentId?: string | null;
+  agentConfigId?: string | null;
   title: string;
   status: SessionStatus;
   createdAt: Date;
@@ -16,6 +17,7 @@ export interface Session {
 
 export interface SessionCreate {
   title?: string;
+  agentConfigId?: string;
 }
 
 export interface SessionUpdate {
@@ -33,6 +35,7 @@ export interface Agent {
   id: string;
   sessionId: string;
   parentId?: string | null;
+  agentConfigId: string;
   sourceCallId?: string | null;
   name: string;
   task?: string | null;
@@ -51,6 +54,7 @@ export interface Agent {
 
 export interface AgentCreate {
   sessionId: string;
+  agentConfigId: string;
   parentId?: string;
   sourceCallId?: string;
   name: string;
@@ -271,6 +275,77 @@ export interface QuickActionUpdate {
   icon?: string | null;
   sortOrder?: number;
   enabled?: boolean;
+}
+
+// ============================================================================
+// AGENT CONFIG TYPES
+// ============================================================================
+
+export type AgentConfigToolType = "mcp" | "builtin" | "delegate";
+
+export interface AgentConfig {
+  id: string;
+  userId: string;
+  name: string;
+  description: string | null;
+  systemPromptId: string | null;
+  systemPromptOverride: string | null;
+  defaultModelId: string | null;
+  maxTurns: number;
+  icon: string | null;
+  color: string | null;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AgentConfigTool {
+  id: string;
+  agentConfigId: string;
+  toolType: AgentConfigToolType;
+  toolRef: string;
+  toolName: string | null;
+  toolDescription: string | null;
+}
+
+export interface AgentConfigWithTools extends AgentConfig {
+  tools: AgentConfigTool[];
+}
+
+export interface AgentConfigCreate {
+  name: string;
+  description?: string;
+  systemPromptId?: string;
+  systemPromptOverride?: string;
+  defaultModelId?: string;
+  maxTurns?: number;
+  icon?: string;
+  color?: string;
+  isDefault?: boolean;
+  tools?: {
+    type: AgentConfigToolType;
+    ref: string;
+    toolName?: string;
+    toolDescription?: string;
+  }[];
+}
+
+export interface AgentConfigUpdate {
+  name?: string;
+  description?: string | null;
+  systemPromptId?: string | null;
+  systemPromptOverride?: string | null;
+  defaultModelId?: string | null;
+  maxTurns?: number;
+  icon?: string | null;
+  color?: string | null;
+  isDefault?: boolean;
+  tools?: {
+    type: AgentConfigToolType;
+    ref: string;
+    toolName?: string;
+    toolDescription?: string;
+  }[];
 }
 
 // ============================================================================

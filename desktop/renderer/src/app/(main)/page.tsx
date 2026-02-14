@@ -21,7 +21,7 @@ export default function ChatPage() {
           <h2 className="text-xl font-medium mb-2 tracking-tight">Welcome to Lucy</h2>
           <p className="text-sm text-muted-dark mb-6">Create a new session to get started.</p>
           <button
-            onClick={handleNewChat}
+            onClick={() => handleNewChat()}
             className="btn-ship"
           >
             New Session

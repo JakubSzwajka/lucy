@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     agentName: body.agentName,
     systemPrompt: body.systemPrompt,
     model: body.model,
+    agentConfigId: body.agentConfigId,
   });
 
   if (result.error) {

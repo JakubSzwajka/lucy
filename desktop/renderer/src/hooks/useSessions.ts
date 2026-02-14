@@ -26,10 +26,10 @@ export function useSessions() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (title?: string) => {
+    mutationFn: async (params?: { title?: string; agentConfigId?: string }) => {
       const data = await api.request<Record<string, unknown>>("/api/sessions", {
         method: "POST",
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title: params?.title, agentConfigId: params?.agentConfigId }),
       });
       return parseSession(data);
     },
@@ -53,9 +53,9 @@ export function useSessions() {
   });
 
   const createSession = useCallback(
-    async (title?: string) => {
+    async (title?: string, agentConfigId?: string) => {
       try {
-        return await createMutation.mutateAsync(title);
+        return await createMutation.mutateAsync({ title, agentConfigId });
       } catch (error) {
         console.error("[Sessions] Failed to create:", error);
         return null;

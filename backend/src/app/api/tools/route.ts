@@ -1,22 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/middleware";
 import { getToolRegistry, initializeToolRegistry } from "@/lib/tools";
+import { getChatService } from "@/lib/services/chat/chat.service";
+import { getSessionService } from "@/lib/services/session";
 
 /**
  * GET /api/tools
- * List all registered tools from all providers.
+ * List registered tools. Optionally pass ?sessionId=xxx to resolve
+ * session-specific tools (filtered by agent config + delegate tools).
  */
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
+  const { userId } = authResult.user;
 
-  // Ensure registry is initialized
+  const sessionId = request.nextUrl.searchParams.get("sessionId");
+
+  if (sessionId) {
+    const sessionService = getSessionService();
+    const session = await sessionService.getById(sessionId, userId);
+    if (!session || !session.rootAgentId) {
+      return NextResponse.json({ tools: [] });
+    }
+
+    const chatService = getChatService();
+    const tools = await chatService.resolveToolsForAgent(session.rootAgentId, userId);
+    return NextResponse.json({ tools });
+  }
+
+  // Fallback: return all tools unfiltered
   await initializeToolRegistry();
-
   const registry = getToolRegistry();
   const allTools = await registry.getAllTools();
 
-  // Return simplified tool info for the UI
   const tools = allTools.map(({ key, definition }) => ({
     key,
     name: definition.name,

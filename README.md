@@ -18,7 +18,7 @@ npm rebuild better-sqlite3   # Rebuild native module
 npm run dev                  # Starts Electron + Next.js on port 8888
 ```
 
-The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_API_URL` in `renderer/.env.local` to change the backend URL.
+The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_API_URL` in `desktop/renderer/.env.local` to change the backend URL.
 
 ## Architecture
 
@@ -127,15 +127,34 @@ flowchart LR
     McpTools --> McpServers
 ```
 
+### Documentation Architecture (Lego Modules)
+
+The backend is documented as composable modules at multiple levels.
+
+- Each backend module directory has its own short `README.md`.
+- A module README describes only its own stable contract: purpose, public API, and how to use it.
+- Orchestration-layer READMEs do not explain child internals; they link downward instead.
+- To go deeper, follow the next README in the module graph.
+
+Start from:
+
+- `backend/README.md`
+- `backend/src/lib/README.md`
+- `backend/src/app/api/README.md`
+
 ## Module Map
 
 | Module | Path | Description |
 |--------|------|-------------|
-| [Electron Main](main/README.md) | `main/` | Main process, IPC, window management, preload bridge |
-| [App Layer](renderer/src/app/README.md) | `renderer/src/app/` | Next.js pages and API routes |
-| [Components](renderer/src/components/README.md) | `renderer/src/components/` | React UI components (chat, sidebar, settings) |
-| [Hooks](renderer/src/hooks/README.md) | `renderer/src/hooks/` | React hooks for state, streaming, and async data |
-| [Library](renderer/src/lib/README.md) | `renderer/src/lib/` | Core library: AI, database, services, tools, integrations |
+| [Backend Root](backend/README.md) | `backend/` | Backend overview and module-doc contract |
+| [Backend Source](backend/src/README.md) | `backend/src/` | Layer map across routes, services, and capabilities |
+| [Backend API Layer](backend/src/app/api/README.md) | `backend/src/app/api/` | Route groups and boundary rules |
+| [Backend Library](backend/src/lib/README.md) | `backend/src/lib/` | Capability + orchestration module map |
+| [Desktop Main](desktop/main/README.md) | `desktop/main/` | Electron main process, IPC, window management |
+| [Desktop App Layer](desktop/renderer/src/app/README.md) | `desktop/renderer/src/app/` | Next.js frontend app routes/layout |
+| [Desktop Components](desktop/renderer/src/components/README.md) | `desktop/renderer/src/components/` | React UI components |
+| [Desktop Hooks](desktop/renderer/src/hooks/README.md) | `desktop/renderer/src/hooks/` | Data/state hooks |
+| [Desktop Library](desktop/renderer/src/lib/README.md) | `desktop/renderer/src/lib/` | Frontend infrastructure (API client, services, tools) |
 
 ## Commands
 

@@ -25,6 +25,7 @@ function parseAgentRecord(record: AgentRecord): Agent {
     id: record.id,
     sessionId: record.sessionId,
     parentId: record.parentId,
+    agentConfigId: record.agentConfigId,
     sourceCallId: record.sourceCallId,
     name: record.name,
     task: record.task,
@@ -142,6 +143,7 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
     await db.insert(agents).values({
       id,
       userId,
+      agentConfigId: data.agentConfigId,
       sessionId: data.sessionId,
       parentId: data.parentId || null,
       sourceCallId: data.sourceCallId || null,

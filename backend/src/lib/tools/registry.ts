@@ -7,6 +7,7 @@ import type {
   ToolSource,
   RegisteredTool,
   ToolRegistryOptions,
+  ToolFilter,
 } from "./types";
 
 // ============================================================================
@@ -63,7 +64,7 @@ export class ToolRegistry {
   // Tool Discovery
   // -------------------------------------------------------------------------
 
-  async getAllTools(): Promise<RegisteredTool[]> {
+  async getAllTools(filter?: ToolFilter): Promise<RegisteredTool[]> {
     const allTools: RegisteredTool[] = [];
 
     // Gather tools from all providers
@@ -75,7 +76,17 @@ export class ToolRegistry {
           if (!available) continue;
         }
 
-        const providerTools = await provider.getTools();
+        // Build provider-specific filter
+        let providerFilter: { allowedServerIds?: string[]; allowedModuleIds?: string[] } | undefined;
+        if (filter) {
+          if (provider.name === "mcp" && filter.allowedMcpServerIds) {
+            providerFilter = { allowedServerIds: filter.allowedMcpServerIds };
+          } else if (provider.name === "builtin" && filter.allowedBuiltinModuleIds) {
+            providerFilter = { allowedModuleIds: filter.allowedBuiltinModuleIds };
+          }
+        }
+
+        const providerTools = await provider.getTools(providerFilter);
         for (const def of providerTools) {
           const key = this.getToolKey(def.source, def.name);
           allTools.push({ key, definition: def });
@@ -110,9 +121,10 @@ export class ToolRegistry {
   // -------------------------------------------------------------------------
 
   async toAiSdkTools(
-    contextPartial: Omit<ToolExecutionContext, "callId" | "getState" | "setState">
+    contextPartial: Omit<ToolExecutionContext, "callId" | "getState" | "setState">,
+    filter?: ToolFilter
   ): Promise<Record<string, ReturnType<typeof tool>>> {
-    const allTools = await this.getAllTools();
+    const allTools = await this.getAllTools(filter);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: Record<string, any> = {};
 
@@ -285,6 +297,8 @@ export class ToolRegistry {
         return `mcp__${source.serverId}__${name}`;
       case "builtin":
         return `builtin__${source.moduleId}__${name}`;
+      case "delegate":
+        return `delegate__${source.configId}__${name}`;
     }
   }
 

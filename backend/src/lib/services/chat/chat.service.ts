@@ -12,12 +12,16 @@ import {
 } from "@/lib/tools";
 import { EnvironmentContextService } from "./environment-context.service";
 import { getAgentService } from "../agent";
+import { getAgentConfigService } from "../agent-config";
 import { getSessionService } from "../session";
 import { getItemService } from "../item";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, ModelMessage, ChatFinishResult } from "./types";
-import type { Agent, ModelConfig } from "@/types";
+import type { Agent, AgentConfigWithTools, ModelConfig } from "@/types";
+import type { ToolFilter } from "@/lib/tools";
+import type { ToolSource, DelegateToolSource } from "@/lib/tools/types";
+import { generateDelegateTools } from "@/lib/tools/delegate";
 import { getContextRetrievalService } from "@/lib/memory/context-retrieval.service";
 
 // ============================================================================
@@ -145,14 +149,42 @@ export class ChatService {
       return null;
     }
 
-    const effectiveModelId = modelId || agent.model;
+    // Load agent config for tool filtering and resolution
+    let agentConfig: AgentConfigWithTools | null = null;
+    if (agent.agentConfigId) {
+      const agentConfigService = getAgentConfigService();
+      agentConfig = await agentConfigService.getById(agent.agentConfigId, userId);
+    }
+
+    // Build tool filter from agent config
+    let toolFilter: ToolFilter | undefined;
+    if (agentConfig) {
+      console.log(agentConfig.tools);
+      const mcpServerIds = agentConfig.tools
+        .filter(t => t.toolType === "mcp")
+        .map(t => t.toolRef);
+      const builtinModuleIds = agentConfig.tools
+        .filter(t => t.toolType === "builtin")
+        .map(t => t.toolRef);
+      const delegateAgentIds = agentConfig.tools
+        .filter(t => t.toolType === "delegate")
+        .map(t => t.toolRef);
+
+      toolFilter = {
+        ...(mcpServerIds.length > 0 ? { allowedMcpServerIds: mcpServerIds } : {}),
+        ...(builtinModuleIds.length > 0 ? { allowedBuiltinModuleIds: builtinModuleIds } : {}),
+        ...(delegateAgentIds.length > 0 ? { allowedDelegateAgentIds: delegateAgentIds } : {}),
+      };
+    }
+
+    const effectiveModelId = modelId || agent.model || agentConfig?.defaultModelId;
     if (!effectiveModelId) {
       throw new Error("No model ID provided");
     }
     const modelConfig = getModelConfig(effectiveModelId) || DEFAULT_MODEL;
     const languageModel = getLanguageModel(modelConfig);
 
-    let systemPrompt = await this.resolveSystemPrompt(agent, userId);
+    let systemPrompt = await this.resolveSystemPrompt(agent, userId, agentConfig);
 
     // Inject memory context after system prompt
     try {
@@ -194,7 +226,35 @@ export class ChatService {
       agentId,
       sessionId: agent.sessionId,
       userId,
-    });
+    }, toolFilter);
+
+    // Add delegate tools if agent config has delegate entries
+    if (agentConfig) {
+      const delegateTools = await generateDelegateTools(agentConfig, agent.sessionId, userId, agentId);
+      if (delegateTools.length > 0) {
+        const { tool: aiTool } = await import("ai");
+        for (const dt of delegateTools) {
+          const key = `delegate__${dt.source.type === "delegate" ? dt.source.configId : "unknown"}__${dt.name}`;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (tools as any)[key] = aiTool({
+            description: dt.description,
+            inputSchema: dt.inputSchema,
+            execute: async (args: Record<string, unknown>) => {
+              const context = {
+                agentId,
+                sessionId: agent.sessionId,
+                userId,
+                callId: crypto.randomUUID(),
+                getState: () => undefined,
+                setState: () => {},
+              };
+              return dt.execute(args as never, context);
+            },
+          });
+        }
+      }
+    }
+
 
     await agentService.update(agentId, {
       status: "running",
@@ -215,9 +275,18 @@ export class ChatService {
     };
   }
 
-  async resolveSystemPrompt(agent: Agent, userId: string): Promise<string | null> {
+  async resolveSystemPrompt(agent: Agent, userId: string, agentConfig?: AgentConfigWithTools | null): Promise<string | null> {
     if (agent.systemPrompt) {
       return agent.systemPrompt;
+    }
+
+    if (agentConfig?.systemPromptOverride) {
+      return agentConfig.systemPromptOverride;
+    }
+    if (agentConfig?.systemPromptId) {
+      const systemPromptService = getSystemPromptService();
+      const prompt = await systemPromptService.getById(agentConfig.systemPromptId, userId);
+      if (prompt?.content) return prompt.content;
     }
 
     return this.getDefaultSystemPrompt(userId);
@@ -298,6 +367,54 @@ export class ChatService {
     }
 
     return undefined;
+  }
+
+  async resolveToolsForAgent(agentId: string, userId: string): Promise<{ key: string; name: string; description: string; source: ToolSource }[]> {
+    const agentService = getAgentService();
+    const agent = await agentService.getById(agentId, userId);
+    if (!agent) return [];
+
+    let agentConfig: AgentConfigWithTools | null = null;
+    if (agent.agentConfigId) {
+      const agentConfigService = getAgentConfigService();
+      agentConfig = await agentConfigService.getById(agent.agentConfigId, userId);
+    }
+
+    let toolFilter: ToolFilter | undefined;
+    if (agentConfig) {
+      const mcpServerIds = agentConfig.tools.filter(t => t.toolType === "mcp").map(t => t.toolRef);
+      const builtinModuleIds = agentConfig.tools.filter(t => t.toolType === "builtin").map(t => t.toolRef);
+      const delegateAgentIds = agentConfig.tools.filter(t => t.toolType === "delegate").map(t => t.toolRef);
+      toolFilter = {
+        ...(mcpServerIds.length > 0 ? { allowedMcpServerIds: mcpServerIds } : {}),
+        ...(builtinModuleIds.length > 0 ? { allowedBuiltinModuleIds: builtinModuleIds } : {}),
+        ...(delegateAgentIds.length > 0 ? { allowedDelegateAgentIds: delegateAgentIds } : {}),
+      };
+    }
+
+    await initializeToolRegistry();
+    const mcpProvider = getMcpProvider();
+    if (mcpProvider) await mcpProvider.refreshServers();
+
+    const registry = getToolRegistry();
+    const registeredTools = await registry.getAllTools(toolFilter);
+
+    const result: { key: string; name: string; description: string; source: ToolSource }[] = registeredTools.map(({ key, definition }) => ({
+      key,
+      name: definition.name,
+      description: definition.description,
+      source: definition.source,
+    }));
+
+    if (agentConfig) {
+      const delegateTools = await generateDelegateTools(agentConfig, agent.sessionId, userId, agentId);
+      for (const dt of delegateTools) {
+        const key = `delegate__${dt.source.type === "delegate" ? (dt.source as DelegateToolSource).configId : "unknown"}__${dt.name}`;
+        result.push({ key, name: dt.name, description: dt.description, source: dt.source });
+      }
+    }
+
+    return result;
   }
 
   async finalizeChat(agentId: string, userId: string): Promise<ChatFinishResult> {

@@ -18,6 +18,7 @@ function parseSessionRecord(record: SessionRecord): Session {
     id: record.id,
     userId: record.userId,
     rootAgentId: record.rootAgentId,
+    agentConfigId: record.agentConfigId,
     title: record.title,
     status: record.status as SessionStatus,
     createdAt: record.createdAt,
@@ -48,7 +49,7 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
   /**
    * Create a new session with a root agent
    */
-  async create(data: SessionCreate & { agentName?: string; systemPrompt?: string; model?: string }, userId: string): Promise<Session> {
+  async create(data: SessionCreate & { agentName?: string; systemPrompt?: string; model?: string; agentConfigId?: string }, userId: string): Promise<Session> {
     const sessionId = uuidv4();
     const agentId = uuidv4();
 
@@ -58,6 +59,7 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
       userId,
       title: data.title || "New Chat",
       rootAgentId: agentId,
+      agentConfigId: data.agentConfigId || null,
     });
 
     // Create root agent for the session
@@ -68,6 +70,7 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
       name: data.agentName || "assistant",
       systemPrompt: data.systemPrompt || null,
       model: data.model || null,
+      agentConfigId: data.agentConfigId || null,
       status: "pending",
     });
 

@@ -87,6 +87,10 @@ export type {
   ContextItem,
 } from "./conversation-search";
 
+// Agent Config Service
+export { AgentConfigService, getAgentConfigService } from "./agent-config";
+export { AgentConfigRepository, getAgentConfigRepository } from "./agent-config";
+
 // Memory Service
 export { MemoryService, getMemoryService } from "@/lib/memory";
 export type {

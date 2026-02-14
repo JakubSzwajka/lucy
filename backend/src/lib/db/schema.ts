@@ -2,6 +2,51 @@ import { pgTable, text, integer, boolean, timestamp, jsonb, index, uniqueIndex, 
 import { sql } from "drizzle-orm";
 
 // ============================================================================
+// AGENT CONFIGS - Reusable agent configuration templates
+// ============================================================================
+
+export const agentConfigToolTypeEnum = ["mcp", "builtin", "delegate"] as const;
+
+export const agentConfigs = pgTable("agent_configs", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  systemPromptId: text("system_prompt_id")
+    .references(() => systemPrompts.id, { onDelete: "set null" }),
+  systemPromptOverride: text("system_prompt_override"),
+  defaultModelId: text("default_model_id"),
+  maxTurns: integer("max_turns").notNull().default(25),
+  icon: text("icon"),
+  color: text("color"),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => [
+  index("agent_configs_user_idx").on(table.userId),
+]);
+
+export const agentConfigTools = pgTable("agent_config_tools", {
+  id: text("id").primaryKey(),
+  agentConfigId: text("agent_config_id")
+    .notNull()
+    .references(() => agentConfigs.id, { onDelete: "cascade" }),
+  toolType: text("tool_type", { enum: agentConfigToolTypeEnum }).notNull(),
+  toolRef: text("tool_ref").notNull(),
+  toolName: text("tool_name"),
+  toolDescription: text("tool_description"),
+}, (table) => [
+  index("agent_config_tools_config_idx").on(table.agentConfigId),
+  uniqueIndex("agent_config_tools_unique_idx").on(table.agentConfigId, table.toolType, table.toolRef),
+]);
+
+// ============================================================================
 // USERS - Multi-user support
 // ============================================================================
 
@@ -28,6 +73,10 @@ export const sessions = pgTable("sessions", {
 
   // Points to the orchestrating agent for this session
   rootAgentId: text("root_agent_id"),
+
+  // Optional agent config template used for this session
+  agentConfigId: text("agent_config_id")
+    .references(() => agentConfigs.id, { onDelete: "set null" }),
 
   // Display
   title: text("title").notNull().default("New Chat"),
@@ -67,6 +116,11 @@ export const agents = pgTable("agents", {
 
   // If spawned by a tool call, which one?
   sourceCallId: text("source_call_id"),
+
+  // Optional agent config template used for this agent
+  agentConfigId: text("agent_config_id")
+    .notNull()
+    .references(() => agentConfigs.id, { onDelete: "cascade" }),
 
   // Task definition
   name: text("name").notNull(), // e.g., "orchestrator", "researcher", "coder"
@@ -662,3 +716,10 @@ export type NewIdentityDocument = typeof identityDocuments.$inferInsert;
 
 export type MemorySettingsRecord = typeof memorySettings.$inferSelect;
 export type NewMemorySettings = typeof memorySettings.$inferInsert;
+
+export type AgentConfigRecord = typeof agentConfigs.$inferSelect;
+export type NewAgentConfig = typeof agentConfigs.$inferInsert;
+
+export type AgentConfigToolRecord = typeof agentConfigTools.$inferSelect;
+export type NewAgentConfigTool = typeof agentConfigTools.$inferInsert;
+export type AgentConfigToolType = (typeof agentConfigToolTypeEnum)[number];

@@ -1,5 +1,6 @@
 import { SessionRepository, getSessionRepository } from "./session.repository";
 import { getAgentService } from "../agent/agent.service";
+import { getAgentConfigService } from "../agent-config";
 import type { Session, SessionCreate, SessionUpdate, SessionWithAgents } from "@/types";
 
 // ============================================================================
@@ -10,6 +11,7 @@ export interface CreateSessionOptions extends SessionCreate {
   agentName?: string;
   systemPrompt?: string;
   model?: string;
+  agentConfigId?: string;
 }
 
 export interface CreateSessionResult {
@@ -82,7 +84,33 @@ export class SessionService {
    * Create a new session with root agent
    */
   async create(userId: string, data: CreateSessionOptions = {}): Promise<CreateSessionResult> {
-    const session = await this.repository.create(data, userId);
+    let agentConfigId = data.agentConfigId;
+    let agentName = data.agentName;
+
+    // Validate explicit agentConfigId
+    if (agentConfigId) {
+      const config = await getAgentConfigService().getById(agentConfigId, userId);
+      if (!config) {
+        return { error: "Agent config not found" };
+      }
+      if (!agentName) {
+        agentName = config.name;
+      }
+    } else {
+      // Fall back to user's default config
+      const defaultConfig = await getAgentConfigService().getDefault(userId);
+      if (defaultConfig) {
+        agentConfigId = defaultConfig.id;
+        if (!agentName) {
+          agentName = defaultConfig.name;
+        }
+      }
+    }
+
+    const session = await this.repository.create(
+      { ...data, agentConfigId, agentName },
+      userId
+    );
     return { session };
   }
 

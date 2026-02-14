@@ -3,6 +3,7 @@ export {
   type ToolSource,
   type McpToolSource,
   type BuiltinToolSource,
+  type DelegateToolSource,
   type ToolExecutionContext,
   type ChildAgentConfig,
   type ToolDefinition,
@@ -10,6 +11,7 @@ export {
   type ToolExecutionResult,
   type RegisteredTool,
   type ToolRegistryOptions,
+  type ToolFilter,
   type ToolModule,
   type AnyToolModule,
   defineTool,
@@ -30,6 +32,9 @@ export {
   notesModule,
   memoryModule,
 } from "./modules";
+
+// Delegate Tools
+export { generateDelegateTools } from "./delegate";
 
 // Persistence utilities
 export {

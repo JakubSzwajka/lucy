@@ -1,14 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { SessionItem } from "./SessionItem";
+import { AgentConfigPicker } from "@/components/agent-config-picker/AgentConfigPicker";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import type { Session } from "@/types";
 
-const COMMAND_CENTER_NAV = [
+interface NavItem {
+  href: string;
+  label: string;
+  matchPrefix: string;
+  icon: React.ReactNode;
+  children?: NavItem[];
+}
+
+const COMMAND_CENTER_NAV: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -32,23 +43,45 @@ const COMMAND_CENTER_NAV = [
   },
   {
     href: "/settings/models",
-    label: "Models",
+    label: "Agents",
     matchPrefix: "/settings/models",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
-  },
-  {
-    href: "/settings/prompts",
-    label: "System Prompts",
-    matchPrefix: "/settings/prompts",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    ),
+    children: [
+      {
+        href: "/settings/models",
+        label: "Models",
+        matchPrefix: "/settings/models",
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        ),
+      },
+      {
+        href: "/settings/prompts",
+        label: "System Prompts",
+        matchPrefix: "/settings/prompts",
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        ),
+      },
+      {
+        href: "/settings/agent-configs",
+        label: "Agent Configs",
+        matchPrefix: "/settings/agent-configs",
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        ),
+      },
+    ],
   },
   {
     href: "/settings/quick-actions",
@@ -86,7 +119,7 @@ interface SidebarProps {
   sessions: Session[];
   activeSessionId: string | null;
   onSelectSession: (id: string) => void;
-  onNewChat: () => void;
+  onNewChat: (agentConfigId?: string) => void;
   onDeleteSession: (id: string) => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -104,6 +137,9 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { configs } = useAgentConfigs();
+  const [showConfigPicker, setShowConfigPicker] = useState(false);
+  const [agentsExpanded, setAgentsExpanded] = useState(true);
   const isOnSettings = pathname?.startsWith("/settings");
   const isOnDashboard = pathname?.startsWith("/dashboard");
   const isOnChat = !isOnSettings && !isOnDashboard;
@@ -116,10 +152,24 @@ export function Sidebar({
   };
 
   const handleNewChatClick = () => {
-    onNewChat();
-    if (!isOnChat) {
-      router.push("/");
+    if (configs.length === 0) {
+      // No configs yet — create session without config (first-time user)
+      onNewChat();
+      if (!isOnChat) router.push("/");
+    } else if (configs.length === 1) {
+      // Single config — auto-select it
+      onNewChat(configs[0].id);
+      if (!isOnChat) router.push("/");
+    } else {
+      // Multiple configs — show picker
+      setShowConfigPicker(true);
     }
+  };
+
+  const handleConfigSelect = (configId: string) => {
+    setShowConfigPicker(false);
+    onNewChat(configId);
+    if (!isOnChat) router.push("/");
   };
 
   return (
@@ -217,28 +267,34 @@ export function Sidebar({
             </button>
           </div>
         ) : (
-          <div className="flex bg-background rounded-lg p-0.5">
+          <div className="flex bg-background rounded-md p-0.5">
             <button
               onClick={() => router.push("/")}
               className={cn(
-                "flex-1 px-3 py-1.5 text-xs mono uppercase tracking-wide rounded-md transition-colors",
+                "flex-1 px-2 py-1 text-[10px] mono uppercase tracking-wide rounded flex items-center justify-center gap-1.5 transition-colors",
                 isOnChat
                   ? "bg-background-secondary text-foreground"
                   : "text-muted-dark hover:text-foreground"
               )}
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
               Chat
             </button>
             <button
               onClick={() => router.push("/dashboard")}
               className={cn(
-                "flex-1 px-3 py-1.5 text-xs mono uppercase tracking-wide rounded-md transition-colors",
+                "flex-1 px-2 py-1 text-[10px] mono uppercase tracking-wide rounded flex items-center justify-center gap-1.5 transition-colors",
                 !isOnChat
                   ? "bg-background-secondary text-foreground"
                   : "text-muted-dark hover:text-foreground"
               )}
             >
-              Command Center
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+              </svg>
+              Command
             </button>
           </div>
         )}
@@ -319,22 +375,97 @@ export function Sidebar({
           <div className="flex-1 overflow-y-auto">
             <nav className={collapsed ? "flex flex-col items-center py-2 gap-1" : "flex flex-col py-2"}>
               {COMMAND_CENTER_NAV.map((item) => {
+                const hasChildren = item.children && item.children.length > 0;
+                const childActive = hasChildren && item.children!.some(c => pathname?.startsWith(c.matchPrefix));
+                const isExpanded = hasChildren && (agentsExpanded || childActive);
+
+                if (collapsed) {
+                  if (hasChildren) {
+                    return item.children!.map((child) => {
+                      const isActive = pathname?.startsWith(child.matchPrefix);
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn(
+                            "w-10 h-10 rounded flex items-center justify-center transition-colors",
+                            isActive
+                              ? "bg-background text-foreground"
+                              : "text-muted-dark hover:text-foreground hover:bg-background/50"
+                          )}
+                          title={child.label}
+                        >
+                          {child.icon}
+                        </Link>
+                      );
+                    });
+                  }
+                  const isActive = pathname?.startsWith(item.matchPrefix);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "w-10 h-10 rounded flex items-center justify-center transition-colors",
+                        isActive
+                          ? "bg-background text-foreground"
+                          : "text-muted-dark hover:text-foreground hover:bg-background/50"
+                      )}
+                      title={item.label}
+                    >
+                      {item.icon}
+                    </Link>
+                  );
+                }
+
+                if (hasChildren) {
+                  return (
+                    <div key={item.label}>
+                      <button
+                        onClick={() => setAgentsExpanded(!agentsExpanded)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors",
+                          childActive
+                            ? "text-foreground"
+                            : "text-muted-dark hover:text-foreground hover:bg-background/50"
+                        )}
+                      >
+                        {item.icon}
+                        <span className="flex-1 text-left">{item.label}</span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                      {isExpanded && item.children!.map((child) => {
+                        const isActive = pathname?.startsWith(child.matchPrefix);
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            className={cn(
+                              "flex items-center gap-3 pl-8 pr-4 py-2 text-sm transition-colors",
+                              isActive
+                                ? "bg-background text-foreground"
+                                : "text-muted-dark hover:text-foreground hover:bg-background/50"
+                            )}
+                          >
+                            {child.icon}
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
                 const isActive = pathname?.startsWith(item.matchPrefix);
-                return collapsed ? (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "w-10 h-10 rounded flex items-center justify-center transition-colors",
-                      isActive
-                        ? "bg-background text-foreground"
-                        : "text-muted-dark hover:text-foreground hover:bg-background/50"
-                    )}
-                    title={item.label}
-                  >
-                    {item.icon}
-                  </Link>
-                ) : (
+                return (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -399,6 +530,13 @@ export function Sidebar({
             </div>
           )}
         </div>
+      )}
+      {showConfigPicker && (
+        <AgentConfigPicker
+          configs={configs}
+          onSelect={handleConfigSelect}
+          onClose={() => setShowConfigPicker(false)}
+        />
       )}
     </aside>
   );

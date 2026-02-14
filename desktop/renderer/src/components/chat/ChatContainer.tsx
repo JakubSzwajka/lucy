@@ -144,6 +144,7 @@ export function ChatContainer({
           thinkingEnabled={thinkingEnabled}
           onThinkingChange={setThinkingEnabled}
           supportsThinking={supportsThinking}
+          sessionId={sessionId}
           mcpServers={mcpServers}
           enabledMcpServers={enabledMcpServers}
           onMcpToggle={toggleMcpServer}

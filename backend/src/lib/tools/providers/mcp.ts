@@ -30,7 +30,7 @@ export class McpToolProvider implements ToolProvider {
     return this.initialized && this.enabledServers.length > 0;
   }
 
-  async getTools(): Promise<ToolDefinition[]> {
+  async getTools(filter?: { allowedServerIds?: string[] }): Promise<ToolDefinition[]> {
     // Ensure servers are connected
     if (!this.initialized) {
       await this.initialize();
@@ -40,6 +40,11 @@ export class McpToolProvider implements ToolProvider {
     const tools: ToolDefinition[] = [];
 
     for (const serverId of pool.getConnectedServerIds()) {
+      // Skip servers not in the allowed list when filter is provided
+      if (filter?.allowedServerIds && !filter.allowedServerIds.includes(serverId)) {
+        continue;
+      }
+
       const wrapper = pool.getClient(serverId);
       if (!wrapper) continue;
 

@@ -19,7 +19,7 @@ interface MainContextType {
   setActiveSessionId: (id: string | null) => void;
   setSelectedModel: (model: string) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  handleNewChat: () => Promise<void>;
+  handleNewChat: (agentConfigId?: string) => Promise<void>;
 }
 
 const MainContext = createContext<MainContextType | null>(null);
@@ -97,11 +97,10 @@ export default function MainLayout({
     }
   }, [sessions, activeSessionId]);
 
-  const handleNewChat = useCallback(async () => {
-    const newSession = await createSession();
+  const handleNewChat = useCallback(async (agentConfigId?: string) => {
+    const newSession = await createSession(undefined, agentConfigId);
     if (newSession) {
       setActiveSessionId(newSession.id);
-      // The root agent ID will be set via the useEffect above
     }
   }, [createSession]);
 

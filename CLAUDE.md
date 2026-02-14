@@ -4,6 +4,15 @@
 
 Lucy is an **AI assistant** that runs as both a **desktop app** (Electron + Next.js) and a **cloud backend** (standalone Next.js API server). The two stacks share the same business logic. The desktop frontend connects to the cloud backend via an authenticated API client.
 
+## Documentation Architecture (Lego Rule)
+
+The backend is documented as composable modules with local READMEs.
+
+- Each backend module directory should have a short `README.md`.
+- A module README documents only its own contract (purpose, public API, usage).
+- Orchestration-layer docs should not explain child internals; they should link to child READMEs.
+- Use this hierarchy as a navigation graph: API routes -> services -> capabilities/integrations -> storage.
+
 ```
 lucy-nextjs/
 ├── desktop/                 # Desktop app (Electron + Next.js frontend)
