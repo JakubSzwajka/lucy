@@ -6,6 +6,12 @@ Lucy is an **AI assistant** that runs as both a **desktop app** (Electron + Next
 
 ## Documentation Architecture (Lego Rule)
 
+**Start here when exploring the codebase:**
+- `docs/data-flows.md` — end-to-end request flows (chat, session creation, delegation, config resolution)
+- `backend/src/lib/README.md` — backend module graph entry point
+- `backend/src/app/api/README.md` — API route index
+- `docs/DOCUMENTATION-TEMPLATE.md` — template for new module READMEs
+
 The backend is documented as composable modules with local READMEs.
 
 - Each backend module directory should have a short `README.md`.
