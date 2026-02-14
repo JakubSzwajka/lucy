@@ -20,3 +20,8 @@ const rows = await db.select().from(sessions);
 
 This module defines storage shape and access primitive.
 Business semantics belong in repository/service/capability modules.
+
+## Read Next
+
+- [Services Layer](../services/README.md) — business logic that queries these tables
+- [Auth Module](../auth/README.md) — user authentication (JWT, middleware)

@@ -29,3 +29,4 @@ They should call capability modules and repositories, but callers should not nee
 - `session/README.md`
 - `plan/README.md`
 - `config/README.md`
+- `agent-config/README.md`

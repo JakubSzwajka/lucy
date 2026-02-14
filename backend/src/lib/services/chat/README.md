@@ -17,3 +17,9 @@ This service handles message persistence, tool setup, memory/env context injecti
 
 This module orchestrates a full turn.
 It should not expose provider/integration internals to route handlers.
+
+## Read Next
+
+- `../agent-config/README.md`
+- `../../ai/README.md`
+- `../../tools/README.md`

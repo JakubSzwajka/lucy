@@ -13,6 +13,7 @@ npm run db:push              # Initialize database schema
 npm run dev                  # Starts on port 3001
 
 # Terminal 2: Start desktop app
+cd desktop
 npm install
 npm rebuild better-sqlite3   # Rebuild native module
 npm run dev                  # Starts Electron + Next.js on port 8888
@@ -25,8 +26,8 @@ The frontend at :8888 makes API calls to the backend at :3001. Set `NEXT_PUBLIC_
 Lucy has two stacks: a desktop app (Electron + Next.js) and a cloud backend (standalone Next.js API server). The desktop frontend connects to the cloud backend via an authenticated API client.
 
 ```
-Electron (main/)
-  └── Next.js UI (renderer/src/app/)
+Electron (desktop/main/)
+  └── Next.js UI (desktop/renderer/src/app/)
         ├── Pages ─── use hooks ─── compose components
         └── Hooks ─── API Client ─── Cloud Backend (backend/) ─── Services ─── DB
 ```

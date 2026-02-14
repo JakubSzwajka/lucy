@@ -21,5 +21,7 @@ Each directory README explains only that directory's contract.
 ## Read Next
 
 - `services/README.md`
-- `memory/README.md`
+- `ai/README.md`
 - `tools/README.md`
+- `memory/README.md`
+- `integrations/README.md`

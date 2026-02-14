@@ -20,3 +20,10 @@ Each module defines:
 
 Define tool behavior and schemas.
 Do not manage provider discovery/registry lifecycle here.
+
+## Read Next
+
+- `memory/README.md`
+- `notes/README.md`
+- `continuity/README.md`
+- `plan/README.md`

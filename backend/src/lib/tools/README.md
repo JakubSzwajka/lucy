@@ -22,3 +22,4 @@ Business logic for each tool belongs to module implementations.
 
 - `modules/README.md`
 - `providers/README.md`
+- `delegate/README.md`
