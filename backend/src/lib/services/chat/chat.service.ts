@@ -20,7 +20,7 @@ import { startActiveObservation, propagateAttributes, updateActiveTrace } from "
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingChatMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
 import type { MessageItem, Agent, AgentConfigWithTools } from "@/types";
 import type { ToolFilter } from "@/lib/tools";
-import type { ToolSource, DelegateToolSource } from "@/lib/tools/types";
+import type { ToolSource } from "@/lib/tools/types";
 import { generateDelegateTools } from "@/lib/tools/delegate";
 import { getContextRetrievalService } from "@/lib/memory/context-retrieval.service";
 
@@ -342,9 +342,8 @@ export class ChatService {
       if (delegateTools.length > 0) {
         const { tool: aiTool } = await import("ai");
         for (const dt of delegateTools) {
-          const key = this.buildDelegateToolKey(dt);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (tools as any)[key] = aiTool({
+          (tools as any)[dt.name] = aiTool({
             description: dt.description,
             inputSchema: dt.inputSchema,
             execute: async (args: Record<string, unknown>) => {
@@ -463,8 +462,7 @@ export class ChatService {
     if (agentConfig) {
       const delegateTools = await generateDelegateTools(agentConfig, agent.sessionId, userId, agentId);
       for (const dt of delegateTools) {
-        const key = this.buildDelegateToolKey(dt);
-        result.push({ key, name: dt.name, description: dt.description, source: dt.source });
+        result.push({ key: dt.name, name: dt.name, description: dt.description, source: dt.source });
       }
     }
 
@@ -505,10 +503,6 @@ export class ChatService {
     return Object.keys(filter).length > 0 ? filter : undefined;
   }
 
-  private buildDelegateToolKey(dt: { name: string; source: ToolSource }): string {
-    const configId = dt.source.type === "delegate" ? (dt.source as DelegateToolSource).configId : "unknown";
-    return `delegate__${configId}__${dt.name}`;
-  }
 
   private extractTextContent(msg: IncomingChatMessage): string {
     if (typeof msg.content === "string") return msg.content;
