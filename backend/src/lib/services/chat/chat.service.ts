@@ -198,8 +198,7 @@ export class ChatService {
                       agentId,
                       tc.toolCallId,
                       tc.toolName,
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (tc as any).args as Record<string, unknown> | undefined,
+                      tc.input as Record<string, unknown> | undefined,
                       "completed",
                     );
                   }
@@ -207,8 +206,7 @@ export class ChatService {
                     await itemService.createToolResult(
                       agentId,
                       tr.toolCallId,
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (tr as any).result,
+                      tr.output,
                     );
                   }
                 }

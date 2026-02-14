@@ -23,18 +23,24 @@ interface ToolCallPart {
   type: "tool-call";
   toolCallId: string;
   toolName: string;
-  args: Record<string, unknown>;
+  input: Record<string, unknown>;
 }
 
 interface ToolResultPart {
   type: "tool-result";
   toolCallId: string;
   toolName: string;
-  result: unknown;
-  isError?: boolean;
+  output: unknown;
 }
 
-type ContentPart = TextPart | ReasoningPart | ToolCallPart | ToolResultPart;
+interface ToolErrorPart {
+  type: "tool-error";
+  toolCallId: string;
+  toolName: string;
+  error: unknown;
+}
+
+type ContentPart = TextPart | ReasoningPart | ToolCallPart | ToolResultPart | ToolErrorPart;
 
 interface ReasoningBlock {
   text?: string;
@@ -117,30 +123,31 @@ export async function persistStepContent(
           });
           textAccumulator = "";
         }
-        // Save tool call
+        // Save tool call (AI SDK uses `input`, not `args`)
         await saveToolCall(
           agentId,
           part.toolCallId,
           part.toolName,
-          part.args,
+          part.input,
           "running"
         );
         break;
 
       case "tool-result":
-        // Save tool result and update status
-        if (part.isError) {
-          await saveToolResult(
-            agentId,
-            part.toolCallId,
-            undefined,
-            String(part.result)
-          );
-          await updateToolCallStatus(part.toolCallId, "failed");
-        } else {
-          await saveToolResult(agentId, part.toolCallId, part.result);
-          await updateToolCallStatus(part.toolCallId, "completed");
-        }
+        // Save tool result and update status (AI SDK uses `output`, not `result`)
+        await saveToolResult(agentId, part.toolCallId, part.output);
+        await updateToolCallStatus(part.toolCallId, "completed");
+        break;
+
+      case "tool-error":
+        // Save tool error and update status
+        await saveToolResult(
+          agentId,
+          part.toolCallId,
+          undefined,
+          String(part.error)
+        );
+        await updateToolCallStatus(part.toolCallId, "failed");
         break;
     }
   }
