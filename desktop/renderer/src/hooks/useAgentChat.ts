@@ -9,7 +9,7 @@ import {
 } from "@/lib/utils/item-transformer";
 import { extractPlanFromMessages } from "./usePlanStream";
 import type { Plan } from "@/components/plan";
-import type { UIMessage, ChatStatus } from "ai";
+import type { UIMessage, ChatStatus, FileUIPart } from "ai";
 import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents, ChildSessionSummary } from "@/types";
 
 interface UseSessionChatOptions {
@@ -19,6 +19,7 @@ interface UseSessionChatOptions {
 
 interface SendMessageOptions {
   thinkingEnabled?: boolean;
+  files?: FileUIPart[];
 }
 
 interface UseSessionChatReturn {
@@ -165,8 +166,16 @@ export function useSessionChat({
       // Update thinking preference for this message
       thinkingEnabledRef.current = options?.thinkingEnabled ?? true;
 
-      // Just send to AI - server saves user message
-      chatSendMessage({ text: content });
+      // Send with file parts if present
+      if (options?.files && options.files.length > 0) {
+        const parts: Array<{ type: "text"; text: string } | FileUIPart> = [
+          ...options.files,
+          ...(content ? [{ type: "text" as const, text: content }] : []),
+        ];
+        chatSendMessage({ parts });
+      } else {
+        chatSendMessage({ text: content });
+      }
     },
     [sessionId, chatSendMessage]
   );

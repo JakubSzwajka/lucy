@@ -344,9 +344,24 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
   };
 
   if (isUser) {
+    const fileParts = message.parts?.filter((p) => p.type === "file") as (ContentPart & { type: "file" })[] | undefined;
     return (
       <Message from="user">
         <MessageContent>
+          {fileParts && fileParts.length > 0 && (
+            <div className="flex gap-2 flex-wrap mb-2">
+              {fileParts.map((fp) => (
+                fp.mediaType?.startsWith("image/") ? (
+                  <img
+                    key={fp.id}
+                    src={fp.url}
+                    alt="attached image"
+                    className="max-h-48 max-w-xs rounded-md border border-border object-contain"
+                  />
+                ) : null
+              ))}
+            </div>
+          )}
           {hasContent && <MessageResponse>{message.content}</MessageResponse>}
         </MessageContent>
         <div className="label-sm mr-1">

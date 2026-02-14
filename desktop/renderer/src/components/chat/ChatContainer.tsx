@@ -10,6 +10,7 @@ import { useStreamEvents } from "@/hooks/useStreamEvents";
 import { useMcpStatus } from "@/hooks/useMcpStatus";
 import { usePlan } from "@/hooks/usePlan";
 import { getModelConfig } from "@/lib/ai/models";
+import type { FileUIPart } from "ai";
 import type { AvailableProviders } from "@/types";
 
 interface ChatContainerProps {
@@ -64,10 +65,10 @@ export function ChatContainer({
     setThinkingEnabled(supportsThinking);
   }, [supportsThinking]);
 
-  // Wrap sendMessage to include thinking preference
+  // Wrap sendMessage to include thinking preference and files
   const handleSendMessage = useCallback(
-    (content: string) => {
-      sendMessage(content, { thinkingEnabled });
+    (content: string, files?: FileUIPart[]) => {
+      sendMessage(content, { thinkingEnabled, files });
     },
     [sendMessage, thinkingEnabled]
   );

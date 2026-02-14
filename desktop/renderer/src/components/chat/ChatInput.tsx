@@ -5,12 +5,15 @@ import {
   PromptInput,
   PromptInputProvider,
   PromptInputTextarea,
+  PromptInputHeader,
   PromptInputFooter,
   PromptInputTools,
   PromptInputSubmit,
   PromptInputButton,
   usePromptInputController,
+  usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
+import type { FileUIPart } from "ai";
 import {
   ModelSelector as ModelSelectorRoot,
   ModelSelectorTrigger,
@@ -28,7 +31,8 @@ import { api } from "@/lib/api/client";
 import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
 import { AVAILABLE_MODELS, getModelConfig } from "@/lib/ai/models";
 import type { ChatMessage, ModelConfig, AvailableProviders, McpServer, McpServerStatus } from "@/types";
-import { ChevronDown, Lightbulb, Wrench, Server, Loader2 } from "lucide-react";
+import { ChevronDown, Lightbulb, Wrench, Server, Loader2, Paperclip, X } from "lucide-react";
+import { compressImageDataUrl } from "@/lib/utils/image-compress";
 
 interface RegisteredToolInfo {
   key: string;
@@ -53,7 +57,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 interface ChatInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, files?: FileUIPart[]) => void;
   prefillText?: string;
   prefillNonce?: number;
   isLoading?: boolean;
@@ -75,6 +79,52 @@ interface ChatInputProps {
   enabledMcpServers?: McpServerStatus[];
   onMcpToggle?: (serverId: string, enabled: boolean) => void;
   isMcpLoading?: boolean;
+}
+
+function AttachmentPreview() {
+  const attachments = usePromptInputAttachments();
+  if (attachments.files.length === 0) return null;
+
+  return (
+    <PromptInputHeader className="px-3 pt-3 pb-1">
+      <div className="flex gap-2 flex-wrap">
+        {attachments.files.map((file) => (
+          <div key={file.id} className="relative group">
+            {file.mediaType?.startsWith("image/") && file.url ? (
+              <img
+                src={file.url}
+                alt={file.filename || "attachment"}
+                className="h-16 w-16 object-cover rounded-md border border-border"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-md border border-border flex items-center justify-center bg-muted text-xs text-muted-foreground">
+                {file.filename?.split(".").pop() || "file"}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => attachments.remove(file.id)}
+              className="absolute -top-1.5 -right-1.5 bg-background border border-border rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </PromptInputHeader>
+  );
+}
+
+function AttachmentButton() {
+  const attachments = usePromptInputAttachments();
+  return (
+    <PromptInputButton
+      onClick={() => attachments.openFileDialog()}
+      className="gap-1.5 text-muted-foreground hover:text-foreground"
+    >
+      <Paperclip className="size-3.5" />
+    </PromptInputButton>
+  );
 }
 
 function ChatInputInner({
@@ -141,10 +191,23 @@ function ChatInputInner({
     return getContextUsage(tokens, modelConfig.maxContextTokens);
   }, [messages, modelConfig]);
 
-  const handleSubmit = ({ text }: { text: string }) => {
-    if (text.trim()) {
-      onSend(text.trim());
-    }
+  const handleSubmit = async ({ text, files }: { text: string; files: FileUIPart[] }) => {
+    const hasText = text.trim().length > 0;
+    const hasFiles = files.length > 0;
+    if (!hasText && !hasFiles) return;
+
+    // Compress large images before sending
+    const compressedFiles = await Promise.all(
+      files.map(async (f) => {
+        if (f.mediaType?.startsWith("image/") && f.url) {
+          const compressed = await compressImageDataUrl(f.url, f.mediaType);
+          return { ...f, url: compressed };
+        }
+        return f;
+      })
+    );
+
+    onSend(text.trim(), compressedFiles.length > 0 ? compressedFiles : undefined);
   };
 
   // Model selector logic
@@ -181,8 +244,11 @@ function ChatInputInner({
     <div className="p-6 border-t border-border bg-background">
       <PromptInput
         onSubmit={handleSubmit}
+        accept="image/*"
+        multiple
         className="border border-border rounded-lg focus-within:border-muted-darker transition-all bg-background-secondary/20"
       >
+        <AttachmentPreview />
         <PromptInputTextarea
           placeholder="Type a message or command..."
           disabled={isLoading}
@@ -190,6 +256,9 @@ function ChatInputInner({
         />
         <PromptInputFooter className="px-2 pb-2">
           <PromptInputTools>
+            {/* Attachment Button */}
+            <AttachmentButton />
+
             {/* Model Selector */}
             <ModelSelectorRoot open={modelSelectorOpen} onOpenChange={setModelSelectorOpen}>
               <ModelSelectorTrigger asChild>

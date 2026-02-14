@@ -93,7 +93,12 @@ export class ChatService {
     const hasTools = Object.keys(context.tools).length > 0;
     const agentName = context.agent.name || "assistant";
 
-    const userInputText = [...messages].reverse().find(m => m.role === "user")?.content;
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+    const userInputText = lastUserMsg
+      ? typeof lastUserMsg.content === "string"
+        ? lastUserMsg.content
+        : lastUserMsg.content.filter(p => p.type === "text").map(p => (p as { text: string }).text).join("")
+      : undefined;
 
     if (options.streaming) {
       // Streaming mode — returns SSE stream
@@ -423,10 +428,29 @@ export class ChatService {
   }
 
   private convertToModelMessages(chatMessages: IncomingChatMessage[]): ModelMessage[] {
-    return chatMessages.map((msg) => ({
-      role: msg.role as "user" | "assistant" | "system",
-      content: this.extractTextContent(msg),
-    }));
+    return chatMessages.map((msg) => {
+      const role = msg.role as "user" | "assistant" | "system";
+
+      // Check for file parts (images) — build multimodal content array
+      if (Array.isArray(msg.parts)) {
+        const hasFiles = msg.parts.some((p) => p.type === "file");
+        if (hasFiles) {
+          const contentParts: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = [];
+          for (const part of msg.parts) {
+            if (part.type === "text" && part.text) {
+              contentParts.push({ type: "text", text: part.text });
+            } else if (part.type === "file" && part.url) {
+              contentParts.push({ type: "image", image: new URL(part.url) });
+            }
+          }
+          if (contentParts.length > 0) {
+            return { role, content: contentParts } as ModelMessage;
+          }
+        }
+      }
+
+      return { role, content: this.extractTextContent(msg) };
+    });
   }
 
   private prependSystemPrompt(messages: ModelMessage[], systemPrompt: string | null): ModelMessage[] {

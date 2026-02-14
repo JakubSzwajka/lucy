@@ -161,7 +161,14 @@ export interface ToolCallContentPart {
   error?: string;
 }
 
-export type ContentPart = TextContentPart | ReasoningContentPart | ToolCallContentPart;
+export interface FileContentPart {
+  type: "file";
+  id: string;
+  url: string;
+  mediaType: string;
+}
+
+export type ContentPart = TextContentPart | ReasoningContentPart | ToolCallContentPart | FileContentPart;
 
 export interface ChatMessage {
   id: string;

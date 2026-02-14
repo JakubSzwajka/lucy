@@ -41,15 +41,19 @@ export interface ChatContext {
 export interface IncomingChatMessage {
   role: string;
   content?: string;
-  parts?: { type: string; text?: string }[];
+  parts?: { type: string; text?: string; url?: string; mediaType?: string }[];
 }
 
 /**
- * Model message format for streamText
+ * Model message format for streamText — supports text-only or multimodal content
  */
+export type ModelMessageContent =
+  | string
+  | Array<{ type: "text"; text: string } | { type: "image"; image: URL }>;
+
 export interface ModelMessage {
   role: "user" | "assistant" | "system";
-  content: string;
+  content: ModelMessageContent;
 }
 
 /**
