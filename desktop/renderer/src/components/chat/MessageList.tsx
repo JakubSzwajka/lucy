@@ -24,8 +24,18 @@ import {
   ToolContent,
   ToolInput,
   ToolOutput,
+  getStatusBadge,
   type ToolPart,
 } from "@/components/ai-elements/tool";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import {
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  WrenchIcon,
+  XCircleIcon,
+} from "lucide-react";
 import { QuickActions } from "./QuickActions";
 import { api } from "@/lib/api/client";
 import type { ChatMessage, ContentPart, ChildSessionSummary, SessionWithAgents, Item, MessageItem } from "@/types";
@@ -139,6 +149,88 @@ function StreamingIndicator() {
   );
 }
 
+// Compact grouped display for consecutive tool calls
+function ToolCallGroup({ tools }: { tools: (ContentPart & { type: "tool_call" })[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const [expandedToolId, setExpandedToolId] = useState<string | null>(null);
+
+  const allCompleted = tools.every((t) => t.status === "completed");
+  const hasError = tools.some((t) => t.status === "failed");
+  const runningCount = tools.filter((t) => t.status === "running" || t.status === "pending").length;
+
+  const summary = hasError
+    ? "Has errors"
+    : allCompleted
+      ? "All completed"
+      : runningCount > 0
+        ? `${runningCount} running`
+        : "Pending";
+
+  return (
+    <div className="not-prose">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
+      >
+        <WrenchIcon className="size-4" />
+        <span className="font-medium">{tools.length} tool calls</span>
+        <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
+          {hasError ? (
+            <XCircleIcon className="size-4 text-red-600" />
+          ) : allCompleted ? (
+            <CheckCircleIcon className="size-4 text-green-600" />
+          ) : (
+            <ClockIcon className="size-4 animate-pulse" />
+          )}
+          {summary}
+        </Badge>
+        <ChevronDownIcon
+          className={cn(
+            "size-4 transition-transform",
+            expanded && "rotate-180"
+          )}
+        />
+      </button>
+      {expanded && (
+        <div className="mt-1 ml-6 border-l border-border pl-3 space-y-0.5">
+          {tools.map((tp) => {
+            const state = mapToolStatus(tp.status);
+            const isOpen = expandedToolId === tp.id;
+            return (
+              <div key={tp.id}>
+                <button
+                  onClick={() => setExpandedToolId(isOpen ? null : tp.id)}
+                  className="flex items-center gap-2 text-muted-foreground text-xs py-0.5 transition-colors hover:text-foreground w-full"
+                >
+                  <span className="font-medium truncate">{tp.toolName}</span>
+                  {getStatusBadge(state)}
+                  <ChevronDownIcon
+                    className={cn(
+                      "size-3 ml-auto transition-transform",
+                      isOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="mt-1 mb-2 flex gap-2 text-sm [&>*]:flex-1 [&>*]:min-w-0">
+                    {tp.args && Object.keys(tp.args).length > 0 && (
+                      <ToolInput input={tp.args} />
+                    )}
+                    <ToolOutput
+                      output={tp.result ? JSON.parse(tp.result) : undefined}
+                      errorText={tp.error}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface MessageItemProps {
   message: ChatMessage;
   isStreaming?: boolean;
@@ -160,57 +252,87 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
     });
   };
 
-  // Render parts in order (text, reasoning, tool calls)
+  // Render parts in order, grouping consecutive tool calls into compact stacks
   const renderParts = (parts: ContentPart[]) => {
-    return parts.map((part) => {
-      switch (part.type) {
-        case "reasoning":
-          return (
-            <Reasoning
-              key={part.id}
-              isStreaming={isStreaming}
-              defaultOpen={false}
-            >
-              <ReasoningTrigger />
-              <ReasoningContent>{part.content}</ReasoningContent>
-            </Reasoning>
-          );
-        case "tool_call": {
-          // Check if this tool call spawned a child session
-          const childSession = childSessionsByCallId?.get(part.callId);
-          if (childSession) {
-            return <ChildSessionCard key={part.id} childSession={childSession} />;
+    const elements: React.ReactNode[] = [];
+    let i = 0;
+
+    while (i < parts.length) {
+      const part = parts[i];
+
+      if (part.type === "reasoning") {
+        elements.push(
+          <Reasoning
+            key={part.id}
+            isStreaming={isStreaming}
+            defaultOpen={false}
+          >
+            <ReasoningTrigger />
+            <ReasoningContent>{part.content}</ReasoningContent>
+          </Reasoning>
+        );
+        i++;
+      } else if (part.type === "tool_call") {
+        // Collect consecutive tool calls (skip child sessions)
+        const toolGroup: ContentPart[] = [];
+        const childSessionParts: ContentPart[] = [];
+        while (i < parts.length && parts[i].type === "tool_call") {
+          const tp = parts[i] as ContentPart & { type: "tool_call" };
+          if (childSessionsByCallId?.get(tp.callId)) {
+            childSessionParts.push(tp);
+          } else {
+            toolGroup.push(tp);
           }
-          const state = mapToolStatus(part.status);
-          return (
-            <Tool key={part.id}>
-              <ToolHeader
-                type="dynamic-tool"
-                toolName={part.toolName}
-                state={state}
-              />
+          i++;
+        }
+
+        // Render child sessions individually
+        for (const csp of childSessionParts) {
+          const cs = childSessionsByCallId?.get((csp as ContentPart & { type: "tool_call" }).callId);
+          if (cs) elements.push(<ChildSessionCard key={csp.id} childSession={cs} />);
+        }
+
+        // Render tool group
+        if (toolGroup.length === 1) {
+          // Single tool call — render normally
+          const tp = toolGroup[0] as ContentPart & { type: "tool_call" };
+          const state = mapToolStatus(tp.status);
+          elements.push(
+            <Tool key={tp.id}>
+              <ToolHeader type="dynamic-tool" toolName={tp.toolName} state={state} />
               <ToolContent>
-                {part.args && Object.keys(part.args).length > 0 && (
-                  <ToolInput input={part.args} />
+                {tp.args && Object.keys(tp.args).length > 0 && (
+                  <ToolInput input={tp.args} />
                 )}
                 <ToolOutput
-                  output={part.result ? JSON.parse(part.result) : undefined}
-                  errorText={part.error}
+                  output={tp.result ? JSON.parse(tp.result) : undefined}
+                  errorText={tp.error}
                 />
               </ToolContent>
             </Tool>
           );
-        }
-        case "text":
-          return (
-            <MessageResponse key={part.id}>
-              {part.text}
-            </MessageResponse>
+        } else if (toolGroup.length > 1) {
+          // Multiple consecutive tool calls — render as compact group
+          elements.push(
+            <ToolCallGroup
+              key={`tool-group-${toolGroup[0].id}`}
+              tools={toolGroup as (ContentPart & { type: "tool_call" })[]}
+            />
           );
-        default:
-          return null;
+        }
+      } else if (part.type === "text") {
+        elements.push(
+          <MessageResponse key={part.id}>
+            {part.text}
+          </MessageResponse>
+        );
+        i++;
+      } else {
+        i++;
       }
-    });
+    }
+
+    return elements;
   };
 
   if (isUser) {

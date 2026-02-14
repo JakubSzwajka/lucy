@@ -13,12 +13,35 @@ import {
   ChevronDownIcon,
   CircleIcon,
   ClockIcon,
+  CopyIcon,
   WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { isValidElement } from "react";
+import { isValidElement, useCallback, useState } from "react";
 import { CodeBlock } from "./code-block";
+
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [text]);
+  return (
+    <button
+      onClick={handleCopy}
+      className="text-muted-foreground hover:text-foreground transition-colors"
+      title="Copy"
+    >
+      {copied ? (
+        <CheckCircleIcon className="size-3" />
+      ) : (
+        <CopyIcon className="size-3" />
+      )}
+    </button>
+  );
+};
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -114,8 +137,9 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 export const ToolContent = ({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
-      "mt-4 text-sm",
+      "mt-2 text-sm",
       "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+      "flex gap-2 [&>*]:flex-1 [&>*]:min-w-0",
       className
     )}
     {...props}
@@ -127,11 +151,14 @@ export type ToolInputProps = ComponentProps<"div"> & {
 };
 
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
-  <div className={cn("space-y-2 overflow-hidden p-4", className)} {...props}>
-    <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-      Parameters
-    </h4>
-    <div className="rounded-md bg-muted/50">
+  <div className={cn("space-y-1.5 overflow-hidden", className)} {...props}>
+    <div className="flex items-center justify-between">
+      <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        Parameters
+      </h4>
+      <CopyButton text={JSON.stringify(input, null, 2)} />
+    </div>
+    <div className="rounded-md bg-muted/50 max-h-48 overflow-auto">
       <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
     </div>
   </div>
@@ -163,13 +190,23 @@ export const ToolOutput = ({
   }
 
   return (
-    <div className={cn("space-y-2 p-4", className)} {...props}>
-      <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-        {errorText ? "Error" : "Result"}
-      </h4>
+    <div className={cn("space-y-1.5", className)} {...props}>
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+          {errorText ? "Error" : "Result"}
+        </h4>
+        <CopyButton
+          text={
+            errorText ||
+            (typeof output === "object" && !isValidElement(output)
+              ? JSON.stringify(output, null, 2)
+              : String(output ?? ""))
+          }
+        />
+      </div>
       <div
         className={cn(
-          "overflow-x-auto rounded-md text-xs [&_table]:w-full",
+          "overflow-x-auto rounded-md text-xs max-h-48 overflow-auto [&_table]:w-full",
           errorText
             ? "bg-destructive/10 text-destructive"
             : "bg-muted/50 text-foreground"
