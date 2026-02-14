@@ -1,7 +1,11 @@
 import path from "path";
+import dotenv from "dotenv";
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
 import { app, BrowserWindow, ipcMain } from "electron";
 import { createWindow } from "./helpers";
 import { spawn, ChildProcess } from "child_process";
+import { initTts } from "./tts";
 
 const isProd = process.env.NODE_ENV === "production";
 const DEV_SERVER_PORT = process.argv[2] || "8888";
@@ -94,6 +98,8 @@ async function createMainWindow() {
       }
     }, 2000);
   }
+
+  initTts(mainWindow);
 
   mainWindow.on("closed", () => {
     mainWindow = null;

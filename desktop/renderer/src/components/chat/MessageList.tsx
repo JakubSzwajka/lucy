@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, createContext, useContext } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -33,12 +33,19 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ClockIcon,
+  Loader2Icon,
+  Volume2Icon,
+  SquareIcon,
   WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
 import { QuickActions } from "./QuickActions";
 import { api } from "@/lib/api/client";
+import { useTts } from "@/hooks/useTts";
 import type { ChatMessage, ContentPart, ChildSessionSummary, SessionWithAgents, Item, MessageItem } from "@/types";
+
+// TTS context so MessageItem can access it without prop drilling
+const TtsContext = createContext<{ speakingId: string | null; loadingId: string | null; toggle: (id: string, text: string) => void } | null>(null);
 
 // Expandable card showing a child session's conversation
 function ChildSessionCard({ childSession }: { childSession: ChildSessionSummary }) {
@@ -241,6 +248,7 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
   const isUser = message.role === "user";
   const hasParts = message.parts && message.parts.length > 0;
   const hasContent = message.content && message.content.trim().length > 0;
+  const tts = useContext(TtsContext);
 
   const formatTime = (date?: Date | string) => {
     if (!date) return "";
@@ -348,6 +356,21 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
     );
   }
 
+  // Extract full text content for TTS
+  const getMessageText = (): string => {
+    if (hasParts) {
+      return message.parts!
+        .filter((p) => p.type === "text")
+        .map((p) => (p as ContentPart & { type: "text" }).text)
+        .join("\n");
+    }
+    return message.content || "";
+  };
+
+  const isSpeaking = tts?.speakingId === message.id;
+  const isLoading = tts?.loadingId === message.id;
+  const messageText = getMessageText();
+
   // Assistant message
   return (
     <Message from="assistant">
@@ -365,12 +388,29 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
       <div className="label-sm ml-1 flex items-center gap-2">
         DELIVERED{message.createdAt && ` // ${formatTime(message.createdAt)}`}
         {message.model && <span className="text-muted-darker">• {message.model}</span>}
+        {messageText && tts && (
+          <button
+            onClick={() => tts.toggle(message.id, messageText)}
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+            title={isLoading ? "Loading audio..." : isSpeaking ? "Stop speaking" : "Read aloud"}
+          >
+            {isLoading ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : isSpeaking ? (
+              <SquareIcon className="size-3.5" />
+            ) : (
+              <Volume2Icon className="size-3.5" />
+            )}
+          </button>
+        )}
       </div>
     </Message>
   );
 }
 
 export function MessageList({ messages, isLoading, onQuickAction, childSessions }: MessageListProps) {
+  const tts = useTts();
+
   // Build a map from sourceCallId → child session for quick lookup
   const childSessionsByCallId = useMemo(() => {
     const map = new Map<string, ChildSessionSummary>();
@@ -406,6 +446,7 @@ export function MessageList({ messages, isLoading, onQuickAction, childSessions 
   const lastMessage = messages[messages.length - 1];
 
   return (
+    <TtsContext.Provider value={tts}>
     <Conversation>
       <ConversationContent className="p-6 gap-6">
         <SessionDivider />
@@ -435,5 +476,6 @@ export function MessageList({ messages, isLoading, onQuickAction, childSessions 
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>
+    </TtsContext.Provider>
   );
 }
