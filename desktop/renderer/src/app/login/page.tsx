@@ -29,8 +29,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6 p-8">
+    <div
+      className="relative min-h-screen flex items-center justify-center bg-black bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/background.png')" }}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative z-10 w-full max-w-sm space-y-6 p-8 bg-background/80 backdrop-blur-sm rounded-lg">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-foreground">Lucy</h1>
           <p className="mt-2 text-sm text-muted-foreground">
