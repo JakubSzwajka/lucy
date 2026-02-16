@@ -125,8 +125,8 @@ export const ToolHeader = ({
     >
       <ChevronRightIcon className="size-4 shrink-0 transition-transform text-status-online group-data-[state=open]:rotate-90" />
       <span className="font-medium">{title ?? derivedName}</span>
-      {getStatusBadge(state)}
       <div className="h-px flex-1 bg-border" />
+      {getStatusBadge(state)}
     </CollapsibleTrigger>
   );
 };

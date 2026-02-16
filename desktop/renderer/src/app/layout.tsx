@@ -40,6 +40,8 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* macOS window drag region (titleBarStyle: hiddenInset) */}
+        <div className="drag-region fixed top-0 left-0 right-0 h-11 z-[9999]" />
         <Providers>{children}</Providers>
       </body>
     </html>
