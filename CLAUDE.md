@@ -208,6 +208,20 @@ The renderer has no local database or services — all data flows through the AP
 - Use React Context sparingly; prefer Server Components data flow
 - Keep client state minimal and close to where it's used
 
+## Typography Rules
+
+Two fonts, two layers:
+
+1. **Inter (Sans Serif)** — The Human Layer: communication, structural UI, natural language.
+   - Chat message bubbles, sidebar navigation, button labels, headers.
+   - Use: default `font-sans` (no class needed, it's the body default).
+
+2. **JetBrains Mono (Monospace)** — The Machine Layer: data, code, system status, precision elements.
+   - Code blocks, timestamps, metadata labels (WAITING, MEMORY, CTX: 8.9K), keyboard shortcuts (⌘N, ENTER TO SHIP).
+   - Use: `font-mono` class or `.mono`/`.label`/`.label-dark`/`.label-sm` utility classes from globals.css.
+
+**Rule of thumb:** If you are *reading* it (like a story), it's Inter. If you are *parsing* it (like data), it's JetBrains Mono.
+
 ## Code Quality
 
 - Run `npm run lint` and fix all warnings before committing

@@ -10,11 +10,10 @@ import { cn } from "@/lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import {
   CheckCircleIcon,
-  ChevronDownIcon,
+  ChevronRightIcon,
   CircleIcon,
   ClockIcon,
   CopyIcon,
-  WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
@@ -119,15 +118,15 @@ export const ToolHeader = ({
   return (
     <CollapsibleTrigger
       className={cn(
-        "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+        "flex w-full items-center gap-2 font-mono text-muted-foreground text-sm transition-colors hover:text-foreground",
         className
       )}
       {...props}
     >
-      <WrenchIcon className="size-4" />
+      <ChevronRightIcon className="size-4 shrink-0 transition-transform text-status-online group-data-[state=open]:rotate-90" />
       <span className="font-medium">{title ?? derivedName}</span>
       {getStatusBadge(state)}
-      <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+      <div className="h-px flex-1 bg-border" />
     </CollapsibleTrigger>
   );
 };
@@ -153,7 +152,7 @@ export type ToolInputProps = ComponentProps<"div"> & {
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
   <div className={cn("space-y-1.5 overflow-hidden", className)} {...props}>
     <div className="flex items-center justify-between">
-      <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+      <h4 className="font-mono font-medium text-muted-foreground text-xs uppercase tracking-wide">
         Parameters
       </h4>
       <CopyButton text={JSON.stringify(input, null, 2)} />
@@ -192,7 +191,7 @@ export const ToolOutput = ({
   return (
     <div className={cn("space-y-1.5", className)} {...props}>
       <div className="flex items-center justify-between">
-        <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        <h4 className="font-mono font-medium text-muted-foreground text-xs uppercase tracking-wide">
           {errorText ? "Error" : "Result"}
         </h4>
         <CopyButton

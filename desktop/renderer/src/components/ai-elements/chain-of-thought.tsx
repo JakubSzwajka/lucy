@@ -9,8 +9,7 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
-  BrainIcon,
-  ChevronDownIcon,
+  ChevronRightIcon,
   DotIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -87,21 +86,21 @@ export const ChainOfThoughtHeader = memo(
       <Collapsible onOpenChange={setIsOpen} open={isOpen}>
         <CollapsibleTrigger
           className={cn(
-            "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+            "flex w-full items-center gap-2 font-mono text-muted-foreground text-sm transition-colors hover:text-foreground",
             className
           )}
           {...props}
         >
-          <BrainIcon className="size-4" />
-          <span className="flex-1 text-left">
-            {children ?? "Chain of Thought"}
-          </span>
-          <ChevronDownIcon
+          <ChevronRightIcon
             className={cn(
-              "size-4 transition-transform",
-              isOpen ? "rotate-180" : "rotate-0"
+              "size-4 shrink-0 transition-transform text-status-online",
+              isOpen ? "rotate-90" : "rotate-0"
             )}
           />
+          <span className="text-left">
+            {children ?? "Chain of Thought"}
+          </span>
+          <div className="h-px flex-1 bg-border" />
         </CollapsibleTrigger>
       </Collapsible>
     );

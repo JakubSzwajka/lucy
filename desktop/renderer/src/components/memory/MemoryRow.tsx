@@ -68,7 +68,7 @@ export function MemoryRow({ memory, onUpdate, onDelete, isUpdating }: MemoryRowP
         </span>
         <span className="flex-1 text-sm text-foreground truncate">{memory.content}</span>
         <span className="text-xs mono text-muted-dark">{memory.confidenceScore.toFixed(2)}</span>
-        <span className="text-xs text-muted-darker whitespace-nowrap">{timeAgo(memory.createdAt)}</span>
+        <span className="text-xs font-mono text-muted-darker whitespace-nowrap">{timeAgo(memory.createdAt)}</span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className={`h-3 w-3 text-muted-dark transition-transform ${expanded ? "rotate-180" : ""}`}

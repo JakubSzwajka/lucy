@@ -243,7 +243,7 @@ function MemoryDetail({
           </div>
           <div className="flex justify-between">
             <span>Created</span>
-            <span>{timeAgo(memory.createdAt)}</span>
+            <span className="font-mono">{timeAgo(memory.createdAt)}</span>
           </div>
           {(memory.tags?.length ?? 0) > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">

@@ -78,7 +78,7 @@ export function ReflectionIndicator({ sessionId, chatStatus }: ReflectionIndicat
               className="transition-[stroke-dashoffset] duration-500"
             />
           </svg>
-          <span className="tabular-nums">{pct}%</span>
+          <span className="font-mono tabular-nums">{pct}%</span>
         </div>
       )}
 

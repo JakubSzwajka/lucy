@@ -248,7 +248,7 @@ export const WebPreviewConsole = ({
                 )}
                 key={`${log.timestamp.getTime()}-${index}`}
               >
-                <span className="text-muted-foreground">
+                <span className="font-mono text-muted-foreground">
                   {log.timestamp.toLocaleTimeString()}
                 </span>{" "}
                 {log.message}

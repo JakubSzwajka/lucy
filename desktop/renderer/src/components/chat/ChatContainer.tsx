@@ -126,13 +126,13 @@ export function ChatContainer({
         <header className="h-16 border-b border-border flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <div className={`w-2 h-2 rounded-full ${getStatusIndicator()}`} />
-            <div>
+            <div className="flex items-center gap-2">
               <span className="label-dark">AGENT //</span>
-              <span className="text-sm font-medium ml-1 uppercase tracking-tight">
+              <span className="label-dark font-medium">
                 {agent?.name || "Lucy"}
               </span>
               {agent?.status && (
-                <span className="text-xs text-muted-dark ml-2">
+                <span className="label-dark text-muted-darker">
                   [{agent.status}]
                 </span>
               )}
