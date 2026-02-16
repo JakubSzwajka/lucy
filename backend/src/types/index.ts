@@ -228,6 +228,7 @@ export interface UserSettings {
   defaultModelId: string | null;
   defaultSystemPromptId: string | null;
   enabledModels: string[];
+  contextWindowSize: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -236,6 +237,7 @@ export interface SettingsUpdate {
   defaultModelId?: string | null;
   defaultSystemPromptId?: string | null;
   enabledModels?: string[];
+  contextWindowSize?: number;
 }
 
 // ============================================================================

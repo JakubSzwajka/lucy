@@ -26,6 +26,7 @@ export async function PATCH(request: NextRequest) {
     defaultModelId: body.defaultModelId,
     defaultSystemPromptId: body.defaultSystemPromptId,
     enabledModels: body.enabledModels,
+    contextWindowSize: body.contextWindowSize,
   }, userId);
 
   return NextResponse.json(updated);

@@ -344,6 +344,7 @@ export const settings = pgTable("settings", {
   defaultModelId: text("default_model_id"),
   defaultSystemPromptId: text("default_system_prompt_id"),
   enabledModels: text("enabled_models"), // JSON array of model IDs
+  contextWindowSize: integer("context_window_size"), // sliding window: max user messages sent to LLM
   createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),

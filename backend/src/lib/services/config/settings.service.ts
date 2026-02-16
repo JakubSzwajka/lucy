@@ -21,6 +21,7 @@ function parseSettings(record: SettingsRecord): UserSettings {
     enabledModels: record.enabledModels
       ? JSON.parse(record.enabledModels)
       : getAllModelIds(),
+    contextWindowSize: record.contextWindowSize ?? 10,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   };
@@ -76,6 +77,10 @@ export class SettingsService {
 
     if (data.enabledModels !== undefined) {
       updateData.enabledModels = JSON.stringify(data.enabledModels);
+    }
+
+    if (data.contextWindowSize !== undefined) {
+      updateData.contextWindowSize = data.contextWindowSize;
     }
 
     await db.update(settings)

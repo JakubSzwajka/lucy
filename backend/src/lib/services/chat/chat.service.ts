@@ -15,6 +15,7 @@ import { getAgentService } from "../agent";
 import { getAgentConfigService } from "../agent-config";
 import { getSessionService } from "../session";
 import { getItemService } from "../item";
+import { getSettingsService } from "../config/settings.service";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingUserMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
@@ -54,8 +55,10 @@ export class ChatService {
     await this.persistUserMessage(rootAgentId, sessionId, userInputText, userId, contentPartsJson);
 
     // Build model messages from DB (authoritative source)
+    const userSettings = await getSettingsService().get(userId);
     const allItems = await getItemService().getByAgentId(rootAgentId);
-    const modelMessages = this.itemsToModelMessages(allItems);
+    const windowedItems = this.applySlidingWindow(allItems, userSettings.contextWindowSize);
+    const modelMessages = this.itemsToModelMessages(windowedItems);
 
     const runResult = await this.runAgent(rootAgentId, userId, modelMessages, {
       sessionId,
@@ -164,7 +167,8 @@ export class ChatService {
             for (let turn = 0; turn < maxTurns; turn++) {
               // Re-read items each turn to include tool results from previous turns
               const items = await itemService.getByAgentId(agentId);
-              const turnModelMessages = this.itemsToModelMessages(items);
+              const windowedItems = this.applySlidingWindow(items);
+              const turnModelMessages = this.itemsToModelMessages(windowedItems);
               const turnMessages = this.prependSystemPrompt(
                 turnModelMessages,
                 context.systemPrompt,
@@ -425,6 +429,31 @@ export class ChatService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Apply a sliding window based on user message count.
+   * Keeps the last N user messages and everything between/after them.
+   * Items outside the window stay in the DB — they're just not sent to the LLM.
+   */
+  private applySlidingWindow(allItems: import("@/types").Item[], maxUserMessages = 10): import("@/types").Item[] {
+    // Find indices of all user messages
+    const userMessageIndices: number[] = [];
+    for (let i = 0; i < allItems.length; i++) {
+      const item = allItems[i];
+      if (item.type === "message" && item.role === "user") {
+        userMessageIndices.push(i);
+      }
+    }
+
+    // If within the window, send everything
+    if (userMessageIndices.length <= maxUserMessages) {
+      return allItems;
+    }
+
+    // Take from the Nth-from-last user message onwards
+    const cutoffIndex = userMessageIndices[userMessageIndices.length - maxUserMessages];
+    return allItems.slice(cutoffIndex);
   }
 
   /**
