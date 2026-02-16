@@ -269,7 +269,7 @@ const CodeBlockBody = memo(
     return (
       <pre
         className={cn(
-          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4 text-sm dark:brightness-125",
+          "dark:!bg-transparent dark:!text-[var(--shiki-dark)] m-0 px-3 py-3 text-sm dark:brightness-125",
           className
         )}
         style={preStyle}
@@ -307,7 +307,7 @@ export const CodeBlockContainer = ({
 }: HTMLAttributes<HTMLDivElement> & { language: string }) => (
   <div
     className={cn(
-      "group relative w-full overflow-hidden rounded-md border bg-background text-foreground",
+      "group relative w-full overflow-hidden rounded border border-border bg-background-secondary text-foreground",
       className
     )}
     data-language={language}
@@ -327,7 +327,7 @@ export const CodeBlockHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex items-center justify-between bg-muted/80 px-3 py-2 text-muted-foreground text-xs",
+      "flex items-center justify-between bg-muted px-2.5 py-0.5 text-muted-foreground text-[10px]",
       className
     )}
     {...props}
@@ -477,7 +477,7 @@ export const CodeBlockCopyButton = ({
     <Button
       className={cn("shrink-0", className)}
       onClick={copyToClipboard}
-      size="icon"
+      size="icon-sm"
       variant="ghost"
       {...props}
     >

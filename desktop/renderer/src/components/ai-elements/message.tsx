@@ -26,15 +26,38 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
 };
 
-export const Message = ({ className, from, ...props }: MessageProps) => (
+export const Message = ({ className, from, children, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group flex w-full max-w-[95%] flex-col gap-2",
-      from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
+      "group flex w-full flex-row gap-3",
+      from === "user" ? "is-user max-w-[95%] ml-auto justify-end" : "is-assistant",
       className
     )}
     {...props}
-  />
+  >
+    {from === "assistant" && (
+      <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted mt-0.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-status-online">
+          <rect width="18" height="10" x="3" y="11" rx="2" />
+          <circle cx="9" cy="16" r="1" />
+          <circle cx="15" cy="16" r="1" />
+          <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          <path d="M12 3v1" />
+        </svg>
+      </div>
+    )}
+    <div className={cn("flex flex-col gap-2 min-w-0", from === "user" ? "items-end" : "flex-1")}>
+      {children}
+    </div>
+    {from === "user" && (
+      <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-secondary mt-0.5">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      </div>
+    )}
+  </div>
 );
 
 export type MessageContentProps = HTMLAttributes<HTMLDivElement>;
@@ -46,8 +69,9 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
+      "is-user:dark flex min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
+      "group-[.is-assistant]:w-full group-[.is-user]:w-fit",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-input/30 group-[.is-user]:border group-[.is-user]:border-input group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
       "group-[.is-assistant]:text-foreground",
       className
     )}
