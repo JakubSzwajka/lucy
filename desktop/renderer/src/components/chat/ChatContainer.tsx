@@ -8,7 +8,7 @@ import { PlanPanel } from "@/components/plan";
 import { useSessionChat } from "@/hooks/useAgentChat";
 import { useMcpStatus } from "@/hooks/useMcpStatus";
 import { usePlan } from "@/hooks/usePlan";
-import { getModelConfig } from "@/lib/ai/models";
+import { useMainContext } from "@/app/(main)/layout";
 import type { FileUIPart } from "ai";
 import { isTextUIPart } from "ai";
 import type { AvailableProviders } from "@/types";
@@ -28,6 +28,7 @@ export function ChatContainer({
   availableProviders,
   enabledModels,
 }: ChatContainerProps) {
+  const { getModelConfig } = useMainContext();
   const [prefill, setPrefill] = useState<{ text: string; nonce: number } | null>(null);
 
   const { messages, agent, childSessions, streamPlan, sendMessage, isLoading, rawMessages, status } = useSessionChat({

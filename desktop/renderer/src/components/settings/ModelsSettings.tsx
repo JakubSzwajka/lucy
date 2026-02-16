@@ -1,6 +1,6 @@
 "use client";
 
-import { AVAILABLE_MODELS } from "@/lib/ai/models";
+import { useMainContext } from "@/app/(main)/layout";
 import type { UserSettings, SettingsUpdate, AvailableProviders, ModelConfig } from "@/types";
 
 interface ModelsSettingsProps {
@@ -22,6 +22,7 @@ export function ModelsSettings({
   availableProviders,
   onUpdateSettings,
 }: ModelsSettingsProps) {
+  const { models } = useMainContext();
   const enabledModels = new Set(settings.enabledModels);
 
   const isProviderAvailable = (provider: Provider): boolean => {
@@ -29,7 +30,7 @@ export function ModelsSettings({
     return availableProviders[provider];
   };
 
-  const modelsByProvider = AVAILABLE_MODELS.reduce(
+  const modelsByProvider = models.reduce(
     (acc, model) => {
       if (!acc[model.provider]) {
         acc[model.provider] = [];

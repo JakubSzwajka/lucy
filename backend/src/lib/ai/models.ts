@@ -2,6 +2,13 @@ import type { ModelConfig } from "@/types";
 
 export const AVAILABLE_MODELS: ModelConfig[] = [
   {
+    id: "gpt-5.2-2025-12-11",
+    name: "GPT-5.2",
+    provider: "openai",
+    modelId: "gpt-5.2-2025-12-17",
+    maxContextTokens: 128_000,
+  },
+  {
     id: "gpt-4o",
     name: "GPT-4o",
     provider: "openai",

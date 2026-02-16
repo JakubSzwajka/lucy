@@ -33,5 +33,6 @@ export const queryKeys = {
     all: ["agentConfigs"] as const,
     detail: (id: string) => ["agentConfigs", id] as const,
   },
+  models: ["models"] as const,
   memorySettings: ["memorySettings"] as const,
 };

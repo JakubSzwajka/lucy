@@ -5,15 +5,16 @@ import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import { useSystemPrompts } from "@/hooks/useSystemPrompts";
 import { useMcpServers } from "@/hooks/useMcpServers";
 import { useSettings } from "@/hooks/useSettings";
-import { AVAILABLE_MODELS } from "@/lib/ai/models";
+import { useMainContext } from "@/app/(main)/layout";
 
 export default function AgentConfigsSettingsPage() {
   const { configs, isLoading, createConfig, updateConfig, deleteConfig } = useAgentConfigs();
   const { prompts } = useSystemPrompts();
   const { servers } = useMcpServers();
   const { settings } = useSettings();
+  const { models } = useMainContext();
 
-  const enabledModels = AVAILABLE_MODELS.filter(
+  const enabledModels = models.filter(
     (m) => settings?.enabledModels?.includes(m.id)
   );
 

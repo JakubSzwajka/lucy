@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AVAILABLE_MODELS } from "@/lib/ai/models";
+import { useMainContext } from "@/app/(main)/layout";
 import type { UserSettings, SettingsUpdate, SystemPrompt, AvailableProviders } from "@/types";
 
 interface GeneralSettingsProps {
@@ -19,6 +19,7 @@ export function GeneralSettings({
   onUpdateSettings,
   onNavigateToPrompts,
 }: GeneralSettingsProps) {
+  const { models } = useMainContext();
   const [defaultModelId, setDefaultModelId] = useState(settings.defaultModelId || "");
   const [defaultSystemPromptId, setDefaultSystemPromptId] = useState(settings.defaultSystemPromptId || "");
   const [contextWindowSize, setContextWindowSize] = useState(String(settings.contextWindowSize ?? 10));
@@ -65,7 +66,7 @@ export function GeneralSettings({
           onChange={(e) => setDefaultModelId(e.target.value)}
           className="w-full bg-background-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-muted-darker"
         >
-          {AVAILABLE_MODELS.map((model) => {
+          {models.map((model) => {
             const available = isModelAvailable(model.provider);
             return (
               <option

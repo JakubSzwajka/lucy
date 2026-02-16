@@ -7,14 +7,16 @@ import { AuthGuard } from "@/components/auth-guard";
 import { api } from "@/lib/api/client";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
-import { DEFAULT_MODEL, AVAILABLE_MODELS } from "@/lib/ai/models";
-import type { AvailableProviders } from "@/types";
+import { useModels } from "@/hooks/useModels";
+import type { AvailableProviders, ModelConfig } from "@/types";
 
 interface MainContextType {
   activeSessionId: string | null;
   selectedModel: string;
   availableProviders?: AvailableProviders;
   settings: ReturnType<typeof useSettings>["settings"];
+  models: ModelConfig[];
+  getModelConfig: (id: string) => ModelConfig | undefined;
   sidebarCollapsed: boolean;
   setActiveSessionId: (id: string | null) => void;
   setSelectedModel: (model: string) => void;
@@ -39,18 +41,19 @@ export default function MainLayout({
 }) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const { settings } = useSettings();
+  const { models, defaultModel, getModelConfig } = useModels();
 
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL.id);
+  const [selectedModel, setSelectedModel] = useState("");
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Track whether we've resolved the initial model
   const resolvedModelRef = useRef(false);
 
-  // Resolve selected model: settings.defaultModelId > first enabled+available > DEFAULT_MODEL
+  // Resolve selected model: settings.defaultModelId > first enabled+available > defaultModel
   useEffect(() => {
     if (resolvedModelRef.current) return;
-    if (!settings) return; // wait for settings to load
+    if (!settings || models.length === 0) return; // wait for settings + models to load
 
     if (settings.defaultModelId) {
       resolvedModelRef.current = true;
@@ -63,13 +66,11 @@ export default function MainLayout({
 
     resolvedModelRef.current = true;
     const enabledSet = new Set(settings.enabledModels);
-    const firstAvailable = AVAILABLE_MODELS.find(
+    const firstAvailable = models.find(
       m => enabledSet.has(m.id) && availableProviders[m.provider]
     );
-    if (firstAvailable) {
-      setSelectedModel(firstAvailable.id);
-    }
-  }, [settings, availableProviders]);
+    setSelectedModel(firstAvailable?.id ?? defaultModel?.id ?? "");
+  }, [settings, availableProviders, models, defaultModel]);
 
   useEffect(() => {
     async function fetchProviders() {
@@ -153,6 +154,8 @@ export default function MainLayout({
     selectedModel,
     availableProviders,
     settings,
+    models,
+    getModelConfig,
     sidebarCollapsed,
     setActiveSessionId,
     setSelectedModel,

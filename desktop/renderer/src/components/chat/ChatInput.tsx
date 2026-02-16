@@ -29,7 +29,7 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { api } from "@/lib/api/client";
 import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
-import { AVAILABLE_MODELS, getModelConfig } from "@/lib/ai/models";
+import { useMainContext } from "@/app/(main)/layout";
 import type { ChatMessage, ModelConfig, AvailableProviders, McpServer, McpServerStatus } from "@/types";
 import { ChevronDown, Lightbulb, Wrench, Server, Loader2, Paperclip, X } from "lucide-react";
 import { compressImageDataUrl } from "@/lib/utils/image-compress";
@@ -147,6 +147,7 @@ function ChatInputInner({
   onMcpToggle,
   isMcpLoading,
 }: ChatInputProps) {
+  const { models, getModelConfig } = useMainContext();
   const { textInput } = usePromptInputController();
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -217,8 +218,8 @@ function ChatInputInner({
   };
 
   const visibleModels = useMemo(
-    () => AVAILABLE_MODELS.filter((model) => !enabledModels || enabledModels.includes(model.id)),
-    [enabledModels]
+    () => models.filter((model) => !enabledModels || enabledModels.includes(model.id)),
+    [enabledModels, models]
   );
 
   const modelsByProvider = useMemo(() => {

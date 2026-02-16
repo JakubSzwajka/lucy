@@ -1,13 +1,12 @@
 "use client";
 
 import { useMemorySettings, useUpdateMemorySettings } from "@/hooks/useMemorySettings";
-import { AVAILABLE_MODELS } from "@/lib/ai/models";
 import { useMainContext } from "@/app/(main)/layout";
 
 export function MemorySettingsTab() {
   const { data: settings, isLoading } = useMemorySettings();
   const updateMutation = useUpdateMemorySettings();
-  const { availableProviders } = useMainContext();
+  const { availableProviders, models } = useMainContext();
 
   if (isLoading || !settings) {
     return (
@@ -170,7 +169,7 @@ export function MemorySettingsTab() {
           <option value="" className="bg-background">
             Default (GPT-4o Mini)
           </option>
-          {AVAILABLE_MODELS.map((model) => {
+          {models.map((model) => {
             const isAvailable = !availableProviders || availableProviders[model.provider];
             const value = `${model.provider}/${model.modelId}`;
             return (
