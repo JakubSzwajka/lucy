@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { defineToolModule, defineTool } from "../../types";
 import { getMemoryService } from "@/lib/memory";
+import { getQuestionService } from "@/lib/memory/question.service";
 import { memoryTypes, confidenceLevels } from "@/lib/memory/types";
 
 export const continuityModule = defineToolModule<null>({
@@ -19,6 +20,7 @@ ACTIONS:
 - "find": Search memories by keyword
 - "update": Modify an existing memory's content, type, or confidence
 - "supersede": Replace an outdated memory with a corrected version
+- "resolve_question": Mark a surfaced question as answered (requires questionId and answer)
 
 MEMORY TYPES: fact, preference, relationship, principle, commitment, moment, skill
 
@@ -37,7 +39,7 @@ WHEN TO SAVE:
 Always set appropriate confidence based on how the information was obtained.`,
 
       inputSchema: z.object({
-        action: z.enum(["save", "find", "update", "supersede"]).describe("Action to perform"),
+        action: z.enum(["save", "find", "update", "supersede", "resolve_question"]).describe("Action to perform"),
 
         // For save
         type: z.enum(memoryTypes).optional().describe("Memory type"),
@@ -52,6 +54,10 @@ Always set appropriate confidence based on how the information was obtained.`,
 
         // For update / supersede
         memoryId: z.string().optional().describe("ID of memory to update or supersede"),
+
+        // For resolve_question
+        questionId: z.string().optional().describe("ID of the question to resolve"),
+        answer: z.string().optional().describe("The answer that resolves the question"),
 
         // For update - partial fields
         updates: z.object({
@@ -174,6 +180,26 @@ Always set appropriate confidence based on how the information was obtained.`,
               content: memory.content,
               confidenceScore: memory.confidenceScore,
               confidenceLevel: memory.confidenceLevel,
+            },
+          };
+        }
+
+        // ========== RESOLVE QUESTION ==========
+        if (args.action === "resolve_question") {
+          const { questionId, answer } = args;
+          if (!questionId) return { error: "questionId is required for resolve_question" };
+          if (!answer) return { error: "answer is required for resolve_question" };
+
+          const questionService = getQuestionService();
+          const resolved = await questionService.resolve(userId, questionId, { answer });
+
+          return {
+            success: true,
+            question: {
+              id: resolved.id,
+              content: resolved.content,
+              status: resolved.status,
+              answer: resolved.answer,
             },
           };
         }
