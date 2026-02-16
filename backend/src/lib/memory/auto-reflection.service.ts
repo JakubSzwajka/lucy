@@ -56,8 +56,8 @@ export async function maybeAutoReflect(
     return;
   }
 
-  // Threshold met — run extraction, then slide the window forward.
-  await runReflection(sessionId, userId, agentId, settings, items.length);
+  // Threshold met — run extraction on the unreflected window, then slide forward.
+  await runReflection(sessionId, userId, agentId, settings, session.lastReflectionItemCount, items.length);
 }
 
 /**
@@ -70,6 +70,7 @@ async function runReflection(
   userId: string,
   agentId: string,
   settings: MemorySettings,
+  windowStartIndex: number,
   currentItemCount: number,
 ): Promise<void> {
   reflecting.add(sessionId);
@@ -78,7 +79,9 @@ async function runReflection(
     await startActiveObservation("auto-reflection", async (span) => {
       span.update({ input: { sessionId, userId, currentItemCount } });
 
-      const extraction = await getExtractionService().extract(userId, sessionId);
+      const extraction = await getExtractionService().extract(userId, sessionId, {
+        fromItemIndex: windowStartIndex,
+      });
 
       const hasResults = extraction.memories.length > 0 || extraction.questions.length > 0;
       if (hasResults) {

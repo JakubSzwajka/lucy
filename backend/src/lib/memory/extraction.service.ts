@@ -62,6 +62,8 @@ export interface ExtractionResult {
 
 export interface ExtractionOptions {
   model?: { provider: string; modelId: string };
+  /** Only extract from items at this index onward (for incremental/windowed extraction). */
+  fromItemIndex?: number;
 }
 
 export interface ConfirmInput {
@@ -143,7 +145,8 @@ export class ExtractionService {
     if (!session.rootAgentId) throw new Error(`Session has no root agent: ${sessionId}`);
 
     const itemService = getItemService();
-    const items = await itemService.getByAgentId(session.rootAgentId);
+    const allItems = await itemService.getByAgentId(session.rootAgentId);
+    const items = options?.fromItemIndex ? allItems.slice(options.fromItemIndex) : allItems;
 
     // 2. Format as transcript
     const transcript = this.formatTranscript(items);
