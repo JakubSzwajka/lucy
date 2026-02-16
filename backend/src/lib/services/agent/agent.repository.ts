@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { agents, items, sessions } from "@/lib/db/schema";
 import type { AgentRecord, ItemRecord } from "@/lib/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import { eq, asc, desc, and, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import type { Repository } from "../repository.types";
 import type {
@@ -96,20 +96,40 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
   /**
    * Find all agents for a session with their items
    */
-  async findBySessionIdWithItems(sessionId: string, userId: string): Promise<AgentWithItems[]> {
+  async findBySessionIdWithItems(sessionId: string, userId: string, itemsLimit?: number): Promise<AgentWithItems[]> {
     const sessionAgents = await this.findBySessionId(sessionId, userId);
 
     const results: AgentWithItems[] = [];
     for (const agent of sessionAgents) {
-      const agentItems = await db
-        .select()
+      // Get total count
+      const [countResult] = await db
+        .select({ count: sql<number>`COUNT(*)` })
         .from(items)
-        .where(eq(items.agentId, agent.id))
-        .orderBy(asc(items.sequence));
+        .where(eq(items.agentId, agent.id));
+      const totalCount = Number(countResult?.count ?? 0);
+
+      let agentItems: ItemRecord[];
+      if (itemsLimit && totalCount > itemsLimit) {
+        // Fetch last N items (DESC then reverse)
+        const records = await db
+          .select()
+          .from(items)
+          .where(eq(items.agentId, agent.id))
+          .orderBy(desc(items.sequence))
+          .limit(itemsLimit);
+        agentItems = records.reverse();
+      } else {
+        agentItems = await db
+          .select()
+          .from(items)
+          .where(eq(items.agentId, agent.id))
+          .orderBy(asc(items.sequence));
+      }
 
       results.push({
         ...agent,
         items: agentItems.map(parseItemRecord),
+        itemsTotalCount: totalCount,
       });
     }
 

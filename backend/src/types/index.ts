@@ -197,7 +197,14 @@ export interface SessionWithAgents extends Session {
 
 export interface AgentWithItems extends Agent {
   items: Item[];
+  itemsTotalCount?: number;
   children?: AgentWithItems[];
+}
+
+export interface PaginatedItemsResponse {
+  items: Item[];
+  totalCount: number;
+  hasMore: boolean;
 }
 
 // ============================================================================

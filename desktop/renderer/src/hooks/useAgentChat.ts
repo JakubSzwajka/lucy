@@ -10,7 +10,7 @@ import {
 import { extractPlanFromMessages } from "./usePlanStream";
 import type { Plan } from "@/components/plan";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
-import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents, ChildSessionSummary } from "@/types";
+import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents, ChildSessionSummary, PaginatedItemsResponse } from "@/types";
 
 /**
  * Reshapes the request body to send only the last user message instead of full history.
@@ -65,6 +65,9 @@ interface UseSessionChatReturn {
   isInitialized: boolean;
   rawMessages: UIMessage[];
   status: ChatStatus;
+  hasMoreItems: boolean;
+  isLoadingMore: boolean;
+  loadMoreItems: () => Promise<void>;
 }
 
 export function useSessionChat({
@@ -75,6 +78,8 @@ export function useSessionChat({
   const [loadedItems, setLoadedItems] = useState<Item[]>([]);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [childSessions, setChildSessions] = useState<ChildSessionSummary[]>([]);
+  const [hasMoreItems, setHasMoreItems] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const prevSessionIdRef = useRef<string | null>(null);
   const modelRef = useRef(model);
@@ -138,7 +143,7 @@ export function useSessionChat({
       prevSessionIdRef.current = sessionId;
       setIsInitialized(false);
 
-      api.request<SessionWithAgents>(`/api/sessions/${sessionId}`)
+      api.request<SessionWithAgents>(`/api/sessions/${sessionId}?itemsLimit=20`)
         .then((data) => {
           // Find root agent from session data
           const rootAgent =
@@ -150,6 +155,10 @@ export function useSessionChat({
           // Get items from root agent
           const rootItems = rootAgent?.items || [];
           setLoadedItems(rootItems);
+
+          // Check if there are more items to load
+          const totalCount = rootAgent?.itemsTotalCount ?? rootItems.length;
+          setHasMoreItems(rootItems.length < totalCount);
 
           // Convert items to messages for useChat
           const messageItems = rootItems.filter(
@@ -173,6 +182,7 @@ export function useSessionChat({
       setLoadedItems([]);
       setAgent(null);
       setChildSessions([]);
+      setHasMoreItems(false);
       setIsInitialized(true);
     }
   }, [sessionId, setMessages]);
@@ -189,6 +199,26 @@ export function useSessionChat({
 
   // Extract plan state from streaming tool results
   const streamPlan = useMemo(() => extractPlanFromMessages(rawMessages), [rawMessages]);
+
+  const loadMoreItems = useCallback(async () => {
+    if (!sessionId || isLoadingMore || !hasMoreItems) return;
+    setIsLoadingMore(true);
+    try {
+      const oldestSequence = loadedItems.length > 0 ? loadedItems[0].sequence : undefined;
+      const params = new URLSearchParams({ limit: "20" });
+      if (oldestSequence !== undefined) params.set("before", String(oldestSequence));
+
+      const data = await api.request<PaginatedItemsResponse>(
+        `/api/sessions/${sessionId}/items?${params.toString()}`
+      );
+      setLoadedItems((prev) => [...data.items, ...prev]);
+      setHasMoreItems(data.hasMore);
+    } catch (error) {
+      console.error("[Chat] Failed to load more items:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [sessionId, isLoadingMore, hasMoreItems, loadedItems]);
 
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions) => {
@@ -222,5 +252,8 @@ export function useSessionChat({
     isInitialized,
     rawMessages,
     status,
+    hasMoreItems,
+    isLoadingMore,
+    loadMoreItems,
   };
 }

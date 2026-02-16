@@ -57,8 +57,8 @@ export class AgentService {
     return this.repository.findBySessionIdWithItems(sessionId, userId);
   }
 
-  async getTreeBySessionId(sessionId: string, userId: string): Promise<AgentWithItems[]> {
-    return this.repository.findBySessionIdWithItems(sessionId, userId);
+  async getTreeBySessionId(sessionId: string, userId: string, itemsLimit?: number): Promise<AgentWithItems[]> {
+    return this.repository.findBySessionIdWithItems(sessionId, userId, itemsLimit);
   }
 
   // -------------------------------------------------------------------------

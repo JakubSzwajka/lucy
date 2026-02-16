@@ -69,7 +69,7 @@ export class SessionService {
   /**
    * Get a session with its agent tree, items, and child session summaries
    */
-  async getWithAgents(id: string, userId: string): Promise<SessionWithAgents | null> {
+  async getWithAgents(id: string, userId: string, itemsLimit?: number): Promise<SessionWithAgents | null> {
     const session = await this.repository.findById(id, userId);
     if (!session) {
       return null;
@@ -77,7 +77,7 @@ export class SessionService {
 
     // Get agent tree using AgentService
     const agentService = getAgentService();
-    const agentTree = await agentService.getTreeBySessionId(id, userId);
+    const agentTree = await agentService.getTreeBySessionId(id, userId, itemsLimit);
 
     // Get child session summaries
     const childSessions = await this.repository.findByParentSessionId(id, userId);

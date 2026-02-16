@@ -129,7 +129,10 @@ export class ToolRegistry {
     const result: Record<string, any> = {};
 
     for (const { key, definition } of allTools) {
-      result[key] = this.createAiSdkTool(key, definition, contextPartial);
+      // Use the short tool name as the AI-facing key to stay within
+      // provider limits (e.g. OpenAI's 64-char tool name cap).
+      // The internal `key` is still used for execution routing.
+      result[definition.name] = this.createAiSdkTool(key, definition, contextPartial);
     }
 
     return result;

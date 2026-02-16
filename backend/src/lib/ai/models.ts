@@ -5,7 +5,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     id: "gpt-5.2-2025-12-11",
     name: "GPT-5.2",
     provider: "openai",
-    modelId: "gpt-5.2-2025-12-17",
+    modelId: "gpt-5.2-2025-12-11",
     maxContextTokens: 128_000,
   },
   {

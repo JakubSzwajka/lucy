@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { items, agents, sessions } from "@/lib/db/schema";
 import type { NewItem, ItemRecord } from "@/lib/db/schema";
-import { eq, asc, sql, and } from "drizzle-orm";
+import { eq, asc, desc, sql, and, lt } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import type {
   Item,
@@ -128,6 +128,34 @@ export class ItemRepository {
       .where(eq(items.agentId, agentId))
       .orderBy(asc(items.sequence));
     return records.map(parseItemRecord);
+  }
+
+  async countByAgentId(agentId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(items)
+      .where(eq(items.agentId, agentId));
+    return Number(result?.count ?? 0);
+  }
+
+  async findByAgentIdPaginated(
+    agentId: string,
+    options: { limit: number; before?: number }
+  ): Promise<Item[]> {
+    const conditions = [eq(items.agentId, agentId)];
+    if (options.before !== undefined) {
+      conditions.push(lt(items.sequence, options.before));
+    }
+
+    const records = await db
+      .select()
+      .from(items)
+      .where(and(...conditions))
+      .orderBy(desc(items.sequence))
+      .limit(options.limit);
+
+    // Reverse to get ascending order
+    return records.reverse().map(parseItemRecord);
   }
 
   async findByCallId(callId: string): Promise<Item | null> {

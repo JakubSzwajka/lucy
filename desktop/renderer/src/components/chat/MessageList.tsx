@@ -113,6 +113,9 @@ interface MessageListProps {
   isLoading?: boolean;
   onQuickAction?: (content: string) => void;
   childSessions?: ChildSessionSummary[];
+  hasMoreItems?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function GapDivider({ date }: { date: Date }) {
@@ -417,7 +420,7 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-export function MessageList({ messages, isLoading, onQuickAction, childSessions }: MessageListProps) {
+export function MessageList({ messages, isLoading, onQuickAction, childSessions, hasMoreItems, isLoadingMore, onLoadMore }: MessageListProps) {
   const tts = useTts();
 
   // Force re-render every 30s to update relative timestamps
@@ -465,6 +468,20 @@ export function MessageList({ messages, isLoading, onQuickAction, childSessions 
     <TtsContext.Provider value={tts}>
     <Conversation>
       <ConversationContent className="p-6 gap-6">
+        {hasMoreItems && (
+          <div className="flex justify-center py-2">
+            <button
+              onClick={onLoadMore}
+              disabled={isLoadingMore}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {isLoadingMore ? (
+                <Loader2Icon className="size-3 animate-spin" />
+              ) : null}
+              {isLoadingMore ? "Loading..." : "Load older messages"}
+            </button>
+          </div>
+        )}
         {messages.map((message, index) => {
           const isLastMessage = index === messages.length - 1;
           const isAssistantStreaming =

@@ -15,7 +15,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const sessionService = getSessionService();
 
-  const session = await sessionService.getWithAgents(id, userId);
+  const itemsLimitParam = request.nextUrl.searchParams.get("itemsLimit");
+  const itemsLimit = itemsLimitParam ? parseInt(itemsLimitParam, 10) : undefined;
+
+  const session = await sessionService.getWithAgents(id, userId, itemsLimit);
 
   if (!session) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
