@@ -285,9 +285,10 @@ export class ChatService {
 
   private async initializeTools(): Promise<void> {
     await initializeToolRegistry();
+    // Non-blocking: refresh MCP servers in background so chat isn't delayed
     const mcpProvider = getMcpProvider();
     if (mcpProvider) {
-      await mcpProvider.refreshServers();
+      mcpProvider.refreshServersInBackground();
     }
   }
 

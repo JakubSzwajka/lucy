@@ -22,7 +22,8 @@ export class McpToolProvider implements ToolProvider {
   private initialized = false;
 
   async initialize(): Promise<void> {
-    await this.refreshServers();
+    // Non-blocking: kick off server connections in background
+    this.refreshServersInBackground();
     this.initialized = true;
   }
 
@@ -30,11 +31,17 @@ export class McpToolProvider implements ToolProvider {
     return this.initialized && this.enabledServers.length > 0;
   }
 
+  /**
+   * Fire-and-forget server refresh. Errors are logged, not thrown.
+   */
+  refreshServersInBackground(): void {
+    this.refreshServers().catch((err) => {
+      console.error("[MCP] Background server refresh failed:", err);
+    });
+  }
+
   async getTools(filter?: { allowedServerIds?: string[] }): Promise<ToolDefinition[]> {
-    // Ensure servers are connected
-    if (!this.initialized) {
-      await this.initialize();
-    }
+    // Return whatever tools are available right now (no blocking)
 
     const pool = getGlobalPool();
     const tools: ToolDefinition[] = [];

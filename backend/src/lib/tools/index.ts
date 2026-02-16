@@ -56,6 +56,7 @@ let builtinProvider: BuiltinToolProvider | null = null;
 /**
  * Initialize the global tool registry with default providers.
  * Call this once at application startup or before first use.
+ * MCP connections are non-blocking — tools appear as servers connect.
  */
 export async function initializeToolRegistry(): Promise<void> {
   if (initialized) return;
@@ -70,11 +71,25 @@ export async function initializeToolRegistry(): Promise<void> {
   builtinProvider = new BuiltinToolProvider();
   registry.registerProvider(builtinProvider);
 
-  // Initialize all providers
+  // Initialize all providers (MCP init is non-blocking internally)
   await registry.initialize();
 
   initialized = true;
 }
+
+/**
+ * Eagerly start tool registry initialization in the background.
+ * Call at module load / backend startup so MCP servers begin connecting
+ * before the first chat request arrives.
+ */
+export function eagerInitializeToolRegistry(): void {
+  initializeToolRegistry().catch((err) => {
+    console.error("[Tools] Eager initialization failed:", err);
+  });
+}
+
+// Kick off MCP connections as soon as this module is first imported
+eagerInitializeToolRegistry();
 
 /**
  * Get the MCP provider to refresh servers.
