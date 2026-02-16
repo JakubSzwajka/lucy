@@ -2,7 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { useState, useCallback, useMemo, useEffect, createContext, useContext } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -35,6 +35,8 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ClockIcon,
+  CopyIcon,
+  CheckIcon,
   Loader2Icon,
   Volume2Icon,
   SquareIcon,
@@ -243,6 +245,30 @@ interface MessageItemProps {
   childSessionsByCallId?: Map<string, ChildSessionSummary>;
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopied(false), 1500);
+  }, [text]);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+      title={copied ? "Copied!" : "Copy message"}
+    >
+      {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+    </button>
+  );
+}
+
 function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageItemProps) {
   const isUser = message.role === "user";
   const hasParts = message.parts && message.parts.length > 0;
@@ -359,8 +385,11 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
           )}
           {hasContent && <MessageResponse>{message.content}</MessageResponse>}
         </MessageContent>
-        <div className="label-sm mr-1">
-          SENT{message.createdAt && ` // ${formatTime(message.createdAt)}`}
+        <div className="label-sm mr-1 flex items-center gap-2">
+          <span>SENT{message.createdAt && ` // ${formatTime(message.createdAt)}`}</span>
+          <span className="flex items-center gap-1">
+            {hasContent && <CopyButton text={message.content!} />}
+          </span>
         </div>
       </Message>
     );
@@ -396,23 +425,28 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
         ) : null}
       </MessageContent>
       <div className="label-sm ml-1 flex items-center gap-2">
-        DELIVERED{message.createdAt && ` // ${formatTime(message.createdAt)}`}
-        {message.model && <span className="text-muted-darker">• {message.model}</span>}
-        {messageText && tts && (
-          <button
-            onClick={() => tts.toggle(message.id, messageText)}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
-            title={isLoading ? "Loading audio..." : isSpeaking ? "Stop speaking" : "Read aloud"}
-          >
-            {isLoading ? (
-              <Loader2Icon className="size-3.5 animate-spin" />
-            ) : isSpeaking ? (
-              <SquareIcon className="size-3.5" />
-            ) : (
-              <Volume2Icon className="size-3.5" />
-            )}
-          </button>
-        )}
+        <span>
+          DELIVERED{message.createdAt && ` // ${formatTime(message.createdAt)}`}
+          {message.model && <span className="text-muted-darker"> • {message.model}</span>}
+        </span>
+        <span className="flex items-center gap-1">
+          {messageText && <CopyButton text={messageText} />}
+          {messageText && tts && (
+            <button
+              onClick={() => tts.toggle(message.id, messageText)}
+              className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              title={isLoading ? "Loading audio..." : isSpeaking ? "Stop speaking" : "Read aloud"}
+            >
+              {isLoading ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : isSpeaking ? (
+                <SquareIcon className="size-3.5" />
+              ) : (
+                <Volume2Icon className="size-3.5" />
+              )}
+            </button>
+          )}
+        </span>
       </div>
     </Message>
   );
