@@ -173,6 +173,7 @@ export const items = pgTable("items", {
   // === TYPE: message ===
   role: text("role", { enum: messageRoleEnum }),
   content: text("content"),
+  contentParts: text("content_parts"), // JSON string of multimodal parts array, null for text-only
 
   // === TYPE: tool_call ===
   callId: text("call_id"), // Unique ID for linking call → result

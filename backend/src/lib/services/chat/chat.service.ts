@@ -14,10 +14,10 @@ import { EnvironmentContextService } from "./environment-context.service";
 import { getAgentService } from "../agent";
 import { getAgentConfigService } from "../agent-config";
 import { getSessionService } from "../session";
-import { getItemService, itemsToChatMessages } from "../item";
+import { getItemService } from "../item";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
-import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingChatMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
+import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingUserMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
 import type { MessageItem, Agent, AgentConfigWithTools } from "@/types";
 import type { ToolFilter } from "@/lib/tools";
 import type { ToolSource } from "@/lib/tools/types";
@@ -30,9 +30,9 @@ import { getContextRetrievalService } from "@/lib/memory/context-retrieval.servi
 
 export class ChatService {
   /**
-   * Execute a full chat turn: persist user message, prepare context, stream AI response.
+   * Execute a full chat turn: persist user message, build history from DB, stream AI response.
    */
-  async executeTurn(sessionId: string, userId: string, chatMessages: IncomingChatMessage[], options: ExecuteTurnOptions = {}) {
+  async executeTurn(sessionId: string, userId: string, message: IncomingUserMessage, options: ExecuteTurnOptions = {}) {
     const { modelId, thinkingEnabled } = options;
 
     const sessionService = getSessionService();
@@ -47,15 +47,14 @@ export class ChatService {
       return { error: "Session has no root agent" as const, status: 400 as const };
     }
 
-    const lastUserMessage = chatMessages.filter((m) => m.role === "user").pop();
-    const userInputText = lastUserMessage ? this.extractTextContent(lastUserMessage) : undefined;
+    // Persist user message (including multimodal parts if present)
+    const userInputText = message.content;
+    const contentPartsJson = message.parts?.length ? JSON.stringify(message.parts) : null;
+    await this.persistUserMessage(rootAgentId, sessionId, userInputText, userId, contentPartsJson);
 
-    if (lastUserMessage) {
-      await this.persistUserMessage(rootAgentId, sessionId, userInputText || "", userId);
-    }
-
-    // Convert and prepare messages
-    const modelMessages = this.convertToModelMessages(chatMessages);
+    // Build model messages from DB (authoritative source)
+    const allItems = await getItemService().getByAgentId(rootAgentId);
+    const modelMessages = this.itemsToModelMessages(allItems);
 
     const runResult = await this.runAgent(rootAgentId, userId, modelMessages, {
       sessionId,
@@ -161,12 +160,9 @@ export class ChatService {
             for (let turn = 0; turn < maxTurns; turn++) {
               // Re-read items each turn to include tool results from previous turns
               const items = await itemService.getByAgentId(agentId);
-              const chatMessages = itemsToChatMessages(items);
+              const turnModelMessages = this.itemsToModelMessages(items);
               const turnMessages = this.prependSystemPrompt(
-                chatMessages.map(m => ({
-                  role: m.role as "user" | "assistant" | "system",
-                  content: m.content || "",
-                })),
+                turnModelMessages,
                 context.systemPrompt,
               );
 
@@ -427,30 +423,55 @@ export class ChatService {
     }
   }
 
-  private convertToModelMessages(chatMessages: IncomingChatMessage[]): ModelMessage[] {
-    return chatMessages.map((msg) => {
-      const role = msg.role as "user" | "assistant" | "system";
+  /**
+   * Build model messages from DB items. Only includes user/assistant message items
+   * (tool calls/results are handled internally by streamText's multi-step execution).
+   * Prepends ISO timestamps to each message for LLM context.
+   */
+  private itemsToModelMessages(allItems: import("@/types").Item[]): ModelMessage[] {
+    const messages: ModelMessage[] = [];
 
-      // Check for file parts (images) — build multimodal content array
-      if (Array.isArray(msg.parts)) {
-        const hasFiles = msg.parts.some((p) => p.type === "file");
-        if (hasFiles) {
+    for (const item of allItems) {
+      if (item.type !== "message") continue;
+      if (item.role === "system") continue;
+
+      const role = item.role as "user" | "assistant";
+      const timestamp = item.createdAt ? `[${new Date(item.createdAt).toISOString()}] ` : "";
+
+      // Check for multimodal content parts (stored as JSON in contentParts)
+      if (item.contentParts) {
+        try {
+          const parts: { type: string; text?: string; url?: string; mediaType?: string }[] = JSON.parse(item.contentParts);
           const contentParts: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = [];
-          for (const part of msg.parts) {
+          let addedTimestamp = false;
+
+          for (const part of parts) {
             if (part.type === "text" && part.text) {
-              contentParts.push({ type: "text", text: part.text });
+              const prefix = !addedTimestamp ? timestamp : "";
+              contentParts.push({ type: "text", text: `${prefix}${part.text}` });
+              addedTimestamp = true;
             } else if (part.type === "file" && part.url) {
               contentParts.push({ type: "image", image: new URL(part.url) });
             }
           }
-          if (contentParts.length > 0) {
-            return { role, content: contentParts } as ModelMessage;
+
+          if (!addedTimestamp && timestamp) {
+            contentParts.unshift({ type: "text", text: timestamp.trim() });
           }
+
+          if (contentParts.length > 0) {
+            messages.push({ role, content: contentParts });
+            continue;
+          }
+        } catch {
+          // Fall through to text-only
         }
       }
 
-      return { role, content: this.extractTextContent(msg) };
-    });
+      messages.push({ role, content: `${timestamp}${item.content}` });
+    }
+
+    return messages;
   }
 
   private prependSystemPrompt(messages: ModelMessage[], systemPrompt: string | null): ModelMessage[] {
@@ -528,20 +549,9 @@ export class ChatService {
   }
 
 
-  private extractTextContent(msg: IncomingChatMessage): string {
-    if (typeof msg.content === "string") return msg.content;
-    if (Array.isArray(msg.parts)) {
-      return msg.parts
-        .filter((part) => part.type === "text")
-        .map((part) => part.text ?? "")
-        .join("");
-    }
-    return "";
-  }
-
-  private async persistUserMessage(agentId: string, sessionId: string, content: string, userId: string): Promise<void> {
+  private async persistUserMessage(agentId: string, sessionId: string, content: string, userId: string, contentParts?: string | null): Promise<void> {
     const itemService = getItemService();
-    await itemService.createMessage(agentId, "user", content, userId);
+    await itemService.createMessage(agentId, "user", content, userId, contentParts);
     await getSessionService().maybeGenerateTitle(sessionId, content, userId);
   }
 

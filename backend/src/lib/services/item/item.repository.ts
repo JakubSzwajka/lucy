@@ -20,6 +20,7 @@ export interface CreateMessageData {
   type: "message";
   role: "user" | "assistant" | "system";
   content: string;
+  contentParts?: string | null; // JSON string of multimodal parts
 }
 
 export interface CreateToolCallData {
@@ -66,6 +67,7 @@ function parseItemRecord(record: ItemRecord): Item {
         type: "message",
         role: record.role!,
         content: record.content!,
+        contentParts: record.contentParts || null,
         createdAt: record.createdAt,
       } as MessageItem;
 
@@ -156,6 +158,7 @@ export class ItemRepository {
           type: "message",
           role: data.role,
           content: data.content,
+          contentParts: data.contentParts || null,
         };
         break;
 

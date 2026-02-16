@@ -1,7 +1,8 @@
 "use client";
 
+import React from "react";
 import Image from "next/image";
-import { useState, useCallback, useMemo, createContext, useContext } from "react";
+import { useState, useCallback, useMemo, useEffect, createContext, useContext } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ai-elements/tool";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatMessageTimestamp, formatGapTimestamp } from "@/lib/utils/format-timestamp";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -113,16 +115,10 @@ interface MessageListProps {
   childSessions?: ChildSessionSummary[];
 }
 
-function SessionDivider() {
-  const today = new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
+function GapDivider({ date }: { date: Date }) {
   return (
     <div className="session-divider my-6">
-      <span>Session Started: {today}</span>
+      <span>{formatGapTimestamp(date)}</span>
     </div>
   );
 }
@@ -253,11 +249,7 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
   const formatTime = (date?: Date | string) => {
     if (!date) return "";
     const d = typeof date === "string" ? new Date(date) : date;
-    return d.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+    return formatMessageTimestamp(d);
   };
 
   // Render parts in order, grouping consecutive tool calls into compact stacks
@@ -423,8 +415,17 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
   );
 }
 
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
 export function MessageList({ messages, isLoading, onQuickAction, childSessions }: MessageListProps) {
   const tts = useTts();
+
+  // Force re-render every 30s to update relative timestamps
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Build a map from sourceCallId → child session for quick lookup
   const childSessionsByCallId = useMemo(() => {
@@ -464,20 +465,33 @@ export function MessageList({ messages, isLoading, onQuickAction, childSessions 
     <TtsContext.Provider value={tts}>
     <Conversation>
       <ConversationContent className="p-6 gap-6">
-        <SessionDivider />
-
         {messages.map((message, index) => {
           const isLastMessage = index === messages.length - 1;
           const isAssistantStreaming =
             isLastMessage && isLoading && message.role === "assistant";
 
+          // Show gap divider if > 1 hour between messages
+          let gapDivider: React.ReactNode = null;
+          if (message.createdAt) {
+            const prevMessage = index > 0 ? messages[index - 1] : null;
+            const prevTime = prevMessage?.createdAt
+              ? (typeof prevMessage.createdAt === "string" ? new Date(prevMessage.createdAt) : prevMessage.createdAt).getTime()
+              : null;
+            const currTime = (typeof message.createdAt === "string" ? new Date(message.createdAt) : message.createdAt).getTime();
+            if (prevTime && currTime - prevTime > ONE_HOUR_MS) {
+              gapDivider = <GapDivider key={`gap-${message.id}`} date={typeof message.createdAt === "string" ? new Date(message.createdAt) : message.createdAt} />;
+            }
+          }
+
           return (
-            <MessageItem
-              key={message.id}
-              message={message}
-              isStreaming={isAssistantStreaming}
-              childSessionsByCallId={childSessionsByCallId}
-            />
+            <React.Fragment key={message.id}>
+              {gapDivider}
+              <MessageItem
+                message={message}
+                isStreaming={isAssistantStreaming}
+                childSessionsByCallId={childSessionsByCallId}
+              />
+            </React.Fragment>
           );
         })}
 

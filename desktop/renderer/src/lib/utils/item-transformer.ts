@@ -149,6 +149,7 @@ export class ItemTransformer {
   static itemsToChatMessages(loadedItems: Item[]): ChatMessage[] {
     const messages: ChatMessage[] = [];
     let currentParts: ContentPart[] = [];
+    let firstAssistantCreatedAt: Date | undefined;
 
     // Build tool_results map upfront for merging with tool_calls
     const toolResultsByCallId = new Map<string, Item>();
@@ -171,8 +172,10 @@ export class ItemTransformer {
               .map((p) => p.text)
               .join(""),
             parts: [...currentParts],
+            createdAt: firstAssistantCreatedAt,
           });
           currentParts = [];
+          firstAssistantCreatedAt = undefined;
         }
 
         // Add user message
@@ -183,6 +186,10 @@ export class ItemTransformer {
           createdAt: item.createdAt,
         });
       } else if (item.type === "message" && item.role === "assistant") {
+        // Track the first assistant item's timestamp for the group
+        if (!firstAssistantCreatedAt && item.createdAt) {
+          firstAssistantCreatedAt = item.createdAt;
+        }
         // Assistant text - add as a text part in order
         currentParts.push({
           type: "text",
@@ -190,6 +197,9 @@ export class ItemTransformer {
           text: item.content,
         } as TextContentPart);
       } else if (item.type === "reasoning") {
+        if (!firstAssistantCreatedAt && item.createdAt) {
+          firstAssistantCreatedAt = item.createdAt;
+        }
         // Reasoning - add as part
         currentParts.push({
           type: "reasoning",
@@ -198,6 +208,9 @@ export class ItemTransformer {
           summary: item.reasoningSummary || undefined,
         } as ReasoningContentPart);
       } else if (item.type === "tool_call") {
+        if (!firstAssistantCreatedAt && item.createdAt) {
+          firstAssistantCreatedAt = item.createdAt;
+        }
         // Tool call - add as part
         const resultItem = toolResultsByCallId.get(item.callId);
         const toolPart: ToolCallContentPart = {
@@ -225,6 +238,7 @@ export class ItemTransformer {
           .map((p) => p.text)
           .join(""),
         parts: [...currentParts],
+        createdAt: firstAssistantCreatedAt,
       });
     }
 
@@ -253,6 +267,7 @@ export class ItemTransformer {
         role: msg.role,
         content: ItemTransformer.extractContent(msg),
         parts: ItemTransformer.extractContentPartsFromStreamingMessage(msg),
+        createdAt: new Date(),
       }));
 
     return [...fromItems, ...streamingMessages];

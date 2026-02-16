@@ -96,6 +96,7 @@ export interface MessageItem extends ItemBase {
   type: "message";
   role: MessageRole;
   content: string;
+  contentParts?: string | null;
 }
 
 // Tool call item

@@ -11,10 +11,14 @@ export async function POST(
   const { userId } = authResult.user;
 
   const { id: sessionId } = await params;
-  const { messages: chatMessages, model: modelId, thinkingEnabled = true } = await request.json();
+  const { message, model: modelId, thinkingEnabled = true } = await request.json();
+
+  if (!message || typeof message.content !== "string") {
+    return Response.json({ error: "message with content is required" }, { status: 400 });
+  }
 
   const chatService = getChatService();
-  const result = await chatService.executeTurn(sessionId, userId, chatMessages, { modelId, thinkingEnabled });
+  const result = await chatService.executeTurn(sessionId, userId, message, { modelId, thinkingEnabled });
 
   if ("error" in result) {
     return Response.json({ error: result.error }, { status: result.status });

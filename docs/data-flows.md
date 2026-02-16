@@ -8,20 +8,21 @@ User sends a message from the desktop frontend through to AI streaming response.
 
 ```
 Frontend (useSessionChat)
-  │  useChat() via DefaultChatTransport
+  │  useChat() via DefaultChatTransport + prepareSendMessagesRequest
   │  POST ${API_BASE_URL}/api/sessions/${sessionId}/chat
   │  Headers: Authorization: Bearer <jwt>
-  │  Body: { messages, model, thinkingEnabled }
+  │  Body: { message: { content, parts? }, model, thinkingEnabled }
+  │  (sends only the new user message, not full history)
   ▼
 API Route (sessions/[id]/chat/route.ts)
   │  requireAuth(request) → userId
-  │  getChatService().executeTurn(sessionId, userId, messages, options)
+  │  getChatService().executeTurn(sessionId, userId, message, options)
   ▼
 ChatService.executeTurn()
   │  1. SessionService.getById() → validate session exists, get rootAgentId
-  │  2. persistUserMessage() → ItemService.createMessage(agentId, "user", ...)
+  │  2. persistUserMessage() → ItemService.createMessage(agentId, "user", ..., contentParts)
   │  3. SessionService.maybeGenerateTitle() → auto-title from first message
-  │  4. convertToModelMessages() → normalize incoming format
+  │  4. Load all items from DB → itemsToModelMessages() → build timestamped ModelMessage[]
   │  5. runAgent(rootAgentId, ..., { streaming: true })
   ▼
 ChatService.runAgent() — streaming mode

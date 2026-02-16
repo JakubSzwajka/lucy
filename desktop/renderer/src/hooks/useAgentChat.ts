@@ -12,6 +12,38 @@ import type { Plan } from "@/components/plan";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
 import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents, ChildSessionSummary } from "@/types";
 
+/**
+ * Reshapes the request body to send only the last user message instead of full history.
+ */
+function prepareSendMessage({ messages, body }: { messages: UIMessage[]; body: Record<string, unknown> | undefined }) {
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+  const content =
+    lastUserMessage?.parts
+      ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("") || "";
+  const fileParts = lastUserMessage?.parts?.filter((p) => p.type === "file") || [];
+  const parts =
+    fileParts.length > 0
+      ? [
+          ...fileParts.map((p) => ({
+            type: p.type,
+            url: "url" in p ? (p as { url: string }).url : undefined,
+            mediaType: "mediaType" in p ? (p as { mediaType: string }).mediaType : undefined,
+          })),
+          ...(content ? [{ type: "text", text: content }] : []),
+        ]
+      : undefined;
+
+  return {
+    body: {
+      message: { content, parts },
+      model: body?.model,
+      thinkingEnabled: body?.thinkingEnabled,
+    },
+  };
+}
+
 interface UseSessionChatOptions {
   sessionId: string | null;
   model: string;
@@ -55,39 +87,38 @@ export function useSessionChat({
 
   const [transport, setTransport] = useState(
     // eslint-disable-next-line react-hooks/refs -- refs are captured in a deferred `body` callback, not read during render
-    () =>
-      new DefaultChatTransport({
-        api: sessionId
-          ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
-          : `${API_BASE_URL}/api/sessions/_/chat`,
-        headers: () => {
-          const token = api.getToken();
-          return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
-        },
-        body: () => ({
-          model: modelRef.current,
-          thinkingEnabled: thinkingEnabledRef.current,
-        }),
-      })
+    () => new DefaultChatTransport({
+      api: sessionId
+        ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
+        : `${API_BASE_URL}/api/sessions/_/chat`,
+      headers: () => {
+        const token = api.getToken();
+        return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
+      },
+      prepareSendMessagesRequest: prepareSendMessage,
+      body: () => ({
+        model: modelRef.current,
+        thinkingEnabled: thinkingEnabledRef.current,
+      }),
+    })
   );
 
   // Recreate transport when sessionId changes
   useEffect(() => {
-    setTransport(
-      new DefaultChatTransport({
-        api: sessionId
-          ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
-          : `${API_BASE_URL}/api/sessions/_/chat`,
-        headers: () => {
-          const token = api.getToken();
-          return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
-        },
-        body: () => ({
-          model: modelRef.current,
-          thinkingEnabled: thinkingEnabledRef.current,
-        }),
-      })
-    );
+    setTransport(new DefaultChatTransport({
+      api: sessionId
+        ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
+        : `${API_BASE_URL}/api/sessions/_/chat`,
+      headers: () => {
+        const token = api.getToken();
+        return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
+      },
+      prepareSendMessagesRequest: prepareSendMessage,
+      body: () => ({
+        model: modelRef.current,
+        thinkingEnabled: thinkingEnabledRef.current,
+      }),
+    }));
   }, [sessionId]);
 
   const {

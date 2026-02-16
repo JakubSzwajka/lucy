@@ -36,11 +36,10 @@ export interface ChatContext {
 }
 
 /**
- * Incoming chat message from the client (loose shape from AI SDK frontend)
+ * What the frontend sends — a single user message (text or multimodal)
  */
-export interface IncomingChatMessage {
-  role: string;
-  content?: string;
+export interface IncomingUserMessage {
+  content: string;
   parts?: { type: string; text?: string; url?: string; mediaType?: string }[];
 }
 

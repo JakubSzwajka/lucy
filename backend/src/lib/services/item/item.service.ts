@@ -81,9 +81,10 @@ export class ItemService {
     agentId: string,
     role: "user" | "assistant" | "system",
     content: string,
-    userId?: string
+    userId?: string,
+    contentParts?: string | null,
   ): Promise<CreateItemResult> {
-    return this.create(agentId, { type: "message", role, content }, userId);
+    return this.create(agentId, { type: "message", role, content, contentParts }, userId);
   }
 
   async createToolCall(
