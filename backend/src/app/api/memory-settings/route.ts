@@ -54,6 +54,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "questionsPerSession must be 0-10" }, { status: 400 });
     }
   }
+  if (body.reflectionTokenThreshold !== undefined) {
+    if (body.reflectionTokenThreshold < 1000 || body.reflectionTokenThreshold > 50000) {
+      return NextResponse.json({ error: "reflectionTokenThreshold must be 1000-50000" }, { status: 400 });
+    }
+  }
 
   // Check if row exists
   const existing = await db
@@ -73,6 +78,7 @@ export async function PATCH(request: NextRequest) {
       maxContextMemories: body.maxContextMemories ?? MEMORY_SETTINGS_DEFAULTS.maxContextMemories,
       questionsPerSession: body.questionsPerSession ?? MEMORY_SETTINGS_DEFAULTS.questionsPerSession,
       extractionModel: body.extractionModel ?? MEMORY_SETTINGS_DEFAULTS.extractionModel,
+      reflectionTokenThreshold: body.reflectionTokenThreshold ?? MEMORY_SETTINGS_DEFAULTS.reflectionTokenThreshold,
     };
     const [created] = await db.insert(memorySettings).values(newRow).returning();
     return NextResponse.json(created);
@@ -86,6 +92,7 @@ export async function PATCH(request: NextRequest) {
   if (body.maxContextMemories !== undefined) updates.maxContextMemories = body.maxContextMemories;
   if (body.questionsPerSession !== undefined) updates.questionsPerSession = body.questionsPerSession;
   if (body.extractionModel !== undefined) updates.extractionModel = body.extractionModel;
+  if (body.reflectionTokenThreshold !== undefined) updates.reflectionTokenThreshold = body.reflectionTokenThreshold;
 
   const [updated] = await db
     .update(memorySettings)

@@ -88,6 +88,10 @@ export const sessions = pgTable("sessions", {
   parentSessionId: text("parent_session_id"),
   sourceCallId: text("source_call_id"),
 
+  // Auto-reflection progress tracking
+  reflectionTokenCount: integer("reflection_token_count").notNull().default(0),
+  lastReflectionItemCount: integer("last_reflection_item_count").notNull().default(0),
+
   createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),
@@ -633,6 +637,7 @@ export const memorySettings = pgTable("memory_settings", {
   maxContextMemories: integer("max_context_memories").notNull().default(20),
   questionsPerSession: integer("questions_per_session").notNull().default(3),
   extractionModel: text("extraction_model"),
+  reflectionTokenThreshold: integer("reflection_token_threshold").notNull().default(5000),
   createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date()),

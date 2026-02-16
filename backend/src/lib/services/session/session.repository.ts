@@ -23,6 +23,8 @@ function parseSessionRecord(record: SessionRecord): Session {
     sourceCallId: record.sourceCallId,
     title: record.title,
     status: record.status as SessionStatus,
+    reflectionTokenCount: record.reflectionTokenCount,
+    lastReflectionItemCount: record.lastReflectionItemCount,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   };
@@ -105,6 +107,8 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
 
     if (data.title !== undefined) updateData.title = data.title;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.reflectionTokenCount !== undefined) updateData.reflectionTokenCount = data.reflectionTokenCount;
+    if (data.lastReflectionItemCount !== undefined) updateData.lastReflectionItemCount = data.lastReflectionItemCount;
 
     await db.update(sessions).set(updateData).where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
 

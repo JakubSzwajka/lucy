@@ -212,6 +212,7 @@ export interface MemorySettings {
   maxContextMemories: number;
   questionsPerSession: number;
   extractionModel: string | null;
+  reflectionTokenThreshold: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -223,6 +224,7 @@ export interface UpdateMemorySettingsInput {
   maxContextMemories?: number;
   questionsPerSession?: number;
   extractionModel?: string | null;
+  reflectionTokenThreshold?: number;
 }
 
 export const MEMORY_SETTINGS_DEFAULTS: Required<UpdateMemorySettingsInput> = {
@@ -232,4 +234,5 @@ export const MEMORY_SETTINGS_DEFAULTS: Required<UpdateMemorySettingsInput> = {
   maxContextMemories: 20,
   questionsPerSession: 3,
   extractionModel: null,
+  reflectionTokenThreshold: 5000,
 };

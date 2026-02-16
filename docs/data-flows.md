@@ -30,7 +30,8 @@ ChatService.runAgent() — streaming mode
   │  2. prependSystemPrompt() → inject system message
   │  3. streamText() with Langfuse tracing
   │     ├─ onStepFinish → persistStepContent() (tool calls, tool results, reasoning)
-  │     └─ onFinish → finalizeChat() → agent status → "waiting", turnCount++
+  │     ├─ onFinish → finalizeChat() → agent status → "waiting", turnCount++
+  │     └─ onFinish → maybeAutoReflect() (fire-and-forget, see §5)
   ▼
 SSE Response
   │  result.stream.toUIMessageStreamResponse({ sendReasoning: true })
@@ -140,3 +141,44 @@ Returns ChatContext { agent, languageModel, tools, systemPrompt, ... }
 **Key files:**
 - [`backend/src/lib/services/agent-config/`](../backend/src/lib/services/agent-config/README.md) — AgentConfigService
 - [`backend/src/lib/services/chat/chat.service.ts`](../backend/src/lib/services/chat/chat.service.ts) — `prepareChat()`, `resolveSystemPrompt()`
+
+## 5. Auto-Reflection Flow
+
+Automatic memory extraction triggered by token accumulation during chat.
+
+```
+ChatService.runAgent() — onFinish callback
+  │  maybeAutoReflect(sessionId, userId, agentId)  ← fire-and-forget
+  ▼
+maybeAutoReflect()  (auto-reflection.service.ts)
+  │  1. getMemorySettings(userId) → check autoExtract === true
+  │  2. Check in-memory mutex (skip if reflection already in flight)
+  │  3. Load session → read persisted reflectionTokenCount, lastReflectionItemCount
+  │  4. Load items since last check → count tokens from ALL types:
+  │     messages, tool calls (name+args), tool results, reasoning
+  │  5. Persist updated counters to session (frontend reads these for indicator)
+  │  6. If totalTokens < reflectionTokenThreshold → return
+  ▼
+Threshold exceeded
+  │  7. ExtractionService.extract(userId, sessionId)
+  │     → loads transcript, calls LLM (gpt-4o-mini default), returns memories + questions
+  │  8. ExtractionService.confirm() with auto-approval:
+  │     memories where confidenceScore ≥ autoSaveThreshold → approved
+  │     questions where curiosityScore ≥ autoSaveThreshold → approved
+  │  9. Reset session.reflectionTokenCount to 0
+  └─ Reflection audit logged in `reflections` table
+```
+
+**Frontend indicator:** `ReflectionIndicator` component reads `session.reflectionTokenCount` and `memorySettings.reflectionTokenThreshold` to show a progress ring in the chat header.
+
+**Configuration** (via `PUT /api/memory-settings`):
+- `autoExtract` — master toggle (default: false)
+- `reflectionTokenThreshold` — tokens before trigger (default: 5000)
+- `autoSaveThreshold` — min confidence to auto-save (default: 0.8)
+- `extractionModel` — LLM for extraction (default: openai/gpt-4o-mini)
+
+**Key files:**
+- [`backend/src/lib/memory/auto-reflection.service.ts`](../backend/src/lib/memory/auto-reflection.service.ts) — `maybeAutoReflect()`
+- [`backend/src/lib/memory/extraction.service.ts`](../backend/src/lib/memory/extraction.service.ts) — `ExtractionService`
+- [`backend/src/lib/memory/`](../backend/src/lib/memory/README.md) — Memory module
+- [`desktop/renderer/src/components/chat/ReflectionIndicator.tsx`](../desktop/renderer/src/components/chat/ReflectionIndicator.tsx) — Frontend indicator

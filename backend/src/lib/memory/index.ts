@@ -4,6 +4,7 @@ export { IdentityService, getIdentityService } from "./identity.service";
 export { getMemoryStore } from "./storage";
 export type { MemoryStore } from "./storage/memory-store.interface";
 export { getMemorySettings } from "./settings";
+export { maybeAutoReflect } from "./auto-reflection.service";
 export type {
   Memory,
   MemorySettings,

@@ -36,8 +36,8 @@ export interface ExtractedMemory {
   confidenceLevel: string;
   evidence: string;
   tags: string[];
-  existingMemoryId?: string;
-  suggestedConnections?: { existingMemoryId: string; relationshipType: string }[];
+  existingMemoryId?: string | null;
+  suggestedConnections?: { existingMemoryId: string; relationshipType: string }[] | null;
 }
 
 export interface ExtractedQuestion {
@@ -89,7 +89,7 @@ const extractionSchema = z.object({
       confidenceLevel: z.enum(confidenceLevels),
       evidence: z.string(),
       tags: z.array(z.string()),
-      existingMemoryId: z.string().optional(),
+      existingMemoryId: z.string().nullable(),
       suggestedConnections: z
         .array(
           z.object({
@@ -97,7 +97,7 @@ const extractionSchema = z.object({
             relationshipType: z.enum(relationshipTypes),
           })
         )
-        .optional(),
+        .nullable(),
     })
   ),
   questions: z.array(
@@ -190,6 +190,11 @@ export class ExtractionService {
     const { object } = await generateObject({
       model,
       schema: extractionSchema,
+      experimental_telemetry: {
+        isEnabled: true,
+        functionId: "memory-extraction",
+        metadata: { sessionId, userId, model: modelUsed, messagesAnalyzed },
+      },
       prompt: `You are analyzing a conversation to extract structured memories about the user.
 
 ## Existing Memories (do not duplicate these)

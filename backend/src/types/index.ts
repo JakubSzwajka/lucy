@@ -13,6 +13,8 @@ export interface Session {
   sourceCallId?: string | null;
   title: string;
   status: SessionStatus;
+  reflectionTokenCount: number;
+  lastReflectionItemCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +29,8 @@ export interface SessionCreate {
 export interface SessionUpdate {
   title?: string;
   status?: SessionStatus;
+  reflectionTokenCount?: number;
+  lastReflectionItemCount?: number;
 }
 
 // ============================================================================

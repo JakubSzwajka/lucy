@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { StreamDebugPanel } from "./StreamDebugPanel";
+import { ReflectionIndicator } from "./ReflectionIndicator";
 import { PlanPanel } from "@/components/plan";
 import { useSessionChat } from "@/hooks/useAgentChat";
 import { useStreamEvents } from "@/hooks/useStreamEvents";
@@ -127,7 +128,7 @@ export function ChatContainer({
       {/* Main chat column */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
-        <header className="h-16 border-b border-border flex items-center px-6">
+        <header className="h-16 border-b border-border flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <div className={`w-2 h-2 rounded-full ${getStatusIndicator()}`} />
             <div>
@@ -142,6 +143,7 @@ export function ChatContainer({
               )}
             </div>
           </div>
+          <ReflectionIndicator sessionId={sessionId} chatStatus={status} />
         </header>
 
         {/* Messages */}

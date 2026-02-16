@@ -23,6 +23,7 @@ import type { ToolFilter } from "@/lib/tools";
 import type { ToolSource } from "@/lib/tools/types";
 import { generateDelegateTools } from "@/lib/tools/delegate";
 import { getContextRetrievalService } from "@/lib/memory/context-retrieval.service";
+import { maybeAutoReflect } from "@/lib/memory/auto-reflection.service";
 
 // ============================================================================
 // Chat Service
@@ -124,6 +125,9 @@ export class ChatService {
               span.update({ output: text || "completed" });
               updateActiveTrace({ output: text });
               await this.finalizeChat(agentId, userId);
+              if (sessionId) {
+                maybeAutoReflect(sessionId, userId, agentId).catch(() => {});
+              }
             },
             experimental_telemetry: {
               isEnabled: true,
