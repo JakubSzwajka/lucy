@@ -129,14 +129,11 @@ System prompt resolution (first non-null wins):
   │
   │  Then append: memory context + environment context
   ▼
-Tool assembly (non-blocking MCP):
-  │  1. initializeToolRegistry() (idempotent, MCP init is non-blocking)
-  │  2. mcpProvider.refreshServersInBackground() — fire-and-forget
-  │  3. registry.toAiSdkTools(context, toolFilter) → builtin tools always ready,
-  │     MCP tools included only if servers have connected by now
-  │  4. generateDelegateTools(agentConfig, ...) → delegate tools from config
-  │  5. Merge all into single tools object
-  │  Note: MCP tools appear on subsequent turns as servers finish connecting
+Tool assembly:
+  │  1. initializeToolRegistry() + mcpProvider.refreshServers()
+  │  2. registry.toAiSdkTools(context, toolFilter) → filtered builtin + MCP tools
+  │  3. generateDelegateTools(agentConfig, ...) → delegate tools from config
+  │  4. Merge all into single tools object
   ▼
 Returns ChatContext { agent, languageModel, tools, systemPrompt, ... }
 ```

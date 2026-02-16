@@ -59,22 +59,10 @@ export async function createMcpClient(server: McpServer): Promise<McpClientWrapp
     }
   );
 
-  const MCP_CONNECT_TIMEOUT = 10_000;
-
-  await Promise.race([
-    client.connect(transport),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`[MCP] Connection to ${server.name} timed out after ${MCP_CONNECT_TIMEOUT}ms`)), MCP_CONNECT_TIMEOUT)
-    ),
-  ]);
+  await client.connect(transport);
   console.log(`[MCP] Connected to ${server.name}`);
 
-  const toolsResult = await Promise.race([
-    client.listTools(),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`[MCP] listTools for ${server.name} timed out after ${MCP_CONNECT_TIMEOUT}ms`)), MCP_CONNECT_TIMEOUT)
-    ),
-  ]);
+  const toolsResult = await client.listTools();
   const tools: McpTool[] = (toolsResult.tools || []).map((tool) => ({
     name: tool.name,
     description: tool.description,
