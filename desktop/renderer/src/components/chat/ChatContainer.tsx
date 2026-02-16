@@ -3,11 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
-import { StreamDebugPanel } from "./StreamDebugPanel";
 import { ReflectionIndicator } from "./ReflectionIndicator";
 import { PlanPanel } from "@/components/plan";
 import { useSessionChat } from "@/hooks/useAgentChat";
-import { useStreamEvents } from "@/hooks/useStreamEvents";
 import { useMcpStatus } from "@/hooks/useMcpStatus";
 import { usePlan } from "@/hooks/usePlan";
 import { getModelConfig } from "@/lib/ai/models";
@@ -59,10 +57,6 @@ export function ChatContainer({
       });
     }
   }, [status, rawMessages]);
-
-  // Stream debug panel
-  const [debugPanelOpen, setDebugPanelOpen] = useState(false);
-  const { events: streamEvents, clearEvents } = useStreamEvents(rawMessages, status);
 
   // MCP servers (global setting)
   const {
@@ -180,13 +174,6 @@ export function ChatContainer({
         />
       </div>
 
-      {/* Stream Debug Panel (right side) */}
-      <StreamDebugPanel
-        events={streamEvents}
-        onClear={clearEvents}
-        isOpen={debugPanelOpen}
-        onToggle={() => setDebugPanelOpen(!debugPanelOpen)}
-      />
     </div>
   );
 }
