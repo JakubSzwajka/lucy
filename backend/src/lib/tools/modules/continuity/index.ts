@@ -20,6 +20,7 @@ ACTIONS:
 - "find": Search memories by keyword
 - "update": Modify an existing memory's content, type, or confidence
 - "supersede": Replace an outdated memory with a corrected version
+- "delete": Permanently remove a memory by ID (use when information is wrong, irrelevant, or user asks to forget)
 - "resolve_question": Mark a surfaced question as answered (requires questionId and answer)
 
 MEMORY TYPES: fact, preference, relationship, principle, commitment, moment, skill
@@ -39,7 +40,7 @@ WHEN TO SAVE:
 Always set appropriate confidence based on how the information was obtained.`,
 
       inputSchema: z.object({
-        action: z.enum(["save", "find", "update", "supersede", "resolve_question"]).describe("Action to perform"),
+        action: z.enum(["save", "find", "update", "supersede", "delete", "resolve_question"]).describe("Action to perform"),
 
         // For save
         type: z.enum(memoryTypes).optional().describe("Memory type"),
@@ -182,6 +183,16 @@ Always set appropriate confidence based on how the information was obtained.`,
               confidenceLevel: memory.confidenceLevel,
             },
           };
+        }
+
+        // ========== DELETE ==========
+        if (args.action === "delete") {
+          const { memoryId } = args;
+          if (!memoryId) return { error: "memoryId is required for delete" };
+
+          await service.delete(userId, memoryId);
+
+          return { success: true, deleted: memoryId };
         }
 
         // ========== RESOLVE QUESTION ==========

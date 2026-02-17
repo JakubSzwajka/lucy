@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import {
   ReactFlow,
   Background,
@@ -13,6 +13,9 @@ import {
   Position,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
+  BackgroundVariant,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useMemories } from "@/hooks/useMemories";
@@ -29,6 +32,32 @@ const TYPE_COLORS: Record<MemoryType, string> = {
 };
 
 const TAG_COLOR = "#6b7280";
+
+type LayoutMode = "circular" | "force" | "clustered";
+type EdgeType = "straight" | "default" | "smoothstep";
+type BgVariant = "dots" | "lines" | "cross" | "none";
+
+interface GraphSettings {
+  layout: LayoutMode;
+  edgeType: EdgeType;
+  tagSpacing: number;     // multiplier for tag ring radius
+  ringGap: number;        // gap between tag and memory rings
+  showTags: boolean;
+  edgeOpacity: number;    // 0-100
+  bgVariant: BgVariant;
+  nodeScale: number;      // 0.5-2
+}
+
+const DEFAULT_SETTINGS: GraphSettings = {
+  layout: "circular",
+  edgeType: "straight",
+  tagSpacing: 1,
+  ringGap: 280,
+  showTags: true,
+  edgeOpacity: 40,
+  bgVariant: "dots",
+  nodeScale: 1,
+};
 
 function MemoryNode({ data }: { data: { label: string; type: MemoryType; confidence: number; selected?: boolean; dimmed?: boolean } }) {
   const opacity = data.dimmed ? 0.25 : 1;
@@ -100,7 +129,153 @@ interface GraphData {
   memoryTags: Map<string, string[]>;  // memory ID -> tags
 }
 
-function buildGraph(memories: Memory[]): GraphData {
+// Simple force simulation (runs synchronously for small graphs)
+function forceLayout(
+  memories: Memory[],
+  tagList: [string, number][],
+  _tagMemories: Map<string, string[]>,
+): { memPositions: Map<string, { x: number; y: number }>; tagPositions: Map<string, { x: number; y: number }> } {
+  // Initialize positions in a circle
+  const allIds: string[] = [];
+  const pos = new Map<string, { x: number; y: number }>();
+
+  for (let i = 0; i < tagList.length; i++) {
+    const id = `tag:${tagList[i][0]}`;
+    const angle = (2 * Math.PI * i) / tagList.length;
+    pos.set(id, { x: Math.cos(angle) * 200, y: Math.sin(angle) * 200 });
+    allIds.push(id);
+  }
+  for (let i = 0; i < memories.length; i++) {
+    const id = `mem:${memories[i].id}`;
+    const angle = (2 * Math.PI * i) / memories.length;
+    pos.set(id, { x: Math.cos(angle) * 400, y: Math.sin(angle) * 400 });
+    allIds.push(id);
+  }
+
+  // Build edge list
+  const links: [string, string][] = [];
+  for (const mem of memories) {
+    for (const tag of mem.tags ?? []) {
+      links.push([`mem:${mem.id}`, `tag:${tag}`]);
+    }
+  }
+
+  // Run iterations
+  const iterations = 80;
+  const repulsion = 8000;
+  const attraction = 0.005;
+  const damping = 0.9;
+  const vel = new Map<string, { vx: number; vy: number }>();
+  for (const id of allIds) vel.set(id, { vx: 0, vy: 0 });
+
+  for (let iter = 0; iter < iterations; iter++) {
+    // Repulsion between all nodes
+    for (let i = 0; i < allIds.length; i++) {
+      for (let j = i + 1; j < allIds.length; j++) {
+        const a = pos.get(allIds[i])!;
+        const b = pos.get(allIds[j])!;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+        const force = repulsion / (dist * dist);
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        vel.get(allIds[i])!.vx += fx;
+        vel.get(allIds[i])!.vy += fy;
+        vel.get(allIds[j])!.vx -= fx;
+        vel.get(allIds[j])!.vy -= fy;
+      }
+    }
+    // Attraction along edges
+    for (const [src, tgt] of links) {
+      const a = pos.get(src);
+      const b = pos.get(tgt);
+      if (!a || !b) continue;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const fx = dx * attraction;
+      const fy = dy * attraction;
+      vel.get(src)!.vx += fx;
+      vel.get(src)!.vy += fy;
+      vel.get(tgt)!.vx -= fx;
+      vel.get(tgt)!.vy -= fy;
+    }
+    // Apply velocity
+    for (const id of allIds) {
+      const v = vel.get(id)!;
+      const p = pos.get(id)!;
+      v.vx *= damping;
+      v.vy *= damping;
+      p.x += v.vx;
+      p.y += v.vy;
+    }
+  }
+
+  const memPositions = new Map<string, { x: number; y: number }>();
+  const tagPositions = new Map<string, { x: number; y: number }>();
+  for (const [id, p] of pos) {
+    if (id.startsWith("mem:")) memPositions.set(id.slice(4), p);
+    else if (id.startsWith("tag:")) tagPositions.set(id.slice(4), p);
+  }
+  return { memPositions, tagPositions };
+}
+
+// Clustered layout: group memories by their primary (first) tag
+function clusteredLayout(
+  memories: Memory[],
+  tagList: [string, number][],
+): { memPositions: Map<string, { x: number; y: number }>; tagPositions: Map<string, { x: number; y: number }> } {
+  const memPositions = new Map<string, { x: number; y: number }>();
+  const tagPositions = new Map<string, { x: number; y: number }>();
+
+  const clusterRadius = Math.max(300, tagList.length * 60);
+
+  // Position each tag as cluster center
+  for (let i = 0; i < tagList.length; i++) {
+    const angle = (2 * Math.PI * i) / tagList.length;
+    tagPositions.set(tagList[i][0], {
+      x: Math.cos(angle) * clusterRadius,
+      y: Math.sin(angle) * clusterRadius,
+    });
+  }
+
+  // Group memories by primary tag
+  const clusters = new Map<string, Memory[]>();
+  const untagged: Memory[] = [];
+  for (const mem of memories) {
+    const primaryTag = (mem.tags ?? [])[0];
+    if (primaryTag && tagPositions.has(primaryTag)) {
+      const list = clusters.get(primaryTag) ?? [];
+      list.push(mem);
+      clusters.set(primaryTag, list);
+    } else {
+      untagged.push(mem);
+    }
+  }
+
+  // Arrange memories around their cluster center
+  for (const [tag, mems] of clusters) {
+    const center = tagPositions.get(tag)!;
+    const subRadius = Math.max(80, mems.length * 20);
+    for (let i = 0; i < mems.length; i++) {
+      const angle = (2 * Math.PI * i) / mems.length;
+      memPositions.set(mems[i].id, {
+        x: center.x + Math.cos(angle) * subRadius,
+        y: center.y + Math.sin(angle) * subRadius,
+      });
+    }
+  }
+
+  // Untagged in center
+  for (let i = 0; i < untagged.length; i++) {
+    const angle = (2 * Math.PI * i) / Math.max(1, untagged.length);
+    memPositions.set(untagged[i].id, { x: Math.cos(angle) * 80, y: Math.sin(angle) * 80 });
+  }
+
+  return { memPositions, tagPositions };
+}
+
+function buildGraph(memories: Memory[], settings: GraphSettings): GraphData {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const tagCounts = new Map<string, number>();
@@ -121,41 +296,324 @@ function buildGraph(memories: Memory[]): GraphData {
   }
 
   const tagList = Array.from(tagCounts.entries()).sort((a, b) => b[1] - a[1]);
-  const tagRadius = Math.max(200, tagList.length * 30);
-  const memRadius = tagRadius + 280;
+  const opacityHex = Math.round((settings.edgeOpacity / 100) * 255).toString(16).padStart(2, "0");
 
-  for (let i = 0; i < tagList.length; i++) {
-    const [tag, count] = tagList[i];
-    const angle = (2 * Math.PI * i) / tagList.length;
-    nodes.push({
-      id: `tag:${tag}`,
-      type: "tag",
-      position: { x: Math.cos(angle) * tagRadius, y: Math.sin(angle) * tagRadius },
-      data: { label: tag, count, selected: false, dimmed: false },
-    });
-  }
+  if (settings.layout === "force") {
+    const { memPositions, tagPositions } = forceLayout(memories, tagList, tagMemories);
 
-  for (let i = 0; i < memories.length; i++) {
-    const mem = memories[i];
-    const angle = (2 * Math.PI * i) / memories.length;
-    nodes.push({
-      id: `mem:${mem.id}`,
-      type: "memory",
-      position: { x: Math.cos(angle) * memRadius, y: Math.sin(angle) * memRadius },
-      data: { label: mem.content, type: mem.type, confidence: mem.confidenceScore, selected: false, dimmed: false },
-    });
+    if (settings.showTags) {
+      for (const [tag, count] of tagList) {
+        const p = tagPositions.get(tag) ?? { x: 0, y: 0 };
+        nodes.push({
+          id: `tag:${tag}`,
+          type: "tag",
+          position: { x: p.x * settings.nodeScale, y: p.y * settings.nodeScale },
+          data: { label: tag, count, selected: false, dimmed: false },
+        });
+      }
+    }
 
-    for (const tag of mem.tags ?? []) {
-      edges.push({
-        id: `edge:${mem.id}:${tag}`,
-        source: `mem:${mem.id}`,
-        target: `tag:${tag}`,
-        style: { stroke: `${TYPE_COLORS[mem.type]}40`, strokeWidth: 1.5 },
+    for (const mem of memories) {
+      const p = memPositions.get(mem.id) ?? { x: 0, y: 0 };
+      nodes.push({
+        id: `mem:${mem.id}`,
+        type: "memory",
+        position: { x: p.x * settings.nodeScale, y: p.y * settings.nodeScale },
+        data: { label: mem.content, type: mem.type, confidence: mem.confidenceScore, selected: false, dimmed: false },
       });
+      if (settings.showTags) {
+        for (const tag of mem.tags ?? []) {
+          edges.push({
+            id: `edge:${mem.id}:${tag}`,
+            source: `mem:${mem.id}`,
+            target: `tag:${tag}`,
+            type: settings.edgeType,
+            style: { stroke: `${TYPE_COLORS[mem.type]}${opacityHex}`, strokeWidth: 1.5 },
+          });
+        }
+      }
+    }
+  } else if (settings.layout === "clustered") {
+    const { memPositions, tagPositions } = clusteredLayout(memories, tagList);
+
+    if (settings.showTags) {
+      for (const [tag, count] of tagList) {
+        const p = tagPositions.get(tag) ?? { x: 0, y: 0 };
+        nodes.push({
+          id: `tag:${tag}`,
+          type: "tag",
+          position: { x: p.x * settings.nodeScale, y: p.y * settings.nodeScale },
+          data: { label: tag, count, selected: false, dimmed: false },
+        });
+      }
+    }
+
+    for (const mem of memories) {
+      const p = memPositions.get(mem.id) ?? { x: 0, y: 0 };
+      nodes.push({
+        id: `mem:${mem.id}`,
+        type: "memory",
+        position: { x: p.x * settings.nodeScale, y: p.y * settings.nodeScale },
+        data: { label: mem.content, type: mem.type, confidence: mem.confidenceScore, selected: false, dimmed: false },
+      });
+      if (settings.showTags) {
+        for (const tag of mem.tags ?? []) {
+          edges.push({
+            id: `edge:${mem.id}:${tag}`,
+            source: `mem:${mem.id}`,
+            target: `tag:${tag}`,
+            type: settings.edgeType,
+            style: { stroke: `${TYPE_COLORS[mem.type]}${opacityHex}`, strokeWidth: 1.5 },
+          });
+        }
+      }
+    }
+  } else {
+    // Circular (original)
+    const tagRadius = Math.max(200, tagList.length * 30) * settings.tagSpacing;
+    const memRadius = tagRadius + settings.ringGap;
+
+    if (settings.showTags) {
+      for (let i = 0; i < tagList.length; i++) {
+        const [tag, count] = tagList[i];
+        const angle = (2 * Math.PI * i) / tagList.length;
+        nodes.push({
+          id: `tag:${tag}`,
+          type: "tag",
+          position: { x: Math.cos(angle) * tagRadius * settings.nodeScale, y: Math.sin(angle) * tagRadius * settings.nodeScale },
+          data: { label: tag, count, selected: false, dimmed: false },
+        });
+      }
+    }
+
+    for (let i = 0; i < memories.length; i++) {
+      const mem = memories[i];
+      const angle = (2 * Math.PI * i) / memories.length;
+      nodes.push({
+        id: `mem:${mem.id}`,
+        type: "memory",
+        position: { x: Math.cos(angle) * memRadius * settings.nodeScale, y: Math.sin(angle) * memRadius * settings.nodeScale },
+        data: { label: mem.content, type: mem.type, confidence: mem.confidenceScore, selected: false, dimmed: false },
+      });
+
+      if (settings.showTags) {
+        for (const tag of mem.tags ?? []) {
+          edges.push({
+            id: `edge:${mem.id}:${tag}`,
+            source: `mem:${mem.id}`,
+            target: `tag:${tag}`,
+            type: settings.edgeType,
+            style: { stroke: `${TYPE_COLORS[mem.type]}${opacityHex}`, strokeWidth: 1.5 },
+          });
+        }
+      }
     }
   }
 
   return { nodes, edges, memoryMap, tagMemories, memoryTags };
+}
+
+// Settings panel
+function GraphSettingsMenu({
+  settings,
+  onChange,
+}: {
+  settings: GraphSettings;
+  onChange: (s: GraphSettings) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as HTMLElement)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const set = <K extends keyof GraphSettings>(key: K, val: GraphSettings[K]) =>
+    onChange({ ...settings, [key]: val });
+
+  return (
+    <div ref={menuRef} className="absolute top-3 left-3 z-50">
+      <button
+        onClick={() => setOpen(!open)}
+        className="bg-background-secondary border border-border rounded-lg px-3 py-2 text-xs font-mono text-muted-dark hover:text-foreground transition-colors shadow-lg flex items-center gap-1.5"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+        Graph
+      </button>
+
+      {open && (
+        <div className="mt-1.5 bg-background-secondary border border-border rounded-lg shadow-xl w-64 overflow-hidden">
+          <div className="px-3 py-2 border-b border-border">
+            <span className="text-[10px] font-mono text-muted-darker uppercase tracking-wider">Graph Settings</span>
+          </div>
+
+          <div className="p-3 space-y-3 text-xs">
+            {/* Layout */}
+            <div>
+              <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider block mb-1">Layout</label>
+              <div className="flex gap-1">
+                {(["circular", "force", "clustered"] as LayoutMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => set("layout", mode)}
+                    className={`flex-1 px-2 py-1 rounded text-[10px] font-mono transition-colors ${
+                      settings.layout === mode
+                        ? "bg-foreground/10 text-foreground border border-border"
+                        : "text-muted-dark hover:text-foreground"
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Edge type */}
+            <div>
+              <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider block mb-1">Edges</label>
+              <div className="flex gap-1">
+                {([["straight", "Straight"], ["default", "Bezier"], ["smoothstep", "Step"]] as [EdgeType, string][]).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => set("edgeType", val)}
+                    className={`flex-1 px-2 py-1 rounded text-[10px] font-mono transition-colors ${
+                      settings.edgeType === val
+                        ? "bg-foreground/10 text-foreground border border-border"
+                        : "text-muted-dark hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Edge opacity */}
+            <div>
+              <div className="flex justify-between mb-1">
+                <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider">Edge Opacity</label>
+                <span className="font-mono text-muted-darker text-[10px]">{settings.edgeOpacity}%</span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={100}
+                value={settings.edgeOpacity}
+                onChange={(e) => set("edgeOpacity", Number(e.target.value))}
+                className="w-full h-1 accent-neutral-500"
+              />
+            </div>
+
+            {/* Spacing (circular only) */}
+            {settings.layout === "circular" && (
+              <>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider">Tag Spacing</label>
+                    <span className="font-mono text-muted-darker text-[10px]">{settings.tagSpacing.toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.3}
+                    max={3}
+                    step={0.1}
+                    value={settings.tagSpacing}
+                    onChange={(e) => set("tagSpacing", Number(e.target.value))}
+                    className="w-full h-1 accent-neutral-500"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider">Ring Gap</label>
+                    <span className="font-mono text-muted-darker text-[10px]">{settings.ringGap}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={100}
+                    max={600}
+                    step={20}
+                    value={settings.ringGap}
+                    onChange={(e) => set("ringGap", Number(e.target.value))}
+                    className="w-full h-1 accent-neutral-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Node scale */}
+            <div>
+              <div className="flex justify-between mb-1">
+                <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider">Spread</label>
+                <span className="font-mono text-muted-darker text-[10px]">{settings.nodeScale.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min={0.3}
+                max={3}
+                step={0.1}
+                value={settings.nodeScale}
+                onChange={(e) => set("nodeScale", Number(e.target.value))}
+                className="w-full h-1 accent-neutral-500"
+              />
+            </div>
+
+            {/* Background */}
+            <div>
+              <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider block mb-1">Background</label>
+              <div className="flex gap-1">
+                {(["dots", "lines", "cross", "none"] as BgVariant[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => set("bgVariant", v)}
+                    className={`flex-1 px-2 py-1 rounded text-[10px] font-mono transition-colors ${
+                      settings.bgVariant === v
+                        ? "bg-foreground/10 text-foreground border border-border"
+                        : "text-muted-dark hover:text-foreground"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Show tags toggle */}
+            <div className="flex items-center justify-between">
+              <label className="text-muted-dark font-mono text-[10px] uppercase tracking-wider">Show Tags</label>
+              <button
+                onClick={() => set("showTags", !settings.showTags)}
+                className={`w-8 h-4 rounded-full transition-colors relative ${
+                  settings.showTags ? "bg-blue-500/60" : "bg-neutral-600"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
+                    settings.showTags ? "left-4" : "left-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Reset */}
+            <button
+              onClick={() => onChange({ ...DEFAULT_SETTINGS })}
+              className="w-full text-center text-[10px] font-mono text-muted-darker hover:text-muted-dark transition-colors pt-1 border-t border-border"
+            >
+              Reset to defaults
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function timeAgo(dateStr: string): string {
@@ -306,11 +764,22 @@ function TagDetail({
   );
 }
 
-export function MemoryGraph() {
+function MemoryGraphInner() {
   const { memories, isLoading, updateMemory, deleteMemory } = useMemories({ limit: 200 });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<GraphSettings>(DEFAULT_SETTINGS);
+  const { fitView } = useReactFlow();
 
-  const graphData = useMemo(() => buildGraph(memories), [memories]);
+  const graphData = useMemo(() => buildGraph(memories, settings), [memories, settings]);
+
+  // Re-fit view when layout changes
+  const prevLayout = useRef(settings.layout);
+  useEffect(() => {
+    if (prevLayout.current !== settings.layout) {
+      prevLayout.current = settings.layout;
+      setTimeout(() => fitView({ padding: 0.3 }), 50);
+    }
+  }, [settings.layout, fitView]);
 
   // Apply highlighting based on selection
   const highlightedNodes = useMemo(() => {
@@ -444,6 +913,12 @@ export function MemoryGraph() {
     );
   }
 
+  const bgVariantMap: Record<string, BackgroundVariant> = {
+    dots: BackgroundVariant.Dots,
+    lines: BackgroundVariant.Lines,
+    cross: BackgroundVariant.Cross,
+  };
+
   return (
     <div className="flex-1 w-full h-full relative" style={{ minHeight: 500 }}>
       <ReactFlow
@@ -457,16 +932,20 @@ export function MemoryGraph() {
         fitView
         fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
-        defaultEdgeOptions={{ type: "straight" }}
+        defaultEdgeOptions={{ type: settings.edgeType }}
         minZoom={0.1}
         maxZoom={2}
       >
-        <Background color="#333" gap={24} />
+        {settings.bgVariant !== "none" && (
+          <Background color="#333" gap={24} variant={bgVariantMap[settings.bgVariant]} />
+        )}
         <Controls
           showInteractive={false}
           className="!bg-background-secondary !border-border !shadow-lg [&>button]:!bg-background [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-background-secondary"
         />
       </ReactFlow>
+
+      <GraphSettingsMenu settings={settings} onChange={setSettings} />
 
       {selectedMemory && (
         <MemoryDetail
@@ -485,5 +964,13 @@ export function MemoryGraph() {
         />
       )}
     </div>
+  );
+}
+
+export function MemoryGraph() {
+  return (
+    <ReactFlowProvider>
+      <MemoryGraphInner />
+    </ReactFlowProvider>
   );
 }
