@@ -161,6 +161,15 @@ export class ExtractionService {
     // 3. Load existing memories for dedup context
     const existingMemories = await this.store.loadMemories(userId, { limit: 100, status: "active" });
 
+    // 3b. Load active questions for dedup context
+    let activeQuestions: { id: string; content: string }[] = [];
+    try {
+      const questions = await this.store.getQuestionsToSurface(userId, 20);
+      activeQuestions = questions.map((q) => ({ id: q.id, content: q.content }));
+    } catch {
+      // Non-critical
+    }
+
     // 4. Build prompt and call LLM
     // Resolve model: explicit option > user setting > hardcoded default
     const userSettings = await getMemorySettings(userId);
@@ -203,6 +212,9 @@ export class ExtractionService {
 ## Existing Memories (do not duplicate these)
 ${existingContext}
 
+## Active Questions (do not regenerate these)
+${activeQuestions.length > 0 ? activeQuestions.map((q) => `[${q.id}] ${q.content}`).join("\n") : "No active questions yet."}
+
 ## Conversation Transcript
 ${transcript}
 
@@ -210,19 +222,55 @@ ${transcript}
 
 Analyze the conversation and output JSON with two arrays: "memories" and "questions".
 
-### Memories
-For each piece of memorable information:
+### Memory Rules
+ONLY extract facts about the USER — their life, goals, preferences, relationships, decisions, skills, patterns, personality. NEVER extract facts about the AI assistant's architecture, features, capabilities, or implementation details. Those belong in code and documentation, not user memory.
+
+DEDUPLICATION IS MANDATORY. Before proposing any memory:
+1. Check the existing memories list above carefully
+2. If an existing memory covers >80% of the same information, either: a) SKIP it entirely, OR b) Set existingMemoryId to UPDATE/SUPERSEDE it with refined content
+3. When in doubt, DON'T save. Fewer high-quality memories beat many redundant ones.
+
+Apply the "useful in 30 days" test: Will this memory help serve the user better a month from now? If no, don't extract it.
+
+GOOD: "Kuba works at Sofomo" (durable fact)
+GOOD: "Kuba prefers building to understand, not reading docs" (personality pattern)
+GOOD: "Kuba is getting married to Domi in 2026" (major life event)
+BAD: "Domi is working right now" (ephemeral, only true this moment)
+BAD: "Kuba didn't work yesterday" (one-time event, no lasting value)
+BAD: "Anthropic API was down today" (incident, not user knowledge)
+BAD: "Lucy now supports vision" (AI feature, not user knowledge)
+BAD: "Messages should include timestamps" (implementation detail)
+
+Maximum 5 new memories per extraction. Force-rank by importance. Quality over quantity.
+Set confidenceScore honestly. Don't inflate scores to pass the auto-save threshold.
+
+### Memory Schema
 - type: fact | preference | relationship | principle | commitment | moment | skill
 - content: Clear, concise single statement
 - confidenceScore: 0.0-1.0
 - confidenceLevel: explicit (0.95-1.0) | implied (0.70-0.94) | inferred (0.40-0.69) | speculative (0.00-0.39)
 - evidence: Direct quote from conversation (max 200 chars)
 - tags: Array of categorization tags
-- existingMemoryId: If this updates/contradicts an existing memory, its ID (to supersede)
+- existingMemoryId: If this updates/contradicts an existing memory, its ID (to supersede). Null otherwise.
 - suggestedConnections: Array of { existingMemoryId, relationshipType } for related existing memories. relationshipType must be one of: relates_to, contradicts, refines, supports, context_for
 
-### Questions
-For each knowledge gap or follow-up:
+### Question Rules
+Questions must be about the USER — their motivations, goals, blind spots, patterns, relationships, experiences. NEVER generate meta-questions about the reflection process, memory system, AI capabilities, or how to improve the AI itself.
+
+Do NOT regenerate questions that overlap with the Active Questions listed above. Generate NEW questions that fill genuine knowledge gaps only.
+
+Apply the "would I actually ask this in conversation?" test. If the question sounds like a survey, a therapist intake form, or navel-gazing, rephrase it or drop it.
+
+GOOD: "What does Kuba's typical workday look like?"
+GOOD: "What is Domi's profession?"
+BAD: "What new questions might arise from recent conversations?"
+BAD: "How can we ensure memory extraction captures relevant details?"
+BAD: "What improvements can be made to the reflection process?"
+
+Maximum 3 questions per extraction. Prioritize genuine curiosity gaps about the user.
+Questions should be SPECIFIC and ANSWERABLE in conversation, not abstract or philosophical.
+
+### Question Schema
 - content: Natural question (not clinical)
 - context: Why this question emerged from the conversation
 - curiosityType: gap | implication | clarification | exploration | connection
@@ -250,6 +298,10 @@ For each knowledge gap or follow-up:
     const connectionsToCreate: CreateConnectionInput[] = [];
     // Track mapping from original index in approvedMemories → saved memory ID
     const indexToMemoryId = new Map<number, string>();
+
+    // Load existing memories for write-time dedup
+    const existingMemories = await this.store.loadMemories(userId, { limit: 100, status: "active" });
+
     const approved = input.approvedMemories.filter((m) => m.approved);
     for (const mem of approved) {
       const memInput: CreateMemoryInput = {
@@ -272,6 +324,14 @@ For each knowledge gap or follow-up:
         const superseded = await this.memoryService.supersede(userId, mem.existingMemoryId, memInput);
         savedMemoryId = superseded.id;
       } else {
+        // Write-time dedup: skip if too similar to an existing memory
+        const isDuplicate = existingMemories.some(
+          (existing) => this.wordOverlapSimilarity(existing.content, memInput.content) > 0.8
+        );
+        if (isDuplicate) {
+          console.log(`[extraction] Skipping duplicate memory: "${memInput.content.slice(0, 80)}"`);
+          continue;
+        }
         const { memory } = await this.memoryService.create(userId, memInput, evidence);
         savedMemoryId = memory.id;
       }
@@ -345,6 +405,13 @@ For each knowledge gap or follow-up:
     const reflection = await this.store.saveReflection(userId, reflectionInput);
 
     return { memoriesSaved, questionsGenerated, reflection };
+  }
+
+  private wordOverlapSimilarity(a: string, b: string): number {
+    const wordsA = new Set(a.toLowerCase().split(/\s+/));
+    const wordsB = new Set(b.toLowerCase().split(/\s+/));
+    const intersection = [...wordsA].filter((w) => wordsB.has(w));
+    return intersection.length / Math.max(wordsA.size, wordsB.size);
   }
 
   private formatTranscript(items: Item[]): string {

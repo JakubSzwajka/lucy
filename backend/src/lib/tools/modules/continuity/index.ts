@@ -18,6 +18,7 @@ export const continuityModule = defineToolModule<null>({
 ACTIONS:
 - "save": Store a new memory with type and confidence scoring
 - "find": Search memories by keyword
+- "list": Browse all memories with optional filters (type, scope, limit, offset)
 - "update": Modify an existing memory's content, type, or confidence
 - "supersede": Replace an outdated memory with a corrected version
 - "delete": Permanently remove a memory by ID (use when information is wrong, irrelevant, or user asks to forget)
@@ -40,7 +41,7 @@ WHEN TO SAVE:
 Always set appropriate confidence based on how the information was obtained.`,
 
       inputSchema: z.object({
-        action: z.enum(["save", "find", "update", "supersede", "delete", "resolve_question"]).describe("Action to perform"),
+        action: z.enum(["save", "find", "list", "update", "supersede", "delete", "resolve_question"]).describe("Action to perform"),
 
         // For save
         type: z.enum(memoryTypes).optional().describe("Memory type"),
@@ -52,6 +53,10 @@ Always set appropriate confidence based on how the information was obtained.`,
 
         // For find
         query: z.string().optional().describe("Search keywords"),
+
+        // For list
+        limit: z.number().min(1).max(100).optional().describe("Max results (default 50)"),
+        offset: z.number().min(0).optional().describe("Pagination offset (default 0)"),
 
         // For update / supersede
         memoryId: z.string().optional().describe("ID of memory to update or supersede"),
@@ -129,6 +134,31 @@ Always set appropriate confidence based on how the information was obtained.`,
               tags: m.tags,
               scope: m.scope,
               status: m.status,
+            })),
+            count: memories.length,
+          };
+        }
+
+        // ========== LIST ==========
+        if (args.action === "list") {
+          const memories = await service.list(userId, {
+            type: args.type,
+            scope: args.scope,
+            status: "active",
+            limit: Math.min(args.limit ?? 50, 100),
+            offset: args.offset ?? 0,
+          });
+
+          return {
+            memories: memories.map((m) => ({
+              id: m.id,
+              type: m.type,
+              content: m.content,
+              scope: m.scope,
+              confidenceLevel: m.confidenceLevel,
+              confidenceScore: m.confidenceScore,
+              tags: m.tags,
+              createdAt: m.createdAt.toISOString(),
             })),
             count: memories.length,
           };
