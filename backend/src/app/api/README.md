@@ -11,7 +11,7 @@ HTTP adapters over service/capability modules.
 
 - `auth/` - login/register/token verify
 - `sessions/` - session CRUD, chat turn execution, session plan
-- `settings/`, `system-prompts/`, `quick-actions/` - user configuration
+- `settings/`, `system-prompts/` - user configuration
 - `providers/` - available model providers based on API keys
 - `tools/` - discovered tool inventory
 - `mcp-servers/` - MCP server config and health

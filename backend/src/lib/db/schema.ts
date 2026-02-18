@@ -225,30 +225,6 @@ export const systemPrompts = pgTable("system_prompts", {
 ]);
 
 // ============================================================================
-// QUICK ACTIONS - Predefined user prompts shown on empty chat
-// ============================================================================
-
-export const quickActions = pgTable("quick_actions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id),
-  name: text("name").notNull(),
-  content: text("content").notNull(),
-  icon: text("icon"),
-  sortOrder: integer("sort_order").notNull().default(0),
-  enabled: boolean("enabled").notNull().default(true),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: timestamp("updated_at")
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (table) => [
-  index("quick_actions_user_idx").on(table.userId),
-]);
-
-// ============================================================================
 // PLANS - Execution plans owned by orchestrator agents
 // ============================================================================
 
@@ -665,9 +641,6 @@ export type ToolCallStatus = (typeof toolCallStatusEnum)[number];
 
 export type SystemPromptRecord = typeof systemPrompts.$inferSelect;
 export type NewSystemPrompt = typeof systemPrompts.$inferInsert;
-
-export type QuickActionRecord = typeof quickActions.$inferSelect;
-export type NewQuickAction = typeof quickActions.$inferInsert;
 
 export type SettingsRecord = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;

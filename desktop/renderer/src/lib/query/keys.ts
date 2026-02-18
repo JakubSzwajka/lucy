@@ -6,9 +6,6 @@ export const queryKeys = {
   systemPrompts: {
     all: ["systemPrompts"] as const,
   },
-  quickActions: {
-    all: ["quickActions"] as const,
-  },
   mcpServers: {
     all: ["mcpServers"] as const,
     status: ["mcpServers", "status"] as const,

@@ -146,7 +146,6 @@ All API routes live in `backend/src/app/api/` with JWT auth + userId scoping.
 | `/api/providers` | Available AI providers |
 | `/api/settings` | App settings (per-user) |
 | `/api/system-prompts` | System prompt management |
-| `/api/quick-actions` | Quick action management |
 | `/api/mcp-servers` | MCP server management |
 | `/api/tools` | Tool listing |
 | `/api/openapi` | OpenAPI spec |
@@ -167,7 +166,6 @@ All API routes live in `backend/src/app/api/` with JWT auth + userId scoping.
 - `settings` - App-wide settings (per-user in backend)
 - `plans` / `plan_steps` - Multi-step plan tracking
 - `mcp_servers` - MCP server configuration
-- `quick_actions` - Quick action prompts
 - `integrations` - Third-party integration config
 
 ## TypeScript

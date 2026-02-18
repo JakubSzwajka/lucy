@@ -6,11 +6,10 @@ User-scoped configuration services.
 
 - `getSettingsService()`
 - `getSystemPromptService()`
-- `getQuickActionService()`
 
 ## Use It Like This
 
-Use these services in routes that manage user preferences/prompt assets/quick actions.
+Use these services in routes that manage user preferences and prompt assets.
 
 ## Responsibility Boundary
 

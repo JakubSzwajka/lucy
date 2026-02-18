@@ -7,7 +7,7 @@ Primary orchestration layer used by API routes.
 Import service singletons from `index.ts`:
 - `getSessionService`, `getChatService`, `getAgentService`, `getItemService`
 - `getPlanService`
-- config services: settings/system prompts/quick actions
+- config services: settings/system prompts
 - MCP service re-exports
 
 ## Use It Like This

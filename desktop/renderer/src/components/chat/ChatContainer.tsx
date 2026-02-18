@@ -29,8 +29,6 @@ export function ChatContainer({
   enabledModels,
 }: ChatContainerProps) {
   const { getModelConfig } = useMainContext();
-  const [prefill, setPrefill] = useState<{ text: string; nonce: number } | null>(null);
-
   const { messages, agent, childSessions, streamPlan, sendMessage, isLoading, rawMessages, status, hasMoreItems, isLoadingMore, loadMoreItems } = useSessionChat({
     sessionId,
     model: selectedModel,
@@ -93,10 +91,6 @@ export function ChatContainer({
     [sendMessage, thinkingEnabled]
   );
 
-  const handleQuickActionPrefill = useCallback((content: string) => {
-    setPrefill({ text: content, nonce: Date.now() });
-  }, []);
-
   // Get agent status indicator
   const getStatusIndicator = () => {
     if (!agent) return "bg-muted-dark";
@@ -145,7 +139,6 @@ export function ChatContainer({
         <MessageList
           messages={messages}
           isLoading={isLoading}
-          onQuickAction={handleQuickActionPrefill}
           childSessions={childSessions}
           hasMoreItems={hasMoreItems}
           isLoadingMore={isLoadingMore}
@@ -158,8 +151,6 @@ export function ChatContainer({
         {/* Input */}
         <ChatInput
           onSend={handleSendMessage}
-          prefillText={prefill?.text}
-          prefillNonce={prefill?.nonce}
           isLoading={isLoading}
           messages={messages}
           modelConfig={modelConfig}

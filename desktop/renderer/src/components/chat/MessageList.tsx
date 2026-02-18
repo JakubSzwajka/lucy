@@ -43,7 +43,6 @@ import {
   WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
-import { QuickActions } from "./QuickActions";
 import { api } from "@/lib/api/client";
 import { useTts } from "@/hooks/useTts";
 import type { ChatMessage, ContentPart, ChildSessionSummary, SessionWithAgents, Item, MessageItem } from "@/types";
@@ -113,7 +112,6 @@ function ChildSessionCard({ childSession }: { childSession: ChildSessionSummary 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading?: boolean;
-  onQuickAction?: (content: string) => void;
   childSessions?: ChildSessionSummary[];
   hasMoreItems?: boolean;
   isLoadingMore?: boolean;
@@ -454,7 +452,7 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-export function MessageList({ messages, isLoading, onQuickAction, childSessions, hasMoreItems, isLoadingMore, onLoadMore }: MessageListProps) {
+export function MessageList({ messages, isLoading, childSessions, hasMoreItems, isLoadingMore, onLoadMore }: MessageListProps) {
   const tts = useTts();
 
   // Force re-render every 30s to update relative timestamps
@@ -491,7 +489,6 @@ export function MessageList({ messages, isLoading, onQuickAction, childSessions,
         <p className="text-sm text-muted-foreground">
           Start a conversation by typing a message below.
         </p>
-        {onQuickAction && <QuickActions onSelect={onQuickAction} />}
       </ConversationEmptyState>
     );
   }

@@ -84,16 +84,6 @@ const COMMAND_CENTER_NAV: NavItem[] = [
     ],
   },
   {
-    href: "/settings/quick-actions",
-    label: "Quick Actions",
-    matchPrefix: "/settings/quick-actions",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-  },
-  {
     href: "/settings/mcp",
     label: "MCP Servers",
     matchPrefix: "/settings/mcp",
