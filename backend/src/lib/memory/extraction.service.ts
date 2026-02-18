@@ -276,8 +276,21 @@ Questions should be SPECIFIC and ANSWERABLE in conversation, not abstract or phi
 - curiosityType: gap | implication | clarification | exploration | connection
 - curiosityScore: 0.0-1.0 (how important to ask)
 - timing: next_session | when_relevant | low_priority
-- sourceMemoryIndices: Which extracted memories (by index) triggered this question`,
-    });
+- sourceMemoryIndices: Which extracted memories (by index) triggered this question
+
+### Critical Rule: Empty output is valid
+If the conversation is primarily about the AI assistant's own 
+architecture, implementation, debugging, or development — extract 
+NOTHING. Return: { "memories": [], "questions": [] }
+
+This is the CORRECT response when the conversation doesn't contain 
+new personal information about the user. Do not force extraction.
+Most conversations about technical implementation of the AI system 
+should produce zero memories and zero questions.
+
+
+`,
+});
 
     return {
       memories: object.memories,
