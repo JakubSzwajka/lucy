@@ -207,11 +207,10 @@ export interface MemorySettings {
   id: string;
   userId: string;
   autoExtract: boolean;
-  autoSaveThreshold: number;
   defaultScope: string;
   maxContextMemories: number;
   questionsPerSession: number;
-  extractionModel: string | null;
+  reflectionAgentConfigId: string | null;
   reflectionTokenThreshold: number;
   createdAt: Date;
   updatedAt: Date;
@@ -219,20 +218,18 @@ export interface MemorySettings {
 
 export interface UpdateMemorySettingsInput {
   autoExtract?: boolean;
-  autoSaveThreshold?: number;
   defaultScope?: string;
   maxContextMemories?: number;
   questionsPerSession?: number;
-  extractionModel?: string | null;
+  reflectionAgentConfigId?: string | null;
   reflectionTokenThreshold?: number;
 }
 
 export const MEMORY_SETTINGS_DEFAULTS: Required<UpdateMemorySettingsInput> = {
   autoExtract: false,
-  autoSaveThreshold: 0.8,
   defaultScope: "global",
   maxContextMemories: 20,
   questionsPerSession: 3,
-  extractionModel: null,
+  reflectionAgentConfigId: null,
   reflectionTokenThreshold: 5000,
 };

@@ -17,14 +17,8 @@ export function AgentConfigsList({
 }: AgentConfigsListProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-3 border-b border-border">
+      <div className="p-3 border-b border-border">
         <span className="label-dark">Agent Configs</span>
-        <button
-          onClick={onNewConfig}
-          className="text-xs px-2 py-1 border border-border rounded hover:bg-background-secondary"
-        >
-          + New
-        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -64,6 +58,15 @@ export function AgentConfigsList({
             </button>
           ))
         )}
+      </div>
+
+      <div className="p-3 border-t border-border">
+        <button
+          onClick={onNewConfig}
+          className="w-full text-xs px-2 py-1.5 border border-border rounded hover:bg-background-secondary"
+        >
+          + New
+        </button>
       </div>
     </div>
   );

@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemorySettings, useUpdateMemorySettings } from "@/hooks/useMemorySettings";
-import { useMainContext } from "@/app/(main)/layout";
+import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 
 export function MemorySettingsTab() {
   const { data: settings, isLoading } = useMemorySettings();
   const updateMutation = useUpdateMemorySettings();
-  const { availableProviders, models } = useMainContext();
+  const { configs, isLoading: configsLoading } = useAgentConfigs();
 
   if (isLoading || !settings) {
     return (
@@ -78,21 +78,34 @@ export function MemorySettingsTab() {
             </div>
 
             <div>
-              <label className="label-dark block mb-2">
-                Auto-save threshold: {settings.autoSaveThreshold.toFixed(1)}
-              </label>
-              <input
-                type="range"
-                min="0.3"
-                max="1.0"
-                step="0.1"
-                value={settings.autoSaveThreshold}
-                onChange={(e) => handleNumber("autoSaveThreshold", parseFloat(e.target.value))}
-                className="w-full accent-foreground"
-                disabled={updateMutation.isPending}
-              />
+              <label className="label-dark block mb-2">Reflection agent</label>
+              {configsLoading ? (
+                <p className="text-xs text-muted-dark">Loading agent configs...</p>
+              ) : configs.length === 0 ? (
+                <p className="text-xs text-muted-dark">
+                  Create an agent config first to enable automatic reflection
+                </p>
+              ) : (
+                <select
+                  value={settings.reflectionAgentConfigId ?? ""}
+                  onChange={(e) =>
+                    updateMutation.mutate({ reflectionAgentConfigId: e.target.value || null })
+                  }
+                  className="w-full bg-background-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-muted-darker"
+                  disabled={updateMutation.isPending}
+                >
+                  <option value="" className="bg-background">
+                    None
+                  </option>
+                  {configs.map((config) => (
+                    <option key={config.id} value={config.id} className="bg-background">
+                      {config.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               <p className="text-xs text-muted-dark mt-1">
-                Minimum confidence score to auto-save extracted memories
+                Select an agent config to use for automatic memory reflection
               </p>
             </div>
           </>
@@ -154,38 +167,6 @@ export function MemorySettingsTab() {
         />
         <p className="text-xs text-muted-dark mt-1">
           Number of curiosity questions surfaced at session start. Set to 0 to disable.
-        </p>
-      </div>
-
-      {/* Extraction model */}
-      <div>
-        <label className="label-dark block mb-2">Extraction model</label>
-        <select
-          value={settings.extractionModel ?? ""}
-          onChange={(e) => handleString("extractionModel", e.target.value)}
-          className="w-full bg-background-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-muted-darker"
-          disabled={updateMutation.isPending}
-        >
-          <option value="" className="bg-background">
-            Default (GPT-4o Mini)
-          </option>
-          {models.map((model) => {
-            const isAvailable = !availableProviders || availableProviders[model.provider];
-            const value = `${model.provider}/${model.modelId}`;
-            return (
-              <option
-                key={model.id}
-                value={value}
-                disabled={!isAvailable}
-                className="bg-background"
-              >
-                {model.name} ({model.provider}){!isAvailable ? " - N/A" : ""}
-              </option>
-            );
-          })}
-        </select>
-        <p className="text-xs text-muted-dark mt-1">
-          Model used for memory extraction. Cheaper models recommended for cost efficiency.
         </p>
       </div>
 

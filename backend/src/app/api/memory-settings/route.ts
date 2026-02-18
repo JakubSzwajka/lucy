@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/middleware";
 import { db } from "@/lib/db";
-import { memorySettings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { memorySettings, agentConfigs } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { UpdateMemorySettingsInput } from "@/lib/memory/types";
 import { MEMORY_SETTINGS_DEFAULTS } from "@/lib/memory/types";
@@ -38,12 +38,22 @@ export async function PATCH(request: NextRequest) {
 
   const body = (await request.json()) as UpdateMemorySettingsInput;
 
-  // Validate ranges
-  if (body.autoSaveThreshold !== undefined) {
-    if (body.autoSaveThreshold < 0 || body.autoSaveThreshold > 1) {
-      return NextResponse.json({ error: "autoSaveThreshold must be 0.0-1.0" }, { status: 400 });
+  // Validate reflectionAgentConfigId if provided
+  if (body.reflectionAgentConfigId !== undefined && body.reflectionAgentConfigId !== null) {
+    const configRows = await db
+      .select()
+      .from(agentConfigs)
+      .where(and(eq(agentConfigs.id, body.reflectionAgentConfigId), eq(agentConfigs.userId, userId)))
+      .limit(1);
+    if (configRows.length === 0) {
+      return NextResponse.json(
+        { error: "Invalid reflectionAgentConfigId: agent config not found or does not belong to user" },
+        { status: 400 }
+      );
     }
   }
+
+  // Validate ranges
   if (body.maxContextMemories !== undefined) {
     if (body.maxContextMemories < 1 || body.maxContextMemories > 50) {
       return NextResponse.json({ error: "maxContextMemories must be 1-50" }, { status: 400 });
@@ -73,12 +83,11 @@ export async function PATCH(request: NextRequest) {
       id: `ms_${nanoid()}`,
       userId,
       autoExtract: body.autoExtract ?? MEMORY_SETTINGS_DEFAULTS.autoExtract,
-      autoSaveThreshold: body.autoSaveThreshold ?? MEMORY_SETTINGS_DEFAULTS.autoSaveThreshold,
       defaultScope: body.defaultScope ?? MEMORY_SETTINGS_DEFAULTS.defaultScope,
       maxContextMemories: body.maxContextMemories ?? MEMORY_SETTINGS_DEFAULTS.maxContextMemories,
       questionsPerSession: body.questionsPerSession ?? MEMORY_SETTINGS_DEFAULTS.questionsPerSession,
-      extractionModel: body.extractionModel ?? MEMORY_SETTINGS_DEFAULTS.extractionModel,
       reflectionTokenThreshold: body.reflectionTokenThreshold ?? MEMORY_SETTINGS_DEFAULTS.reflectionTokenThreshold,
+      reflectionAgentConfigId: body.reflectionAgentConfigId ?? null,
     };
     const [created] = await db.insert(memorySettings).values(newRow).returning();
     return NextResponse.json(created);
@@ -87,12 +96,11 @@ export async function PATCH(request: NextRequest) {
   // Update existing
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.autoExtract !== undefined) updates.autoExtract = body.autoExtract;
-  if (body.autoSaveThreshold !== undefined) updates.autoSaveThreshold = body.autoSaveThreshold;
   if (body.defaultScope !== undefined) updates.defaultScope = body.defaultScope;
   if (body.maxContextMemories !== undefined) updates.maxContextMemories = body.maxContextMemories;
   if (body.questionsPerSession !== undefined) updates.questionsPerSession = body.questionsPerSession;
-  if (body.extractionModel !== undefined) updates.extractionModel = body.extractionModel;
   if (body.reflectionTokenThreshold !== undefined) updates.reflectionTokenThreshold = body.reflectionTokenThreshold;
+  if (body.reflectionAgentConfigId !== undefined) updates.reflectionAgentConfigId = body.reflectionAgentConfigId;
 
   const [updated] = await db
     .update(memorySettings)

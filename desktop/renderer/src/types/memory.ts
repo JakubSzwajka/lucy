@@ -101,10 +101,9 @@ export type UpdateMemoryInput = Partial<CreateMemoryInput> & { status?: MemorySt
 
 export interface MemorySettingsData {
   autoExtract: boolean;
-  autoSaveThreshold: number;
   defaultScope: string;
   maxContextMemories: number;
   questionsPerSession: number;
-  extractionModel: string | null;
   reflectionTokenThreshold: number;
+  reflectionAgentConfigId: string | null;
 }

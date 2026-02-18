@@ -93,39 +93,6 @@ class APIClient {
     return response;
   }
 
-  // Memory extraction
-  async extractMemories(sessionId: string, model?: { provider: string; modelId: string }) {
-    return this.request<{
-      memories: Array<{
-        type: string;
-        content: string;
-        confidenceScore: number;
-        confidenceLevel: string;
-        evidence: string;
-        tags: string[];
-        existingMemoryId?: string;
-        suggestedConnections?: Array<{ existingMemoryId: string; relationshipType: string }>;
-      }>;
-      questions: Array<{
-        content: string;
-        context: string;
-        curiosityType: string;
-        curiosityScore: number;
-        timing: string;
-        sourceMemoryIndices: number[];
-      }>;
-      metadata: {
-        sessionId: string;
-        messagesAnalyzed: number;
-        modelUsed: string;
-        durationMs: number;
-      };
-    }>("/api/memories/extract", {
-      method: "POST",
-      body: JSON.stringify({ sessionId, model }),
-    });
-  }
-
   // Memory CRUD
   async listMemories(params?: Record<string, string>) {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
@@ -225,38 +192,6 @@ class APIClient {
     return this.request<void>(`/api/agent-configs/${id}`, { method: "DELETE" });
   }
 
-  async confirmExtraction(input: {
-    sessionId: string;
-    approvedMemories: Array<{
-      type: string;
-      content: string;
-      confidenceScore: number;
-      confidenceLevel: string;
-      evidence: string;
-      tags: string[];
-      existingMemoryId?: string;
-      approved: boolean;
-      edited?: Record<string, unknown>;
-    }>;
-    approvedQuestions: Array<{
-      content: string;
-      context: string;
-      curiosityType: string;
-      curiosityScore: number;
-      timing: string;
-      sourceMemoryIndices: number[];
-      approved: boolean;
-    }>;
-  }) {
-    return this.request<{
-      memoriesSaved: number;
-      questionsGenerated: number;
-      reflection: Record<string, unknown>;
-    }>("/api/memories/extract/confirm", {
-      method: "POST",
-      body: JSON.stringify(input),
-    });
-  }
 }
 
 export const api = new APIClient(BASE_URL);

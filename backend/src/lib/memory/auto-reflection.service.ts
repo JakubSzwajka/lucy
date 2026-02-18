@@ -1,16 +1,16 @@
-import { getExtractionService } from "./extraction.service";
 import { getMemorySettings } from "./settings";
 import { estimateTokens } from "@/lib/ai/tokens";
 import { getItemService } from "@/lib/services/item";
 import { getSessionService } from "@/lib/services/session";
+import { getChatService } from "@/lib/services/chat/chat.service";
 import type { Item } from "@/types";
 import type { MemorySettings } from "./types";
-import { startActiveObservation } from "@langfuse/tracing";
+import { startActiveObservation, updateActiveTrace, propagateAttributes } from "@langfuse/tracing";
 
 // ============================================================================
 // Auto Reflection Service
 // ============================================================================
-// Triggers memory extraction automatically based on token accumulation.
+// Triggers memory reflection automatically based on token accumulation.
 // Runs as a fire-and-forget background task after each chat turn.
 //
 // The source of truth is `lastReflectionItemCount` on the session — the item
@@ -18,6 +18,11 @@ import { startActiveObservation } from "@langfuse/tracing";
 // is items[lastReflectionItemCount:]. Its token size is computed fresh each
 // call (no accumulator to drift). `reflectionTokenCount` is persisted only
 // as a cache for the frontend progress indicator.
+//
+// Reflection is performed by a dedicated agent (configured via
+// reflectionAgentConfigId in memory settings) which runs non-streaming
+// via ChatService.runAgent(). The agent's tools and system prompt are
+// determined by its agent config.
 //
 // See: backend/src/lib/memory/README.md
 
@@ -56,12 +61,12 @@ export async function maybeAutoReflect(
     return;
   }
 
-  // Threshold met — run extraction on the unreflected window, then slide forward.
+  // Threshold met — run reflection agent on the unreflected window, then slide forward.
   await runReflection(sessionId, userId, agentId, settings, session.lastReflectionItemCount, items.length);
 }
 
 /**
- * Runs extraction + auto-confirm, then advances the reflection window.
+ * Runs a reflection agent, then advances the reflection window.
  * Always slides the window forward when done (even on failure or empty results)
  * so we don't re-trigger every subsequent turn on the same content.
  */
@@ -73,41 +78,72 @@ async function runReflection(
   windowStartIndex: number,
   currentItemCount: number,
 ): Promise<void> {
+  if (!settings.reflectionAgentConfigId) {
+    console.warn("[Auto-reflection] No reflectionAgentConfigId configured, skipping reflection for session", sessionId);
+    return;
+  }
+
   reflecting.add(sessionId);
   const sessionService = getSessionService();
   try {
     await startActiveObservation("auto-reflection", async (span) => {
+      // Set trace-level identity so this appears as a distinct trace in Langfuse
+      updateActiveTrace({
+        name: "auto-reflection",
+        userId,
+        sessionId,
+        tags: ["reflection"],
+      });
       span.update({ input: { sessionId, userId, currentItemCount } });
 
-      const extraction = await getExtractionService().extract(userId, sessionId, {
-        fromItemIndex: windowStartIndex,
+      // Build transcript from unreflected items
+      const items = await getItemService().getByAgentId(agentId);
+      const unreflectedItems = items.slice(windowStartIndex, currentItemCount);
+      const transcript = formatTranscript(unreflectedItems);
+
+      // Create a dedicated reflection session with the reflection agent config
+      const { session: reflectionSession } = await sessionService.create(userId, {
+        agentConfigId: settings.reflectionAgentConfigId!,
+        agentName: "reflection-agent",
+        parentSessionId: sessionId,
       });
 
-      const hasResults = extraction.memories.length > 0 || extraction.questions.length > 0;
-      if (hasResults) {
-        const threshold = settings.autoSaveThreshold;
-        await getExtractionService().confirm(userId, {
-          sessionId,
-          approvedMemories: extraction.memories.map((m) => ({
-            ...m,
-            approved: m.confidenceScore >= threshold,
-          })),
-          approvedQuestions: extraction.questions.map((q) => ({
-            ...q,
-            approved: q.curiosityScore >= threshold,
-          })),
+      if (!reflectionSession?.rootAgentId) {
+        console.error("[Auto-reflection] Failed to create reflection session for", sessionId);
+        return;
+      }
+
+      // Persist the user message so runAgent's DB-read loop can see it
+      await getItemService().create(reflectionSession.rootAgentId, {
+        type: "message",
+        role: "user",
+        content: transcript,
+      });
+
+      // Run the reflection agent non-streaming with trace propagation
+      const chatService = getChatService();
+      const result = await propagateAttributes({
+        userId,
+        sessionId: reflectionSession.id,
+        metadata: {
+          agentId: reflectionSession.rootAgentId,
+          sourceSessionId: sessionId,
+          type: "reflection",
+        },
+      }, async () => {
+        return await chatService.runAgent(reflectionSession.rootAgentId, userId, [], {
+          sessionId: reflectionSession.id,
+          streaming: false,
         });
-        const savedMemories = extraction.memories.filter((m) => m.confidenceScore >= threshold).length;
-        const savedQuestions = extraction.questions.filter((q) => q.curiosityScore >= threshold).length;
-        span.update({ output: { savedMemories, savedQuestions, totalProposed: extraction.memories.length } });
-        console.log("[Auto-reflection] Saved %d memories, %d questions for session %s", savedMemories, savedQuestions, sessionId);
-      } else {
-        span.update({ output: { savedMemories: 0, savedQuestions: 0, totalProposed: 0 } });
-        console.log("[Auto-reflection] Nothing extracted for session", sessionId);
+      });
+
+      if (!result.streaming) {
+        span.update({ output: { result: result.result } });
+        console.log("[Auto-reflection] Reflection completed for session %s", sessionId);
       }
     }, { asType: "chain" });
   } catch (error) {
-    console.error("[Auto-reflection] Extraction failed for session", sessionId, error);
+    console.error("[Auto-reflection] Reflection failed for session", sessionId, error);
   } finally {
     // Slide window forward + reset cached token count.
     await sessionService.update(sessionId, {
@@ -116,6 +152,34 @@ async function runReflection(
     }, userId).catch(() => {});
     reflecting.delete(sessionId);
   }
+}
+
+/**
+ * Format items as a plain-text transcript for the reflection agent.
+ */
+function formatTranscript(items: Item[]): string {
+  const lines: string[] = [];
+  for (const item of items) {
+    switch (item.type) {
+      case "message":
+        if (item.content) {
+          lines.push(`${item.role}: ${item.content}`);
+        }
+        break;
+      case "tool_call":
+        lines.push(`assistant [tool_call ${item.toolName}]: ${JSON.stringify(item.toolArgs ?? {})}`);
+        break;
+      case "tool_result":
+        if (item.toolOutput) {
+          lines.push(`tool [${item.callId}]: ${item.toolOutput}`);
+        }
+        if (item.toolError) {
+          lines.push(`tool [${item.callId}] error: ${item.toolError}`);
+        }
+        break;
+    }
+  }
+  return lines.join("\n");
 }
 
 function countItemTokens(items: Item[]): number {

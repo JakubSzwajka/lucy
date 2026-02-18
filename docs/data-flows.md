@@ -144,7 +144,7 @@ Returns ChatContext { agent, languageModel, tools, systemPrompt, ... }
 
 ## 5. Auto-Reflection Flow
 
-Automatic memory extraction triggered by token accumulation during chat.
+Automatic memory reflection triggered by token accumulation during chat. Uses an agent-config-driven approach: a dedicated reflection agent (configured via `reflectionAgentConfigId` in memory settings) runs non-streaming via `ChatService.runAgent()` and uses tools (read/create/update memories, etc.) to decide what to persist.
 
 ```
 ChatService.runAgent() — onFinish callback
@@ -153,20 +153,17 @@ ChatService.runAgent() — onFinish callback
 maybeAutoReflect()  (auto-reflection.service.ts)
   │  1. getMemorySettings(userId) → check autoExtract === true
   │  2. Check in-memory mutex (skip if reflection already in flight)
-  │  3. Load session → read persisted reflectionTokenCount, lastReflectionItemCount
+  │  3. Load session → read persisted lastReflectionItemCount
   │  4. Load items since last check → count tokens from ALL types:
   │     messages, tool calls (name+args), tool results, reasoning
-  │  5. Persist updated counters to session (frontend reads these for indicator)
+  │  5. Persist updated reflectionTokenCount to session (frontend reads for indicator)
   │  6. If totalTokens < reflectionTokenThreshold → return
   ▼
 Threshold exceeded
-  │  7. ExtractionService.extract(userId, sessionId)
-  │     → loads transcript, calls LLM (gpt-4o-mini default), returns memories + questions
-  │  8. ExtractionService.confirm() with auto-approval:
-  │     memories where confidenceScore ≥ autoSaveThreshold → approved
-  │     questions where curiosityScore ≥ autoSaveThreshold → approved
-  │  9. Reset session.reflectionTokenCount to 0
-  └─ Reflection audit logged in `reflections` table
+  │  7. SessionService.create() → child reflection session (agentConfigId = reflectionAgentConfigId)
+  │  8. ChatService.runAgent(reflectionSession.rootAgentId, ..., { streaming: false })
+  │     → agent uses its configured tools to read existing memories and create/update as needed
+  │  9. Slide window: session.lastReflectionItemCount = currentItemCount, reflectionTokenCount = 0
 ```
 
 **Frontend indicator:** `ReflectionIndicator` component reads `session.reflectionTokenCount` and `memorySettings.reflectionTokenThreshold` to show a progress ring in the chat header.
@@ -174,11 +171,9 @@ Threshold exceeded
 **Configuration** (via `PUT /api/memory-settings`):
 - `autoExtract` — master toggle (default: false)
 - `reflectionTokenThreshold` — tokens before trigger (default: 5000)
-- `autoSaveThreshold` — min confidence to auto-save (default: 0.8)
-- `extractionModel` — LLM for extraction (default: openai/gpt-4o-mini)
+- `reflectionAgentConfigId` — agent config to use for reflection (required for reflection to run)
 
 **Key files:**
 - [`backend/src/lib/memory/auto-reflection.service.ts`](../backend/src/lib/memory/auto-reflection.service.ts) — `maybeAutoReflect()`
-- [`backend/src/lib/memory/extraction.service.ts`](../backend/src/lib/memory/extraction.service.ts) — `ExtractionService`
 - [`backend/src/lib/memory/`](../backend/src/lib/memory/README.md) — Memory module
 - [`desktop/renderer/src/components/chat/ReflectionIndicator.tsx`](../desktop/renderer/src/components/chat/ReflectionIndicator.tsx) — Frontend indicator
