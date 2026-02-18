@@ -23,8 +23,6 @@ export async function PATCH(request: NextRequest) {
   const settingsService = getSettingsService();
 
   const updated = await settingsService.update({
-    defaultModelId: body.defaultModelId,
-    defaultSystemPromptId: body.defaultSystemPromptId,
     enabledModels: body.enabledModels,
     contextWindowSize: body.contextWindowSize,
   }, userId);

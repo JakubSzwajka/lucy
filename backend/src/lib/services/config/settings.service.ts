@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
-import type { SettingsRecord } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { AVAILABLE_MODELS } from "@/lib/ai/models";
 import type { UserSettings, SettingsUpdate } from "@/types";
@@ -13,11 +12,9 @@ function getAllModelIds(): string[] {
   return AVAILABLE_MODELS.map((m) => m.id);
 }
 
-function parseSettings(record: SettingsRecord): UserSettings {
+function parseSettings(record: typeof settings.$inferSelect): UserSettings {
   return {
     id: record.id,
-    defaultModelId: record.defaultModelId,
-    defaultSystemPromptId: record.defaultSystemPromptId,
     enabledModels: record.enabledModels
       ? JSON.parse(record.enabledModels)
       : getAllModelIds(),
@@ -39,8 +36,6 @@ export class SettingsService {
       await db.insert(settings).values({
         id: settingsId,
         userId,
-        defaultModelId: null,
-        defaultSystemPromptId: null,
         enabledModels: JSON.stringify(getAllModelIds()),
       }).onConflictDoNothing();
 
@@ -67,14 +62,6 @@ export class SettingsService {
       updatedAt: new Date(),
     };
 
-    if (data.defaultModelId !== undefined) {
-      updateData.defaultModelId = data.defaultModelId;
-    }
-
-    if (data.defaultSystemPromptId !== undefined) {
-      updateData.defaultSystemPromptId = data.defaultSystemPromptId;
-    }
-
     if (data.enabledModels !== undefined) {
       updateData.enabledModels = JSON.stringify(data.enabledModels);
     }
@@ -93,16 +80,6 @@ export class SettingsService {
       .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
 
     return parseSettings(updated);
-  }
-
-  async clearDefaultSystemPrompt(promptId: string, userId: string): Promise<void> {
-    const currentSettings = await this.get(userId);
-    if (currentSettings.defaultSystemPromptId === promptId) {
-      const settingsId = `default-${userId}`;
-      await db.update(settings)
-        .set({ defaultSystemPromptId: null, updatedAt: new Date() })
-        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
-    }
   }
 }
 

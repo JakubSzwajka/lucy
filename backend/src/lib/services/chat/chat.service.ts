@@ -1,7 +1,4 @@
-import { db } from "@/lib/db";
-import { settings } from "@/lib/db/schema";
 import { getSystemPromptService } from "@/lib/services/config";
-import { eq, and } from "drizzle-orm";
 import { streamText, generateText, stepCountIs, ToolSet } from "ai";
 import { buildProviderOptions, getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
@@ -406,29 +403,7 @@ export class ChatService {
       if (prompt?.content) return prompt.content;
     }
 
-    return this.getDefaultSystemPrompt(userId);
-  }
-
-  private async getDefaultSystemPrompt(userId: string): Promise<string | null> {
-    // Might require to be moved to some prompt repository? 
-    try {
-      const settingsId = `default-${userId}`;
-      const [currentSettings] = await db
-        .select()
-        .from(settings)
-        .where(and(eq(settings.id, settingsId), eq(settings.userId, userId)));
-
-      if (!currentSettings?.defaultSystemPromptId) {
-        return null;
-      }
-
-      const systemPromptService = getSystemPromptService();
-      const prompt = await systemPromptService.getById(currentSettings.defaultSystemPromptId, userId);
-
-      return prompt?.content || null;
-    } catch {
-      return null;
-    }
+    return null;
   }
 
   /**

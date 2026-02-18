@@ -2,7 +2,6 @@ import { db } from "@/lib/db";
 import { systemPrompts } from "@/lib/db/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { getSettingsService } from "./settings.service";
 import type { SystemPrompt, SystemPromptCreate, SystemPromptUpdate } from "@/types";
 
 // ============================================================================
@@ -81,10 +80,6 @@ export class SystemPromptService {
     if (!existing) {
       return { success: false, notFound: true };
     }
-
-    // If this prompt is the default, clear the default setting
-    const settingsService = getSettingsService();
-    await settingsService.clearDefaultSystemPrompt(id, userId);
 
     await db.delete(systemPrompts).where(and(eq(systemPrompts.id, id), eq(systemPrompts.userId, userId)));
 

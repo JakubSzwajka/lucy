@@ -237,8 +237,6 @@ export interface AvailableProviders {
 
 export interface UserSettings {
   id: string;
-  defaultModelId: string | null;
-  defaultSystemPromptId: string | null;
   enabledModels: string[];
   contextWindowSize: number;
   createdAt: Date;
@@ -246,8 +244,6 @@ export interface UserSettings {
 }
 
 export interface SettingsUpdate {
-  defaultModelId?: string | null;
-  defaultSystemPromptId?: string | null;
   enabledModels?: string[];
   contextWindowSize?: number;
 }

@@ -7,25 +7,20 @@ import type {
   SystemPrompt,
   SystemPromptCreate,
   SystemPromptUpdate,
-  SettingsUpdate,
 } from "@/types";
 
 interface SystemPromptsSettingsProps {
   prompts: SystemPrompt[];
-  defaultPromptId: string | null;
   onCreatePrompt: (data: SystemPromptCreate) => Promise<SystemPrompt>;
   onUpdatePrompt: (id: string, data: SystemPromptUpdate) => Promise<SystemPrompt>;
   onDeletePrompt: (id: string) => Promise<void>;
-  onUpdateSettings: (updates: SettingsUpdate) => Promise<void>;
 }
 
 export function SystemPromptsSettings({
   prompts,
-  defaultPromptId,
   onCreatePrompt,
   onUpdatePrompt,
   onDeletePrompt,
-  onUpdateSettings,
 }: SystemPromptsSettingsProps) {
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -59,12 +54,6 @@ export function SystemPromptsSettings({
     }
   };
 
-  const handleSetDefault = async () => {
-    if (selectedPromptId) {
-      await onUpdateSettings({ defaultSystemPromptId: selectedPromptId });
-    }
-  };
-
   const handleCancel = () => {
     setIsCreating(false);
     setSelectedPromptId(null);
@@ -77,7 +66,6 @@ export function SystemPromptsSettings({
         <PromptsList
           prompts={prompts}
           selectedPromptId={selectedPromptId}
-          defaultPromptId={defaultPromptId}
           onSelectPrompt={handleSelectPrompt}
           onNewPrompt={handleNewPrompt}
         />
@@ -88,10 +76,8 @@ export function SystemPromptsSettings({
         <PromptEditor
           prompt={selectedPrompt}
           isNew={isCreating}
-          isDefault={selectedPromptId === defaultPromptId}
           onSave={handleSave}
           onDelete={handleDelete}
-          onSetDefault={handleSetDefault}
           onCancel={handleCancel}
         />
       </div>

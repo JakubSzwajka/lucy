@@ -1467,8 +1467,6 @@ export const openApiSpec: Record<string, any> = {
         type: "object",
         properties: {
           id: { type: "string" },
-          defaultModelId: { type: "string", nullable: true },
-          defaultSystemPromptId: { type: "string", nullable: true },
           enabledModels: {
             type: "array",
             items: { type: "string" },
@@ -1481,8 +1479,6 @@ export const openApiSpec: Record<string, any> = {
       SettingsUpdate: {
         type: "object",
         properties: {
-          defaultModelId: { type: "string", nullable: true },
-          defaultSystemPromptId: { type: "string", nullable: true },
           enabledModels: {
             type: "array",
             items: { type: "string" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, createContext, useContext } from "react";
+import { useState, useCallback, useEffect, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { AuthGuard } from "@/components/auth-guard";
@@ -8,6 +8,7 @@ import { api } from "@/lib/api/client";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
 import { useModels } from "@/hooks/useModels";
+import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import type { AvailableProviders, ModelConfig } from "@/types";
 
 interface MainContextType {
@@ -42,35 +43,41 @@ export default function MainLayout({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const { settings } = useSettings();
   const { models, defaultModel, getModelConfig } = useModels();
+  const { configs } = useAgentConfigs();
 
   const [selectedModel, setSelectedModel] = useState("");
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Track whether we've resolved the initial model
-  const resolvedModelRef = useRef(false);
+  const {
+    sessions,
+    createSession,
+    deleteSession,
+  } = useSessions();
 
-  // Resolve selected model: settings.defaultModelId > first enabled+available > defaultModel
+  // Resolve selected model from active session's agent config
   useEffect(() => {
-    if (resolvedModelRef.current) return;
-    if (!settings || models.length === 0) return; // wait for settings + models to load
+    if (models.length === 0) return;
 
-    if (settings.defaultModelId) {
-      resolvedModelRef.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization after async settings load
-      setSelectedModel(settings.defaultModelId);
-      return;
+    // Find the active session's agent config
+    const activeSession = sessions.find(s => s.id === activeSessionId);
+    if (activeSession?.agentConfigId) {
+      const config = configs.find(c => c.id === activeSession.agentConfigId);
+      if (config?.defaultModelId) {
+        setSelectedModel(config.defaultModelId);
+        return;
+      }
     }
 
-    if (!availableProviders) return; // wait for providers to load
-
-    resolvedModelRef.current = true;
-    const enabledSet = new Set(settings.enabledModels);
-    const firstAvailable = models.find(
-      m => enabledSet.has(m.id) && availableProviders[m.provider]
-    );
-    setSelectedModel(firstAvailable?.id ?? defaultModel?.id ?? "");
-  }, [settings, availableProviders, models, defaultModel]);
+    // Fallback: first available model
+    if (!selectedModel) {
+      const enabledSet = settings ? new Set(settings.enabledModels) : null;
+      const firstAvailable = enabledSet && availableProviders
+        ? models.find(m => enabledSet.has(m.id) && availableProviders[m.provider])
+        : models[0];
+      setSelectedModel(firstAvailable?.id ?? defaultModel?.id ?? "");
+    }
+  }, [activeSessionId, sessions, configs, models, settings, availableProviders, defaultModel, selectedModel]);
 
   useEffect(() => {
     async function fetchProviders() {
@@ -83,12 +90,6 @@ export default function MainLayout({
     }
     fetchProviders();
   }, []);
-
-  const {
-    sessions,
-    createSession,
-    deleteSession,
-  } = useSessions();
 
   // Select first session on load if available
   useEffect(() => {
