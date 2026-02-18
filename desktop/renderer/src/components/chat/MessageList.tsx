@@ -247,7 +247,7 @@ interface MessageItemProps {
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(text);

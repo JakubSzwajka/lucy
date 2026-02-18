@@ -31,6 +31,17 @@ const COMMAND_CENTER_NAV: NavItem[] = [
     ),
   },
   {
+    href: "/settings/team",
+    label: "Team",
+    matchPrefix: "/settings/team",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        <circle cx="12" cy="12" r="9" strokeWidth={1.5} strokeDasharray="2 3" />
+      </svg>
+    ),
+  },
+  {
     href: "/settings/general",
     label: "General",
     matchPrefix: "/settings/general",

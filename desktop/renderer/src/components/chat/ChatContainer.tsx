@@ -42,7 +42,7 @@ export function ChatContainer({
     const prev = prevStatusRef.current;
     prevStatusRef.current = status;
     if (prev === "streaming" && status === "ready") {
-      const electron = (window as Record<string, unknown>).electron as
+      const electron = (window as unknown as Record<string, unknown>).electron as
         | { invoke: (channel: string, data: Record<string, string>) => void }
         | undefined;
       if (!electron) return;
