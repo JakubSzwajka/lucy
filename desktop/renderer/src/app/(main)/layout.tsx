@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, createContext, useContext } from "react";
+import { useState, useCallback, useEffect, useMemo, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { AuthGuard } from "@/components/auth-guard";
@@ -55,28 +55,26 @@ export default function MainLayout({
     deleteSession,
   } = useSessions();
 
-  // Resolve selected model from active session's agent config
-  useEffect(() => {
-    if (models.length === 0) return;
+  // Resolve selected model: agent config override takes priority, then user selection, then fallback
+  const resolvedModel = useMemo(() => {
+    if (models.length === 0) return selectedModel;
 
-    // Find the active session's agent config
+    // Agent config override for active session
     const activeSession = sessions.find(s => s.id === activeSessionId);
     if (activeSession?.agentConfigId) {
       const config = configs.find(c => c.id === activeSession.agentConfigId);
-      if (config?.defaultModelId) {
-        setSelectedModel(config.defaultModelId);
-        return;
-      }
+      if (config?.defaultModelId) return config.defaultModelId;
     }
 
+    // User-selected model (if valid)
+    if (selectedModel) return selectedModel;
+
     // Fallback: first available model
-    if (!selectedModel) {
-      const enabledSet = settings ? new Set(settings.enabledModels) : null;
-      const firstAvailable = enabledSet && availableProviders
-        ? models.find(m => enabledSet.has(m.id) && availableProviders[m.provider])
-        : models[0];
-      setSelectedModel(firstAvailable?.id ?? defaultModel?.id ?? "");
-    }
+    const enabledSet = settings ? new Set(settings.enabledModels) : null;
+    const firstAvailable = enabledSet && availableProviders
+      ? models.find(m => enabledSet.has(m.id) && availableProviders[m.provider])
+      : models[0];
+    return firstAvailable?.id ?? defaultModel?.id ?? "";
   }, [activeSessionId, sessions, configs, models, settings, availableProviders, defaultModel, selectedModel]);
 
   useEffect(() => {
@@ -152,7 +150,7 @@ export default function MainLayout({
 
   const contextValue: MainContextType = {
     activeSessionId,
-    selectedModel,
+    selectedModel: resolvedModel,
     availableProviders,
     settings,
     models,

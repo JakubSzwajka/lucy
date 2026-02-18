@@ -91,7 +91,6 @@ export function useSessionChat({
   }, [model]);
 
   const [transport, setTransport] = useState(
-    // eslint-disable-next-line react-hooks/refs -- refs are captured in a deferred `body` callback, not read during render
     () => new DefaultChatTransport({
       api: sessionId
         ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`

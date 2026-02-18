@@ -1,0 +1,4 @@
+{
+  "desktop/renderer/**/*.{ts,tsx}": "desktop/node_modules/.bin/eslint",
+  "backend/**/*.{ts,tsx}": "backend/node_modules/.bin/eslint"
+}

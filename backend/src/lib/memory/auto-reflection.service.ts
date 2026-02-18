@@ -131,7 +131,7 @@ async function runReflection(
           type: "reflection",
         },
       }, async () => {
-        return await chatService.runAgent(reflectionSession.rootAgentId, userId, [], {
+        return await chatService.runAgent(reflectionSession.rootAgentId!, userId, [], {
           sessionId: reflectionSession.id,
           streaming: false,
         });

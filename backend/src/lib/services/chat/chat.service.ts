@@ -1,5 +1,5 @@
 import { getSystemPromptService } from "@/lib/services/config";
-import { streamText, generateText, stepCountIs, ToolSet } from "ai";
+import { streamText, generateText, stepCountIs, ToolSet, type ModelMessage as AiModelMessage } from "ai";
 import { buildProviderOptions, getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
 import {
@@ -111,7 +111,7 @@ export class ChatService {
         }, async () => {
           const result = streamText({
             model: context.languageModel,
-            messages: messagesWithSystem,
+            messages: messagesWithSystem as AiModelMessage[],
             tools: hasTools ? context.tools as ToolSet : undefined,
             stopWhen: hasTools ? stepCountIs(10) : stepCountIs(1),
             maxOutputTokens: context.maxOutputTokens,
@@ -173,7 +173,7 @@ export class ChatService {
 
               const result = await generateText({
                 model: context.languageModel,
-                messages: turnMessages,
+                messages: turnMessages as AiModelMessage[],
                 tools: hasTools ? context.tools as ToolSet : undefined,
                 maxOutputTokens: context.maxOutputTokens,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any

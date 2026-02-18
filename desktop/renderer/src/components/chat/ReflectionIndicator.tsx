@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { useMemorySettings } from "@/hooks/useMemorySettings";
 import { useQuestions } from "@/hooks/useQuestions";
-import { queryKeys } from "@/lib/query/keys";
 import type { Session } from "@/types";
 
 interface ReflectionIndicatorProps {
