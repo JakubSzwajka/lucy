@@ -377,19 +377,49 @@ export function TeamComposition() {
             emptyLabel="No observer selected"
             getModelName={getModelName}
             settingsPane={
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="label-dark text-[10px]">AUTO_REFLECT</span>
-                  <p className="text-[10px] text-muted-darker mt-0.5">
-                    Extract memories after token threshold
-                  </p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="label-dark text-[10px]">AUTO_REFLECT</span>
+                    <p className="text-[10px] text-muted-darker mt-0.5">
+                      Extract memories after token threshold
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={memorySettings?.autoExtract ?? false}
+                    disabled={updateMemory.isPending}
+                    onChange={handleToggleAutoReflect}
+                    label={memorySettings?.autoExtract ? "ON" : "OFF"}
+                  />
                 </div>
-                <Toggle
-                  checked={memorySettings?.autoExtract ?? false}
-                  disabled={updateMemory.isPending}
-                  onChange={handleToggleAutoReflect}
-                  label={memorySettings?.autoExtract ? "ON" : "OFF"}
-                />
+                {memorySettings?.autoExtract && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="label-dark text-[10px]">TOKEN_THRESHOLD</span>
+                      <p className="text-[10px] text-muted-darker mt-0.5">
+                        Min tokens before triggering reflection
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={1000}
+                        max={20000}
+                        step={1000}
+                        value={memorySettings.reflectionTokenThreshold}
+                        onChange={(e) =>
+                          updateMemory.mutate({
+                            reflectionTokenThreshold: parseInt(e.target.value),
+                          })
+                        }
+                        className="w-28 accent-foreground"
+                      />
+                      <span className="font-mono text-[10px] text-muted-dark w-12 text-right">
+                        {(memorySettings.reflectionTokenThreshold / 1000).toFixed(0)}k
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             }
           />

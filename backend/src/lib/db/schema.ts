@@ -631,9 +631,6 @@ export const memorySettings = pgTable("memory_settings", {
     .references(() => users.id)
     .unique(),
   autoExtract: boolean("auto_extract").notNull().default(false),
-  defaultScope: text("default_scope").notNull().default("global"),
-  maxContextMemories: integer("max_context_memories").notNull().default(20),
-  questionsPerSession: integer("questions_per_session").notNull().default(3),
   reflectionAgentConfigId: text("reflection_agent_config_id").references(() => agentConfigs.id, { onDelete: "set null" }),
   reflectionTokenThreshold: integer("reflection_token_threshold").notNull().default(5000),
   createdAt: timestamp("created_at")

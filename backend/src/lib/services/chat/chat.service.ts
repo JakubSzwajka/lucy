@@ -20,7 +20,7 @@ import type { MessageItem, Agent, AgentConfigWithTools } from "@/types";
 import type { ToolFilter } from "@/lib/tools";
 import type { ToolSource } from "@/lib/tools/types";
 import { generateDelegateTools } from "@/lib/tools/delegate";
-import { getContextRetrievalService } from "@/lib/memory/context-retrieval.service";
+
 import { maybeAutoReflect } from "@/lib/memory/auto-reflection.service";
 
 // ============================================================================
@@ -303,20 +303,6 @@ export class ChatService {
     const languageModel = getLanguageModel(modelConfig);
 
     let systemPrompt = await this.resolveSystemPrompt(agent, userId, agentConfig);
-
-    // Inject memory context after system prompt
-    try {
-      const contextService = getContextRetrievalService();
-      const contextResult = await contextService.getRelevantMemories(userId, agent.sessionId);
-      const memorySection = contextService.formatMemoryContext(contextResult);
-      if (memorySection) {
-        systemPrompt = systemPrompt
-          ? `${systemPrompt}\n\n${memorySection}`
-          : memorySection;
-      }
-    } catch {
-      // Memory injection is non-critical; don't block chat
-    }
 
     // Inject environment context (date/time, location, etc.)
     try {

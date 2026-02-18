@@ -5,18 +5,16 @@ import { cn } from "@/lib/utils";
 import { MemoriesTab } from "@/components/memory/MemoriesTab";
 import { QuestionsTab } from "@/components/memory/QuestionsTab";
 import { IdentityTab } from "@/components/memory/IdentityTab";
-import { MemorySettingsTab } from "@/components/memory/MemorySettingsTab";
 
 const MemoryGraph = lazy(() => import("@/components/memory/MemoryGraph").then(m => ({ default: m.MemoryGraph })));
 
-type Tab = "memories" | "questions" | "identity" | "graph" | "settings";
+type Tab = "memories" | "questions" | "identity" | "graph";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "memories", label: "Memories" },
   { key: "questions", label: "Questions" },
   { key: "identity", label: "Identity" },
   { key: "graph", label: "Graph" },
-  { key: "settings", label: "Settings" },
 ];
 
 export default function MemoryPage() {
@@ -53,7 +51,6 @@ export default function MemoryPage() {
             <MemoryGraph />
           </Suspense>
         )}
-        {activeTab === "settings" && <MemorySettingsTab />}
       </div>
     </div>
   );

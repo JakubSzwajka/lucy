@@ -1,4 +1,3 @@
-export { GeneralSettings } from "./GeneralSettings";
 export { ModelsSettings } from "./ModelsSettings";
 export { SystemPromptsSettings } from "./SystemPromptsSettings";
 export { QuickActionsSettings } from "./QuickActionsSettings";

@@ -54,16 +54,6 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Validate ranges
-  if (body.maxContextMemories !== undefined) {
-    if (body.maxContextMemories < 1 || body.maxContextMemories > 50) {
-      return NextResponse.json({ error: "maxContextMemories must be 1-50" }, { status: 400 });
-    }
-  }
-  if (body.questionsPerSession !== undefined) {
-    if (body.questionsPerSession < 0 || body.questionsPerSession > 10) {
-      return NextResponse.json({ error: "questionsPerSession must be 0-10" }, { status: 400 });
-    }
-  }
   if (body.reflectionTokenThreshold !== undefined) {
     if (body.reflectionTokenThreshold < 1000 || body.reflectionTokenThreshold > 50000) {
       return NextResponse.json({ error: "reflectionTokenThreshold must be 1000-50000" }, { status: 400 });
@@ -83,9 +73,6 @@ export async function PATCH(request: NextRequest) {
       id: `ms_${nanoid()}`,
       userId,
       autoExtract: body.autoExtract ?? MEMORY_SETTINGS_DEFAULTS.autoExtract,
-      defaultScope: body.defaultScope ?? MEMORY_SETTINGS_DEFAULTS.defaultScope,
-      maxContextMemories: body.maxContextMemories ?? MEMORY_SETTINGS_DEFAULTS.maxContextMemories,
-      questionsPerSession: body.questionsPerSession ?? MEMORY_SETTINGS_DEFAULTS.questionsPerSession,
       reflectionTokenThreshold: body.reflectionTokenThreshold ?? MEMORY_SETTINGS_DEFAULTS.reflectionTokenThreshold,
       reflectionAgentConfigId: body.reflectionAgentConfigId ?? null,
     };
@@ -96,9 +83,6 @@ export async function PATCH(request: NextRequest) {
   // Update existing
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.autoExtract !== undefined) updates.autoExtract = body.autoExtract;
-  if (body.defaultScope !== undefined) updates.defaultScope = body.defaultScope;
-  if (body.maxContextMemories !== undefined) updates.maxContextMemories = body.maxContextMemories;
-  if (body.questionsPerSession !== undefined) updates.questionsPerSession = body.questionsPerSession;
   if (body.reflectionTokenThreshold !== undefined) updates.reflectionTokenThreshold = body.reflectionTokenThreshold;
   if (body.reflectionAgentConfigId !== undefined) updates.reflectionAgentConfigId = body.reflectionAgentConfigId;
 
