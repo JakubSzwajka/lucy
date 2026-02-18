@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import { useMemorySettings, useUpdateMemorySettings } from "@/hooks/useMemorySettings";
 import { useModels } from "@/hooks/useModels";
+import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
 import type { AgentConfigWithTools } from "@/types";
 
 // ---------------------------------------------------------------------------
-// Shared config selector dropdown
+// ConfigSelector — shared dropdown for picking an agent config
 // ---------------------------------------------------------------------------
 
 function ConfigSelector({
@@ -97,6 +98,168 @@ function ConfigSelector({
 }
 
 // ---------------------------------------------------------------------------
+// AgentConfigCard — unified card for displaying any agent config
+// ---------------------------------------------------------------------------
+
+function AgentConfigCard({
+  config,
+  roleLabel,
+  roleColor,
+  subtitle,
+  fallbackIcon,
+  allConfigs,
+  onChangeConfig,
+  changeLabel,
+  emptyLabel,
+  getModelName,
+  settingsPane,
+}: {
+  config: AgentConfigWithTools | null;
+  roleLabel: string;
+  roleColor?: string;
+  subtitle?: string;
+  fallbackIcon: string;
+  allConfigs: AgentConfigWithTools[];
+  onChangeConfig: (id: string) => void;
+  changeLabel: string;
+  emptyLabel: string;
+  getModelName: (id: string) => string;
+  settingsPane?: ReactNode;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+
+  return (
+    <div className="bg-background-secondary border border-border rounded-lg">
+      {/* Settings pane — unique per role */}
+      {settingsPane && (
+        <div className="px-5 py-3 border-b border-border bg-background-secondary/50">
+          {settingsPane}
+        </div>
+      )}
+
+      {/* Unified config display */}
+      <div className="p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-background flex items-center justify-center text-lg flex-shrink-0">
+            {config?.icon || fallbackIcon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className={cn("font-mono text-xs", roleColor ?? "text-muted-dark")}>
+              {roleLabel}
+            </span>
+            <div className="text-lg font-medium truncate">
+              {config?.name ?? emptyLabel}
+            </div>
+            {subtitle && (
+              <span className="font-mono text-[10px] text-muted-dark">{subtitle}</span>
+            )}
+            {config?.description && (
+              <p className="text-sm text-muted-dark mt-0.5 line-clamp-2">
+                {config.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {config && (
+          <div className="flex flex-wrap gap-6">
+            <div>
+              <span className="label-dark text-[10px]">CORE_MODEL</span>
+              <div className="font-mono text-sm mt-0.5">
+                {config.defaultModelId ? getModelName(config.defaultModelId) : "—"}
+              </div>
+            </div>
+            <div>
+              <span className="label-dark text-[10px]">SYSTEM_ACCESS</span>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {config.tools.length === 0 ? (
+                  <span className="text-xs text-muted-dark">No tools</span>
+                ) : (
+                  Array.from(
+                    config.tools.reduce((acc, t) => {
+                      const label =
+                        t.toolType === "mcp"
+                          ? t.toolRef
+                          : t.toolType === "builtin"
+                            ? t.toolRef.toUpperCase()
+                            : t.toolName ?? t.toolRef;
+                      acc.set(label, t.toolType);
+                      return acc;
+                    }, new Map<string, string>())
+                  ).map(([label, type]) => (
+                    <span
+                      key={label}
+                      className="font-mono text-[10px] px-2 py-0.5 border border-border rounded bg-background"
+                      title={`Type: ${type}`}
+                    >
+                      {label}
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {changeLabel && (
+          <div className="pt-1 relative">
+            <button
+              onClick={() => setShowPicker(!showPicker)}
+              className="text-xs font-mono text-muted-dark hover:text-foreground underline"
+            >
+              {changeLabel}
+            </button>
+            {showPicker && (
+              <ConfigSelector
+                configs={allConfigs}
+                selectedId={config?.id ?? null}
+                onSelect={onChangeConfig}
+                onClose={() => setShowPicker(false)}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Toggle — tiny reusable toggle switch
+// ---------------------------------------------------------------------------
+
+function Toggle({
+  checked,
+  disabled,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button onClick={onChange} disabled={disabled} className="flex items-center gap-2">
+      <span className="font-mono text-[10px] text-muted-dark">{label}</span>
+      <div
+        className={cn(
+          "w-8 h-4 rounded-full transition-colors relative",
+          checked ? "bg-green-500/80" : "bg-background border border-border"
+        )}
+      >
+        <div
+          className={cn(
+            "absolute top-0.5 w-3 h-3 rounded-full bg-foreground transition-transform",
+            checked ? "translate-x-4" : "translate-x-0.5"
+          )}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -104,22 +267,17 @@ export function TeamComposition() {
   const { configs, updateConfig, refreshConfigs, isLoading: configsLoading } = useAgentConfigs();
   const { data: memorySettings, isLoading: memoryLoading } = useMemorySettings();
   const { getModelConfig } = useModels();
+  const { settings, updateSettings } = useSettings();
   const updateMemory = useUpdateMemorySettings();
 
-  const [showLeaderPicker, setShowLeaderPicker] = useState(false);
-  const [showObserverPicker, setShowObserverPicker] = useState(false);
-
-  const defaultConfig = configs.find((c) => c.isDefault);
+  const defaultConfig = configs.find((c) => c.isDefault) ?? null;
   const reflectionConfig = memorySettings?.reflectionAgentConfigId
-    ? configs.find((c) => c.id === memorySettings.reflectionAgentConfigId)
+    ? configs.find((c) => c.id === memorySettings.reflectionAgentConfigId) ?? null
     : null;
 
   const isLoading = configsLoading || memoryLoading;
 
-  const handleToggleAutoReflect = () => {
-    if (!memorySettings) return;
-    updateMemory.mutate({ autoExtract: !memorySettings.autoExtract });
-  };
+  const getModelName = (id: string) => getModelConfig(id)?.name ?? id;
 
   const handleChangeLeader = async (configId: string) => {
     await updateConfig(configId, { isDefault: true });
@@ -130,6 +288,18 @@ export function TeamComposition() {
     updateMemory.mutate({ reflectionAgentConfigId: configId });
   };
 
+  const handleToggleAutoReflect = () => {
+    if (!memorySettings) return;
+    updateMemory.mutate({ autoExtract: !memorySettings.autoExtract });
+  };
+
+  const handleContextWindowChange = (value: string) => {
+    const n = parseInt(value, 10);
+    if (!isNaN(n) && n >= 1 && n <= 100) {
+      updateSettings({ contextWindowSize: n });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-muted-dark">
@@ -137,6 +307,12 @@ export function TeamComposition() {
       </div>
     );
   }
+
+  // Derive "other" configs
+  const assignedIds = new Set<string>();
+  if (defaultConfig) assignedIds.add(defaultConfig.id);
+  if (reflectionConfig) assignedIds.add(reflectionConfig.id);
+  const otherConfigs = configs.filter((c) => !assignedIds.has(c.id));
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -150,223 +326,97 @@ export function TeamComposition() {
         {/* COMMAND_HUB */}
         <section className="space-y-3">
           <span className="label-dark text-xs">{"// COMMAND_HUB"}</span>
-
-          {defaultConfig ? (
-            <div className="bg-background-secondary border border-border rounded-lg p-5 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-background flex items-center justify-center text-lg flex-shrink-0">
-                  {defaultConfig.icon || "🤖"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-mono text-xs text-purple-400">ROLE: LEADER</span>
-                  <div className="text-lg font-medium truncate">{defaultConfig.name}</div>
-                  {defaultConfig.description && (
-                    <p className="text-sm text-muted-dark mt-0.5 line-clamp-2">
-                      {defaultConfig.description}
+          <AgentConfigCard
+            config={defaultConfig}
+            roleLabel="ROLE: LEADER"
+            roleColor="text-purple-400"
+            fallbackIcon="🤖"
+            allConfigs={configs}
+            onChangeConfig={handleChangeLeader}
+            changeLabel={defaultConfig ? "CHANGE_CONFIG →" : "SELECT_LEADER →"}
+            emptyLabel="No leader configured"
+            getModelName={getModelName}
+            settingsPane={
+              settings && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="label-dark text-[10px]">CONTEXT_WINDOW</span>
+                    <p className="text-[10px] text-muted-darker mt-0.5">
+                      Recent messages included in context
                     </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-6">
-                {/* Core model */}
-                <div>
-                  <span className="label-dark text-[10px]">CORE_MODEL</span>
-                  <div className="font-mono text-sm mt-0.5">
-                    {defaultConfig.defaultModelId
-                      ? getModelConfig(defaultConfig.defaultModelId)?.name ??
-                        defaultConfig.defaultModelId
-                      : "—"}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={settings.contextWindowSize}
+                      onChange={(e) => handleContextWindowChange(e.target.value)}
+                      className="w-16 bg-background border border-border rounded px-2 py-1 text-xs font-mono text-foreground text-center focus:outline-none focus:border-muted-darker"
+                    />
+                    <span className="font-mono text-[10px] text-muted-darker">msgs</span>
                   </div>
                 </div>
-
-                {/* System access */}
-                <div>
-                  <span className="label-dark text-[10px]">SYSTEM_ACCESS</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {defaultConfig.tools.length === 0 ? (
-                      <span className="text-xs text-muted-dark">No tools</span>
-                    ) : (
-                      Array.from(
-                        defaultConfig.tools.reduce((acc, t) => {
-                          const label =
-                            t.toolType === "mcp"
-                              ? t.toolRef
-                              : t.toolType === "builtin"
-                                ? t.toolRef.toUpperCase()
-                                : t.toolName ?? t.toolRef;
-                          acc.set(label, t.toolType);
-                          return acc;
-                        }, new Map<string, string>())
-                      ).map(([label, type]) => (
-                        <span
-                          key={label}
-                          className="font-mono text-[10px] px-2 py-0.5 border border-border rounded bg-background"
-                          title={`Type: ${type}`}
-                        >
-                          {label}
-                        </span>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-1 relative">
-                <button
-                  onClick={() => setShowLeaderPicker(!showLeaderPicker)}
-                  className="text-xs font-mono text-muted-dark hover:text-foreground underline"
-                >
-                  CHANGE_CONFIG →
-                </button>
-                {showLeaderPicker && (
-                  <ConfigSelector
-                    configs={configs}
-                    selectedId={defaultConfig.id}
-                    onSelect={handleChangeLeader}
-                    onClose={() => setShowLeaderPicker(false)}
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-background-secondary border border-border rounded-lg p-5 space-y-3">
-              <p className="text-sm text-muted-dark">No leader configured</p>
-              <div className="relative">
-                <button
-                  onClick={() => setShowLeaderPicker(!showLeaderPicker)}
-                  className="text-xs font-mono text-muted-dark hover:text-foreground underline"
-                >
-                  Select a leader config →
-                </button>
-                {showLeaderPicker && (
-                  <ConfigSelector
-                    configs={configs}
-                    selectedId={null}
-                    onSelect={handleChangeLeader}
-                    onClose={() => setShowLeaderPicker(false)}
-                    emptyLabel="Create an agent config first in the Agents section"
-                  />
-                )}
-              </div>
-            </div>
-          )}
+              )
+            }
+          />
         </section>
 
         {/* PASSIVE_OBSERVER */}
         <section className="space-y-3">
           <span className="label-dark text-xs">{"// PASSIVE_OBSERVER"}</span>
-
-          <div className="bg-background-secondary border border-border rounded-lg p-5 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-background flex items-center justify-center text-lg flex-shrink-0">
-                  {reflectionConfig?.icon || "👁"}
+          <AgentConfigCard
+            config={reflectionConfig}
+            roleLabel="ROLE: OBSERVER"
+            roleColor="text-cyan-400"
+            subtitle="ISOLATED SYSTEM PROCESS"
+            fallbackIcon="👁"
+            allConfigs={configs}
+            onChangeConfig={handleChangeObserver}
+            changeLabel={reflectionConfig ? "CHANGE_OBSERVER →" : "SELECT_OBSERVER →"}
+            emptyLabel="No observer selected"
+            getModelName={getModelName}
+            settingsPane={
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="label-dark text-[10px]">AUTO_REFLECT</span>
+                  <p className="text-[10px] text-muted-darker mt-0.5">
+                    Extract memories after token threshold
+                  </p>
                 </div>
-                <div className="min-w-0">
-                  <div className="text-lg font-medium truncate">
-                    {reflectionConfig?.name ?? "No observer selected"}
-                  </div>
-                  <span className="font-mono text-[10px] text-muted-dark">
-                    ISOLATED SYSTEM PROCESS
-                  </span>
-                </div>
-              </div>
-
-              {/* Toggle */}
-              <button
-                onClick={handleToggleAutoReflect}
-                disabled={updateMemory.isPending}
-                className="flex items-center gap-2 flex-shrink-0"
-              >
-                <span className="font-mono text-[10px] text-muted-dark">AUTO_REFLECT</span>
-                <div
-                  className={`w-8 h-4 rounded-full transition-colors relative ${
-                    memorySettings?.autoExtract
-                      ? "bg-green-500/80"
-                      : "bg-background border border-border"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-foreground transition-transform ${
-                      memorySettings?.autoExtract ? "translate-x-4" : "translate-x-0.5"
-                    }`}
-                  />
-                </div>
-              </button>
-            </div>
-
-            <p className="text-sm text-muted-dark italic">
-              Automatically reflects on conversations to extract memories and insights after a
-              token threshold is reached.
-            </p>
-
-            <div className="pt-1 relative">
-              <button
-                onClick={() => setShowObserverPicker(!showObserverPicker)}
-                className="text-xs font-mono text-muted-dark hover:text-foreground underline"
-              >
-                {reflectionConfig ? "CHANGE_OBSERVER →" : "SELECT_OBSERVER →"}
-              </button>
-              {showObserverPicker && (
-                <ConfigSelector
-                  configs={configs}
-                  selectedId={memorySettings?.reflectionAgentConfigId ?? null}
-                  onSelect={handleChangeObserver}
-                  onClose={() => setShowObserverPicker(false)}
-                  emptyLabel="Create an agent config first"
+                <Toggle
+                  checked={memorySettings?.autoExtract ?? false}
+                  disabled={updateMemory.isPending}
+                  onChange={handleToggleAutoReflect}
+                  label={memorySettings?.autoExtract ? "ON" : "OFF"}
                 />
-              )}
-            </div>
-          </div>
+              </div>
+            }
+          />
         </section>
 
-        {/* ALL CONFIGS */}
-        {(() => {
-          const assignedIds = new Set<string>();
-          if (defaultConfig) assignedIds.add(defaultConfig.id);
-          if (reflectionConfig) assignedIds.add(reflectionConfig.id);
-          const others = configs.filter((c) => !assignedIds.has(c.id));
-
-          return (
-            <section className="space-y-3">
-              <span className="label-dark text-xs">{"// AGENT_CONFIGS"}</span>
-
-              {others.length === 0 ? (
-                <p className="text-xs text-muted-dark">No other configs</p>
-              ) : (
-                <div className="space-y-2">
-                  {others.map((c) => (
-                    <div
-                      key={c.id}
-                      className="bg-background-secondary border border-border rounded-lg px-4 py-3 flex items-center gap-3"
-                    >
-                      <div className="w-8 h-8 rounded-md bg-background flex items-center justify-center text-base flex-shrink-0">
-                        {c.icon || c.name[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{c.name}</div>
-                        {c.description && (
-                          <div className="text-xs text-muted-dark truncate">{c.description}</div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        {c.defaultModelId && (
-                          <span className="font-mono text-[10px] text-muted-dark">
-                            {getModelConfig(c.defaultModelId)?.name ?? c.defaultModelId}
-                          </span>
-                        )}
-                        <span className="font-mono text-[10px] text-muted-darker">
-                          {c.tools.length} tool{c.tools.length !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          );
-        })()}
+        {/* SUB-AGENTS */}
+        {otherConfigs.length > 0 && (
+          <section className="space-y-3">
+            <span className="label-dark text-xs">{"// SUB_AGENTS"}</span>
+            {otherConfigs.map((c) => (
+              <AgentConfigCard
+                key={c.id}
+                config={c}
+                roleLabel="ROLE: SUB-AGENT"
+                roleColor="text-orange-400"
+                fallbackIcon="⚡"
+                allConfigs={configs}
+                onChangeConfig={async (_id) => {
+                  // No-op: sub-agents don't swap configs, they are the config
+                }}
+                changeLabel=""
+                emptyLabel=""
+                getModelName={getModelName}
+              />
+            ))}
+          </section>
+        )}
       </div>
     </div>
   );
