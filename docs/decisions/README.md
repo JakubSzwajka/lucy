@@ -29,3 +29,4 @@ An Architecture Decision Record (ADR) captures an important architecture decisio
 - [Persist incomplete plans across page refreshes](0008-persist-incomplete-plans-across-page-refreshes.md) (proposed, 2026-02-19)
 - [Add light mode with three-way theme toggle](0009-add-light-mode-with-three-way-theme-toggle.md) (proposed, 2026-02-19)
 - [Replace direct AI providers with OpenRouter](0010-replace-direct-providers-with-openrouter.md) (proposed, 2026-02-19)
+- [Add pinned/favorite sessions to sidebar](0011-add-pinned-sessions.md) (proposed, 2026-02-19)
