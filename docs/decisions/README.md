@@ -30,3 +30,5 @@ An Architecture Decision Record (ADR) captures an important architecture decisio
 - [Add light mode with three-way theme toggle](0009-add-light-mode-with-three-way-theme-toggle.md) (proposed, 2026-02-19)
 - [Replace direct AI providers with OpenRouter](0010-replace-direct-providers-with-openrouter.md) (proposed, 2026-02-19)
 - [Add pinned/favorite sessions to sidebar](0011-add-pinned-sessions.md) (proposed, 2026-02-19)
+- [Replace memory list with tag-based retrieval](0012-replace-memory-list-with-tag-based-retrieval.md) (proposed, 2026-02-19)
+- [Add user-level privacy mode with encryption at rest](0013-add-user-privacy-mode-with-encryption-at-rest.md) (proposed, 2026-02-19)
