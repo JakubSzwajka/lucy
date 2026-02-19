@@ -9,6 +9,7 @@ interface SessionItemProps {
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onPin?: () => void;
 }
 
 function formatLogNumber(num: number): string {
@@ -41,6 +42,7 @@ export function SessionItem({
   isActive,
   onSelect,
   onDelete,
+  onPin,
 }: SessionItemProps) {
   return (
     <div

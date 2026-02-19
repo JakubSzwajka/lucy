@@ -83,6 +83,9 @@ export const sessions = pgTable("sessions", {
   // Session lifecycle
   status: text("status", { enum: ["active", "archived"] }).notNull().default("active"),
 
+  // Pinned sessions appear at top of sidebar
+  isPinned: boolean("is_pinned").notNull().default(false),
+
   // Recursive session hierarchy
   parentSessionId: text("parent_session_id"),
   sourceCallId: text("source_call_id"),

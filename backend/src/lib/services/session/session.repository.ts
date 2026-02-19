@@ -23,6 +23,7 @@ function parseSessionRecord(record: SessionRecord): Session {
     sourceCallId: record.sourceCallId,
     title: record.title,
     status: record.status as SessionStatus,
+    isPinned: record.isPinned,
     reflectionTokenCount: record.reflectionTokenCount,
     lastReflectionItemCount: record.lastReflectionItemCount,
     createdAt: record.createdAt,
@@ -43,11 +44,11 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
   }
 
   /**
-   * Find all top-level sessions ordered by updatedAt descending (scoped to user).
+   * Find all top-level sessions ordered by isPinned first, then updatedAt descending (scoped to user).
    * Excludes child sessions (those with a parentSessionId).
    */
   async findAll(userId: string): Promise<Session[]> {
-    const records = await db.select().from(sessions).where(and(eq(sessions.userId, userId), isNull(sessions.parentSessionId))).orderBy(desc(sessions.updatedAt));
+    const records = await db.select().from(sessions).where(and(eq(sessions.userId, userId), isNull(sessions.parentSessionId))).orderBy(desc(sessions.isPinned), desc(sessions.updatedAt));
     return records.map(parseSessionRecord);
   }
 
@@ -107,6 +108,7 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
 
     if (data.title !== undefined) updateData.title = data.title;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.isPinned !== undefined) updateData.isPinned = data.isPinned;
     if (data.reflectionTokenCount !== undefined) updateData.reflectionTokenCount = data.reflectionTokenCount;
     if (data.lastReflectionItemCount !== undefined) updateData.lastReflectionItemCount = data.lastReflectionItemCount;
 

@@ -55,19 +55,19 @@ export default function MainLayout({
     deleteSession,
   } = useSessions();
 
-  // Resolve selected model: agent config override takes priority, then user selection, then fallback
+  // Resolve selected model: user selection wins, then agent config default, then fallback
   const resolvedModel = useMemo(() => {
     if (models.length === 0) return selectedModel;
 
-    // Agent config override for active session
+    // User-selected model takes priority
+    if (selectedModel) return selectedModel;
+
+    // Agent config default for active session (used as initial value)
     const activeSession = sessions.find(s => s.id === activeSessionId);
     if (activeSession?.agentConfigId) {
       const config = configs.find(c => c.id === activeSession.agentConfigId);
       if (config?.defaultModelId) return config.defaultModelId;
     }
-
-    // User-selected model (if valid)
-    if (selectedModel) return selectedModel;
 
     // Fallback: first available model
     const enabledSet = settings?.enabledModels?.length ? new Set(settings.enabledModels) : null;
