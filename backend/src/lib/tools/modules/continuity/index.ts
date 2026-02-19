@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineToolModule, defineTool } from "../../types";
 import { getMemoryService } from "@/lib/memory";
 import { getQuestionService } from "@/lib/memory/question.service";
-import { memoryTypes, confidenceLevels } from "@/lib/memory/types";
+import { memoryTypes, confidenceLevels, questionStatuses, questionTimings } from "@/lib/memory/types";
 
 export const continuityModule = defineToolModule<null>({
   id: "continuity",
@@ -22,6 +22,7 @@ ACTIONS:
 - "update": Modify an existing memory's content, type, or confidence
 - "supersede": Replace an outdated memory with a corrected version
 - "delete": Permanently remove a memory by ID (use when information is wrong, irrelevant, or user asks to forget)
+- "list_questions": Browse pending or resolved questions with optional filters (status, timing, scope, limit, offset)
 - "resolve_question": Mark a surfaced question as answered (requires questionId and answer)
 
 MEMORY TYPES: fact, preference, relationship, principle, commitment, moment, skill
@@ -41,7 +42,7 @@ WHEN TO SAVE:
 Always set appropriate confidence based on how the information was obtained.`,
 
       inputSchema: z.object({
-        action: z.enum(["save", "find", "list", "update", "supersede", "delete", "resolve_question"]).describe("Action to perform"),
+        action: z.enum(["save", "find", "list", "update", "supersede", "delete", "list_questions", "resolve_question"]).describe("Action to perform"),
 
         // For save
         type: z.enum(memoryTypes).optional().describe("Memory type"),
@@ -60,6 +61,10 @@ Always set appropriate confidence based on how the information was obtained.`,
 
         // For update / supersede
         memoryId: z.string().optional().describe("ID of memory to update or supersede"),
+
+        // For list_questions
+        questionStatus: z.enum(questionStatuses).optional().describe("Filter questions by status (default: pending)"),
+        questionTiming: z.enum(questionTimings).optional().describe("Filter questions by timing"),
 
         // For resolve_question
         questionId: z.string().optional().describe("ID of the question to resolve"),
@@ -223,6 +228,34 @@ Always set appropriate confidence based on how the information was obtained.`,
           await service.delete(userId, memoryId);
 
           return { success: true, deleted: memoryId };
+        }
+
+        // ========== LIST QUESTIONS ==========
+        if (args.action === "list_questions") {
+          const questionService = getQuestionService();
+          const questions = await questionService.list(userId, {
+            status: args.questionStatus ?? "pending",
+            timing: args.questionTiming,
+            scope: args.scope,
+            limit: Math.min(args.limit ?? 50, 100),
+            offset: args.offset ?? 0,
+          });
+
+          return {
+            questions: questions.map((q) => ({
+              id: q.id,
+              content: q.content,
+              context: q.context,
+              curiosityType: q.curiosityType,
+              curiosityScore: q.curiosityScore,
+              timing: q.timing,
+              scope: q.scope,
+              status: q.status,
+              answer: q.answer,
+              createdAt: q.createdAt.toISOString(),
+            })),
+            count: questions.length,
+          };
         }
 
         // ========== RESOLVE QUESTION ==========
