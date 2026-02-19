@@ -348,17 +348,52 @@ export function Sidebar({
                 <p className="text-sm text-muted-dark mt-2">Start a new conversation</p>
               </div>
             ) : (
-              sessions.map((session, index) => (
-                <SessionItem
-                  key={session.id}
-                  session={session}
-                  sessionNumber={sessions.length - index}
-                  isActive={session.id === activeSessionId}
-                  onSelect={() => handleSessionClick(session.id)}
-                  onDelete={() => onDeleteSession(session.id)}
-                  onPin={() => onPinSession(session.id)}
-                />
-              ))
+              (() => {
+                const pinned = sessions.filter((s) => s.isPinned);
+                const unpinned = sessions.filter((s) => !s.isPinned);
+                return (
+                  <>
+                    {pinned.length > 0 && (
+                      <div>
+                        <div className="px-4 pt-3 pb-1">
+                          <span className="label-sm text-muted-darker uppercase tracking-wider">Pinned</span>
+                        </div>
+                        {pinned.map((session) => (
+                          <SessionItem
+                            key={session.id}
+                            session={session}
+                            sessionNumber={sessions.length - sessions.indexOf(session)}
+                            isActive={session.id === activeSessionId}
+                            onSelect={() => handleSessionClick(session.id)}
+                            onDelete={() => onDeleteSession(session.id)}
+                            onPin={() => onPinSession(session.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {unpinned.length > 0 && (
+                      <div>
+                        {pinned.length > 0 && (
+                          <div className="px-4 pt-3 pb-1">
+                            <span className="label-sm text-muted-darker uppercase tracking-wider">Recent</span>
+                          </div>
+                        )}
+                        {unpinned.map((session) => (
+                          <SessionItem
+                            key={session.id}
+                            session={session}
+                            sessionNumber={sessions.length - sessions.indexOf(session)}
+                            isActive={session.id === activeSessionId}
+                            onSelect={() => handleSessionClick(session.id)}
+                            onDelete={() => onDeleteSession(session.id)}
+                            onPin={() => onPinSession(session.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()
             )}
           </div>
         </>

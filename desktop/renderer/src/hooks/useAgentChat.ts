@@ -14,6 +14,9 @@ import type { ChatMessage, Item, MessageItem, Agent, SessionWithAgents, ChildSes
 
 /**
  * Reshapes the request body to send only the last user message instead of full history.
+ * Note: sessionId is passed dynamically at sendMessage time, not in prepareSendMessage,
+ * because useChat doesn't properly update the transport when sessionId changes.
+ * See: https://github.com/vercel/ai/issues/7819
  */
 function prepareSendMessage({ messages, body }: { messages: UIMessage[]; body: Record<string, unknown> | undefined }) {
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
@@ -37,6 +40,7 @@ function prepareSendMessage({ messages, body }: { messages: UIMessage[]; body: R
 
   return {
     body: {
+      sessionId: body?.sessionId,
       message: { content, parts },
       model: body?.model,
       thinkingEnabled: body?.thinkingEnabled,
@@ -91,40 +95,21 @@ export function useSessionChat({
     modelRef.current = model;
   }, [model]);
 
-  const [transport, setTransport] = useState(
-    () => new DefaultChatTransport({
-      api: sessionId
-        ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
-        : `${API_BASE_URL}/api/sessions/_/chat`,
-      headers: () => {
-        const token = api.getToken();
-        return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
-      },
-      prepareSendMessagesRequest: prepareSendMessage,
-      body: () => ({
-        model: modelRef.current,
-        thinkingEnabled: thinkingEnabledRef.current,
-      }),
-    })
-  );
-
-  // Recreate transport when sessionId changes
-  useEffect(() => {
-    setTransport(new DefaultChatTransport({
-      api: sessionId
-        ? `${API_BASE_URL}/api/sessions/${sessionId}/chat`
-        : `${API_BASE_URL}/api/sessions/_/chat`,
-      headers: () => {
-        const token = api.getToken();
-        return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
-      },
-      prepareSendMessagesRequest: prepareSendMessage,
-      body: () => ({
-        model: modelRef.current,
-        thinkingEnabled: thinkingEnabledRef.current,
-      }),
-    }));
-  }, [sessionId]);
+  // Static transport using generic /api/chat endpoint
+  // SessionId is passed dynamically at sendMessage time to avoid stale state issues
+  // See: https://github.com/vercel/ai/issues/7819
+  const transport = useMemo(() => new DefaultChatTransport({
+    api: `${API_BASE_URL}/api/chat`,
+    headers: () => {
+      const token = api.getToken();
+      return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>);
+    },
+    prepareSendMessagesRequest: prepareSendMessage,
+    body: () => ({
+      model: modelRef.current,
+      thinkingEnabled: thinkingEnabledRef.current,
+    }),
+  }), []);
 
   const {
     messages: rawMessages,
@@ -133,6 +118,7 @@ export function useSessionChat({
     status,
     setMessages,
   } = useChat({
+    id: sessionId ?? "default",
     transport,
   });
 
@@ -237,16 +223,24 @@ export function useSessionChat({
       // Update thinking preference for this message
       thinkingEnabledRef.current = options?.thinkingEnabled ?? true;
 
-      // Send with file parts if present
+      // Prepare parts
+      let parts: Array<{ type: "text"; text: string } | FileUIPart> | undefined;
       if (options?.files && options.files.length > 0) {
-        const parts: Array<{ type: "text"; text: string } | FileUIPart> = [
+        parts = [
           ...options.files,
           ...(content ? [{ type: "text" as const, text: content }] : []),
         ];
-        chatSendMessage({ parts });
-      } else {
-        chatSendMessage({ text: content });
       }
+
+      // Send with sessionId in the request options (passed to prepareSendMessage via body)
+      chatSendMessage(
+        parts ? { parts } : { text: content },
+        {
+          body: {
+            sessionId,
+          },
+        }
+      );
     },
     [sessionId, chatSendMessage]
   );
