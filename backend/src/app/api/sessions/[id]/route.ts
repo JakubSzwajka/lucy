@@ -53,6 +53,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const result = await sessionService.update(id, {
     title: updates.title,
     status: updates.status,
+    isPinned: updates.isPinned,
   }, userId);
 
   if (result.notFound) {

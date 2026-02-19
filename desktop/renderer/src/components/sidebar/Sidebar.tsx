@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -130,6 +130,11 @@ export function Sidebar({
   const router = useRouter();
   const { user, logout } = useAuth();
   const { configs } = useAgentConfigs();
+  const configNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of configs) map.set(c.id, c.name);
+    return map;
+  }, [configs]);
   const [showConfigPicker, setShowConfigPicker] = useState(false);
   const [agentsExpanded, setAgentsExpanded] = useState(true);
   const isOnSettings = pathname?.startsWith("/settings");
@@ -356,7 +361,7 @@ export function Sidebar({
                     {pinned.length > 0 && (
                       <div>
                         <div className="px-4 pt-3 pb-1">
-                          <span className="label-sm text-muted-darker uppercase tracking-wider">Pinned</span>
+                          <span className="label text-muted-darker uppercase tracking-wider">Pinned</span>
                         </div>
                         {pinned.map((session) => (
                           <SessionItem
@@ -364,6 +369,7 @@ export function Sidebar({
                             session={session}
                             sessionNumber={sessions.length - sessions.indexOf(session)}
                             isActive={session.id === activeSessionId}
+                            agentConfigName={session.agentConfigId ? configNameMap.get(session.agentConfigId) : undefined}
                             onSelect={() => handleSessionClick(session.id)}
                             onDelete={() => onDeleteSession(session.id)}
                             onPin={() => onPinSession(session.id)}
@@ -375,7 +381,7 @@ export function Sidebar({
                       <div>
                         {pinned.length > 0 && (
                           <div className="px-4 pt-3 pb-1">
-                            <span className="label-sm text-muted-darker uppercase tracking-wider">Recent</span>
+                            <span className="label text-muted-darker uppercase tracking-wider">Recent</span>
                           </div>
                         )}
                         {unpinned.map((session) => (
@@ -384,6 +390,7 @@ export function Sidebar({
                             session={session}
                             sessionNumber={sessions.length - sessions.indexOf(session)}
                             isActive={session.id === activeSessionId}
+                            agentConfigName={session.agentConfigId ? configNameMap.get(session.agentConfigId) : undefined}
                             onSelect={() => handleSessionClick(session.id)}
                             onDelete={() => onDeleteSession(session.id)}
                             onPin={() => onPinSession(session.id)}

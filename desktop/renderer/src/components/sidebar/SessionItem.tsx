@@ -7,6 +7,7 @@ interface SessionItemProps {
   session: Session;
   sessionNumber: number;
   isActive: boolean;
+  agentConfigName?: string;
   onSelect: () => void;
   onDelete: () => void;
   onPin?: () => void;
@@ -40,6 +41,7 @@ export function SessionItem({
   session,
   sessionNumber,
   isActive,
+  agentConfigName,
   onSelect,
   onDelete,
   onPin,
@@ -73,11 +75,16 @@ export function SessionItem({
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium truncate flex-1 pr-2 flex items-center gap-1.5">
-          {session.agentConfigId && (
-            <span className="w-2 h-2 rounded-full bg-foreground/40 flex-shrink-0" />
+        <div className="flex-1 pr-2 min-w-0">
+          <div className="text-sm font-medium truncate flex items-center gap-1.5">
+            {session.agentConfigId && (
+              <span className="w-2 h-2 rounded-full bg-foreground/40 flex-shrink-0" />
+            )}
+            {session.title}
+          </div>
+          {agentConfigName && (
+            <div className="label-sm text-muted-darker truncate mt-0.5">{agentConfigName}</div>
           )}
-          {session.title}
         </div>
         {onPin && (
           <button
