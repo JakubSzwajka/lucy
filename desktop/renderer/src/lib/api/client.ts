@@ -1,4 +1,4 @@
-import type { AgentConfigWithTools, AgentConfigCreate, AgentConfigUpdate } from "@/types";
+import type { AgentConfigWithTools, AgentConfigCreate, AgentConfigUpdate, Trigger, TriggerWithRuns, TriggerCreate, TriggerUpdate, TriggerRun } from "@/types";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -190,6 +190,53 @@ class APIClient {
 
   async deleteAgentConfig(id: string) {
     return this.request<void>(`/api/agent-configs/${id}`, { method: "DELETE" });
+  }
+
+  // Triggers
+  async listTriggers() {
+    return this.request<Trigger[]>("/api/triggers");
+  }
+
+  async getTrigger(id: string) {
+    return this.request<TriggerWithRuns>(`/api/triggers/${id}`);
+  }
+
+  async createTrigger(input: TriggerCreate) {
+    return this.request<Trigger>("/api/triggers", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateTrigger(id: string, input: TriggerUpdate) {
+    return this.request<Trigger>(`/api/triggers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deleteTrigger(id: string) {
+    return this.request<void>(`/api/triggers/${id}`, { method: "DELETE" });
+  }
+
+  async getTriggerRuns(id: string, limit = 10, offset = 0) {
+    return this.request<{ runs: TriggerRun[]; total: number }>(
+      `/api/triggers/${id}/runs?limit=${limit}&offset=${offset}`
+    );
+  }
+
+  async cancelTriggerRun(triggerId: string, runId: string) {
+    return this.request<{ success: boolean }>(
+      `/api/triggers/${triggerId}/runs/${runId}/cancel`,
+      { method: "POST" }
+    );
+  }
+
+  async testTrigger(id: string) {
+    return this.request<{ success: boolean; runId: string; sessionId: string }>(
+      `/api/triggers/${id}/test`,
+      { method: "POST" }
+    );
   }
 
 }

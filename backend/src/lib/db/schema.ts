@@ -622,6 +622,66 @@ export const memorySettings = pgTable("memory_settings", {
 ]);
 
 // ============================================================================
+// TRIGGERS - Scheduled and event-driven agent execution
+// ============================================================================
+
+export const triggerTypeEnum = ["cron", "webhook"] as const;
+
+export const triggers = pgTable("triggers", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  agentConfigId: text("agent_config_id")
+    .notNull()
+    .references(() => agentConfigs.id, { onDelete: "cascade" }),
+  triggerType: text("trigger_type", { enum: triggerTypeEnum }).notNull(),
+  cronExpression: text("cron_expression"),
+  timezone: text("timezone").default("UTC"),
+  inputTemplate: text("input_template").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  maxTurns: integer("max_turns").notNull().default(25),
+  maxRunsPerHour: integer("max_runs_per_hour").notNull().default(10),
+  cooldownSeconds: integer("cooldown_seconds").notNull().default(0),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  lastRunSessionId: text("last_run_session_id")
+    .references(() => sessions.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => [
+  index("triggers_user_idx").on(table.userId),
+  index("triggers_user_type_idx").on(table.userId, table.triggerType),
+]);
+
+export const triggerRunStatusEnum = ["pending", "running", "completed", "failed", "skipped"] as const;
+
+export const triggerRuns = pgTable("trigger_runs", {
+  id: text("id").primaryKey(),
+  triggerId: text("trigger_id")
+    .notNull()
+    .references(() => triggers.id, { onDelete: "cascade" }),
+  sessionId: text("session_id")
+    .references(() => sessions.id, { onDelete: "set null" }),
+  status: text("status", { enum: triggerRunStatusEnum }).notNull().default("pending"),
+  skipReason: text("skip_reason"),
+  result: text("result"),
+  error: text("error"),
+  eventPayload: jsonb("event_payload").$type<Record<string, unknown>>(),
+  startedAt: timestamp("started_at")
+    .$defaultFn(() => new Date()),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("trigger_runs_trigger_idx").on(table.triggerId),
+  index("trigger_runs_trigger_status_idx").on(table.triggerId, table.status),
+]);
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -697,5 +757,10 @@ export type AgentConfigRecord = typeof agentConfigs.$inferSelect;
 export type NewAgentConfig = typeof agentConfigs.$inferInsert;
 
 export type AgentConfigToolRecord = typeof agentConfigTools.$inferSelect;
+
+export type TriggerRecord = typeof triggers.$inferSelect;
+export type NewTrigger = typeof triggers.$inferInsert;
+export type TriggerRunRecord = typeof triggerRuns.$inferSelect;
+export type NewTriggerRun = typeof triggerRuns.$inferInsert;
 export type NewAgentConfigTool = typeof agentConfigTools.$inferInsert;
 export type AgentConfigToolType = (typeof agentConfigToolTypeEnum)[number];

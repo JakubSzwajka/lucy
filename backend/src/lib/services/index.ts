@@ -47,7 +47,7 @@ export { AgentRepository, getAgentRepository } from "./agent";
 export type { CreateAgentResult, UpdateAgentResult } from "./agent";
 
 // Chat Service
-export { ChatService, getChatService } from "./chat";
+export { ChatService, getChatService, cancelAgent } from "./chat";
 export type {
   ChatContext,
   ChatPrepareOptions,
@@ -89,6 +89,11 @@ export type {
 // Agent Config Service
 export { AgentConfigService, getAgentConfigService } from "./agent-config";
 export { AgentConfigRepository, getAgentConfigRepository } from "./agent-config";
+
+// Trigger Service
+export { TriggerService, getTriggerService } from "./trigger";
+export { TriggerRepository, getTriggerRepository } from "./trigger";
+export { TriggerScheduler, getTriggerScheduler } from "./trigger";
 
 // Memory Service
 export { MemoryService, getMemoryService } from "@/lib/memory";

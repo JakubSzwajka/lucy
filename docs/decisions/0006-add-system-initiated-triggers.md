@@ -14,56 +14,100 @@ Automation use cases require a third initiator type — **system-initiated** ses
 
 How should we add scheduled and event-driven agent execution without introducing a new execution path?
 
-See: [docs/specs/triggers.md](../specs/triggers.md) for the full specification.
-
 ## Decision Drivers
 
 * Must reuse existing `SessionService.create()` + `ChatService.runAgent(streaming: false)` — no new execution engine
-* Triggers are user-owned (sessions run under the trigger owner's `userId`)
+* Triggers are user-owned — each user has their own set of triggers, sessions run under the trigger owner's `userId`
 * Agent autonomy comes from the agentConfig system prompt, not special message framing
 * External-world events only (webhooks, cron) — no in-process event bus
 * Rate limiting and cooldown to prevent runaway execution
 * Audit trail for every trigger firing (success, failure, or skip)
+* Cron must survive server restarts and not duplicate in multi-instance deployments
 
 ## Considered Options
 
-* **First-class trigger entity with in-process cron** — new `triggers` + `triggerRuns` tables, `node-cron` for scheduling, webhook endpoint with API key auth
-* **External job scheduler (pg-boss / BullMQ)** — durable queue with at-least-once semantics
+* **In-process cron (`node-cron`)** — timers inside the Node.js process, zero dependencies
+* **pg-boss (Postgres-backed job queue)** — durable scheduling via Postgres `SKIP LOCKED`
+* **BullMQ (Redis-backed queue)** — battle-tested but adds Redis dependency
 
 ## Decision Outcome
 
-Chosen option: **First-class trigger entity with in-process cron**, because it adds zero infrastructure dependencies, reuses the existing non-streaming execution path, and is sufficient for single-server deployment. The `TriggerService.execute()` interface is scheduler-agnostic, so migrating to an external scheduler later requires no changes to execution logic.
+Chosen option: **pg-boss**, because it provides durable, deduplicated cron scheduling using our existing Postgres — no new infrastructure. Jobs survive server restarts, `SKIP LOCKED` guarantees single-execution across multiple instances, and pg-boss has built-in cron support via `pg-boss.schedule()`.
 
 ### Consequences
 
-* Good, because no new infrastructure — works with current SQLite dev setup and single-server prod
+* Good, because no new infrastructure — pg-boss uses existing Postgres, no Redis or external scheduler
+* Good, because cron jobs are durable — survive server restarts, missed jobs are picked up on recovery
+* Good, because `SKIP LOCKED` prevents duplicate execution across multiple instances
 * Good, because execution path is identical to delegation (`generateText` loop), so ChatService is unchanged
 * Good, because `triggerRuns` table provides full audit trail with status, result, error, and skip reasons
-* Bad, because in-process cron does not survive server restarts gracefully (missed ticks are lost)
-* Bad, because multi-instance deployment will cause duplicate cron execution (addressed in future Phase 2)
+* Neutral, because pg-boss creates its own schema in Postgres (`pgboss.*` tables) — lightweight but worth knowing
 * Neutral, because webhook auth uses a single shared `LUCY_API_KEY` — simple but no per-trigger isolation
+
+## How It Works
+
+### The Three Trigger Paths
+
+```
+User types message  →  SSE streaming   →  ChatService.executeTurn()
+Agent delegates     →  non-streaming   →  ChatService.runAgent()
+Trigger fires       →  non-streaming   →  ChatService.runAgent()  (same path as delegation)
+```
+
+### Cron Flow
+
+```
+Server starts
+  → pg-boss.start()
+  → Load all enabled cron triggers from DB
+  → pg-boss.schedule(cronExpression) for each
+  → pg-boss worker picks up jobs on schedule
+  → TriggerService.execute(triggerId)
+    → Rate limit + cooldown checks
+    → SessionService.create(userId, { agentConfigId })
+    → ChatService.runAgent(rootAgentId, userId, messages, { streaming: false, maxTurns })
+    → Record result in triggerRuns
+```
+
+### Webhook Flow
+
+```
+External service POSTs to /api/triggers/webhook/:id
+  → Validate LUCY_API_KEY Bearer token
+  → Load trigger, check enabled
+  → TriggerService.execute(triggerId, request.body)
+    → Same execution as cron (rate limit, cooldown, create session, run agent)
+    → Interpolate inputTemplate with webhook payload: {{payload.pr_url}} → actual value
+    → Record result in triggerRuns
+  → Return 200 with { runId, sessionId }
+```
+
+### User Ownership
+
+Every trigger belongs to a user. When a trigger fires, the resulting session is created under that user's `userId`. The user sees trigger-created sessions in their session list alongside interactive ones. CRUD routes are JWT-protected and scoped to the authenticated user.
 
 ## Implementation Plan
 
-Implemented in three phases. Phase 1 is the core; Phases 2-3 follow separately.
+Implemented in two phases. Phase 1 is the core; Phase 2 is frontend.
 
-### Phase 1 — Schema + Service + CRUD API + Webhooks
+### Phase 1 — Schema + Service + CRUD API + Webhooks + Cron
 
 * **Affected paths**:
   - `backend/src/lib/db/schema.ts` — add `triggers` and `triggerRuns` tables
-  - `backend/src/lib/services/trigger/` — new directory: `TriggerRepository`, `TriggerService` (singleton pattern, like `AgentConfigService`)
+  - `backend/src/lib/services/trigger/` — new directory: `TriggerRepository`, `TriggerService`, `TriggerScheduler`
   - `backend/src/app/api/triggers/` — CRUD routes (collection + `[id]`)
   - `backend/src/app/api/triggers/[id]/runs/` — run history route
   - `backend/src/app/api/triggers/[id]/test/` — manual fire route
   - `backend/src/app/api/triggers/webhook/[id]/` — webhook endpoint
 
-* **Dependencies**: `node-cron` (Phase 2 only, not needed for Phase 1)
+* **Dependencies**: `pg-boss` (Postgres-backed job queue with cron support)
 
 * **Patterns to follow**:
   - Singleton service: `TriggerService.getInstance()` (see `AgentConfigService`)
   - Repository pattern: `TriggerRepository` for all DB queries
   - Auth: `requireAuth(request)` on CRUD routes, `LUCY_API_KEY` Bearer check on webhook route
   - All queries scoped by `userId` (CRUD) or by trigger ID (webhook)
+  - `TriggerScheduler` wraps pg-boss: `start()`, `syncTrigger(id)`, `removeTrigger(id)`, `stop()`
 
 * **Patterns to avoid**:
   - Do not modify `ChatService` — triggers call existing `runAgent` path
@@ -74,6 +118,13 @@ Implemented in three phases. Phase 1 is the core; Phases 2-3 follow separately.
   - `triggers` table: `id`, `userId` (FK users), `name`, `description`, `agentConfigId` (FK agentConfigs), `triggerType` (cron|webhook), `cronExpression`, `timezone`, `inputTemplate`, `enabled`, `maxTurns`, `maxRunsPerHour`, `cooldownSeconds`, `lastTriggeredAt`, `lastRunSessionId` (FK sessions), `createdAt`, `updatedAt`
   - `triggerRuns` table: `id`, `triggerId` (FK triggers), `sessionId` (FK sessions, nullable), `status` (pending|running|completed|failed|skipped), `skipReason`, `result`, `error`, `eventPayload` (jsonb), `startedAt`, `completedAt`
   - Indexes: `(userId)`, `(userId, triggerType)` on triggers; `(triggerId)`, `(triggerId, status)` on triggerRuns
+
+* **pg-boss integration** (`TriggerScheduler`):
+  - On server startup: `pgBoss.start()` → load enabled cron triggers → `pgBoss.schedule(triggerName, cronExpression, data, { tz })` for each
+  - Worker: `pgBoss.work(triggerName, handler)` — handler calls `TriggerService.execute()`
+  - On trigger create/update: `pgBoss.unschedule(old)` + `pgBoss.schedule(new)` if cron type
+  - On trigger delete: `pgBoss.unschedule(triggerName)`
+  - On server shutdown: `pgBoss.stop()`
 
 * **Execution flow** (`TriggerService.execute(triggerId, eventPayload?)`):
   1. Load trigger, validate enabled
@@ -97,21 +148,19 @@ Implemented in three phases. Phase 1 is the core; Phases 2-3 follow separately.
   - `POST /api/triggers/:id/test` — manually fire (JWT)
   - `POST /api/triggers/webhook/:id` — webhook entry (LUCY_API_KEY auth, returns 401/404/409 appropriately)
 
-### Phase 2 — Cron Scheduling (separate ADR if needed)
-
-* Add `node-cron` dependency
-* On server startup: load enabled cron triggers, register with scheduler
-* On trigger CRUD: update in-process scheduler
-* Graceful shutdown: stop all cron jobs
-
-### Phase 3 — Frontend (separate work)
+### Phase 2 — Frontend (separate work)
 
 * Trigger management UI, run history view, test button
 
 ### Verification
 
 - [ ] `triggers` and `triggerRuns` tables exist in schema and `db:push` succeeds
+- [ ] pg-boss starts and connects to Postgres on server startup
 - [ ] CRUD routes work: create, list, get, update, delete triggers (JWT auth, userId scoping)
+- [ ] Creating a cron trigger registers it with pg-boss scheduler
+- [ ] Deleting/disabling a cron trigger removes it from pg-boss scheduler
+- [ ] Cron trigger fires on schedule and creates a session + triggerRun
+- [ ] Cron trigger survives server restart (re-registered on startup)
 - [ ] `POST /api/triggers/:id/test` creates a session and runs the agent to completion
 - [ ] `POST /api/triggers/webhook/:id` returns 401 without valid `LUCY_API_KEY`
 - [ ] `POST /api/triggers/webhook/:id` with valid key creates session + triggerRun
@@ -123,6 +172,6 @@ Implemented in three phases. Phase 1 is the core; Phases 2-3 follow separately.
 
 ## More Information
 
-* Full specification: [docs/specs/triggers.md](../specs/triggers.md)
 * The three session initiator types after this ADR: User (SSE streaming), Agent (delegation, non-streaming), System (triggers, non-streaming)
-* Revisit this decision if: multi-instance deployment is needed (migrate cron to pg-boss/BullMQ), or per-trigger webhook secrets are needed for security
+* pg-boss docs: https://github.com/timgit/pg-boss
+* Revisit this decision if: per-trigger webhook secrets are needed for security, or Redis is added for other reasons (could then consider BullMQ)

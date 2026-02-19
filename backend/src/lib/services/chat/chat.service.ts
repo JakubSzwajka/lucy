@@ -1,5 +1,5 @@
 import { getSystemPromptService } from "@/lib/services/config";
-import { streamText, generateText, stepCountIs, ToolSet, type ModelMessage as AiModelMessage } from "ai";
+import { streamText, generateText, stepCountIs, ToolSet, type ModelMessage as AiModelMessage, type ToolCallPart as AiToolCallPart, type ToolResultPart as AiToolResultPart } from "ai";
 import { buildProviderOptions, getLanguageModel } from "@/lib/ai/providers";
 import { getModelConfig } from "@/lib/ai/models";
 import {
@@ -16,7 +16,7 @@ import { getSettingsService } from "../config/settings.service";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingUserMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
-import type { MessageItem, Agent, AgentConfigWithTools } from "@/types";
+import type { MessageItem, ToolCallItem, ToolResultItem, Item, Agent, AgentConfigWithTools } from "@/types";
 import type { ToolFilter } from "@/lib/tools";
 import type { ToolSource } from "@/lib/tools/types";
 import { generateDelegateTools } from "@/lib/tools/delegate";
@@ -26,6 +26,19 @@ import { maybeAutoReflect } from "@/lib/memory/auto-reflection.service";
 // ============================================================================
 // Chat Service
 // ============================================================================
+
+// In-memory abort controllers keyed by agentId — allows cancelling running agents
+const activeAbortControllers = new Map<string, AbortController>();
+
+export function cancelAgent(agentId: string): boolean {
+  const controller = activeAbortControllers.get(agentId);
+  if (controller) {
+    controller.abort();
+    activeAbortControllers.delete(agentId);
+    return true;
+  }
+  return false;
+}
 
 export class ChatService {
   /**
@@ -157,6 +170,10 @@ export class ChatService {
       const itemService = getItemService();
       const agentService = getAgentService();
 
+      // Register abort controller for cancellation
+      const abortController = new AbortController();
+      activeAbortControllers.set(agentId, abortController);
+
       return await startActiveObservation(agentName, async (span) => {
         return await propagateAttributes({
           userId,
@@ -167,20 +184,24 @@ export class ChatService {
 
           try {
             for (let turn = 0; turn < maxTurns; turn++) {
-              // Re-read items each turn to include tool results from previous turns
+              if (abortController.signal.aborted) {
+                break;
+              }
+              // Re-read items each turn to include tool calls/results from previous turns
               const items = await itemService.getByAgentId(agentId);
               const windowedItems = this.applySlidingWindow(items);
-              const turnModelMessages = this.itemsToModelMessages(windowedItems);
-              const turnMessages = this.prependSystemPrompt(
-                turnModelMessages,
-                context.systemPrompt,
-              );
+              const turnModelMessages = this.itemsToFullModelMessages(windowedItems);
+              // Prepend system prompt as a system message
+              const turnMessages: AiModelMessage[] = context.systemPrompt
+                ? [{ role: "system", content: context.systemPrompt } as AiModelMessage, ...turnModelMessages]
+                : turnModelMessages;
 
               const result = await generateText({
                 model: context.languageModel,
-                messages: turnMessages as AiModelMessage[],
+                messages: turnMessages,
                 tools: hasTools ? context.tools as ToolSet : undefined,
                 maxOutputTokens: context.maxOutputTokens,
+                abortSignal: abortController.signal,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 providerOptions: context.providerOptions as any,
                 experimental_telemetry: {
@@ -235,25 +256,45 @@ export class ChatService {
               }
             }
 
+            // Check if cancelled
+            const wasCancelled = abortController.signal.aborted;
+
             // Extract final result
             const finalItems = await itemService.getByAgentId(agentId);
             const lastAssistantItem = [...finalItems].reverse().find(
               (i): i is MessageItem => i.type === "message" && i.role === "assistant",
             );
             let finalResult = lastAssistantItem?.content || "Task completed without response.";
-            if (reachedMaxTurns) {
+            if (wasCancelled) {
+              finalResult += " [cancelled]";
+            } else if (reachedMaxTurns) {
               finalResult += " [max turns reached]";
             }
 
             await agentService.update(agentId, {
-              status: "completed",
+              status: wasCancelled ? "cancelled" : "completed",
               result: finalResult,
               completedAt: new Date(),
             }, userId);
 
+            activeAbortControllers.delete(agentId);
             span.update({ output: finalResult });
             return { streaming: false as const, result: finalResult, reachedMaxTurns };
           } catch (error) {
+            activeAbortControllers.delete(agentId);
+
+            // Treat abort errors as cancellation, not failure
+            if (abortController.signal.aborted) {
+              const cancelResult = "Execution cancelled by user";
+              await agentService.update(agentId, {
+                status: "cancelled",
+                result: cancelResult,
+                completedAt: new Date(),
+              }, userId);
+              span.update({ output: cancelResult });
+              return { streaming: false as const, result: cancelResult, reachedMaxTurns: false };
+            }
+
             const errorMessage = error instanceof Error ? error.message : "Agent execution failed";
             await agentService.update(agentId, {
               status: "failed",
@@ -465,6 +506,66 @@ export class ChatService {
       }
 
       messages.push({ role, content: `${timestamp}${item.content}` });
+    }
+
+    return messages;
+  }
+
+  /**
+   * Build full model messages including tool calls and tool results.
+   * Used by the non-streaming generateText loop where each turn is a separate
+   * API call and tool history must be explicitly included in the messages.
+   */
+  private itemsToFullModelMessages(allItems: Item[]): AiModelMessage[] {
+    const messages: AiModelMessage[] = [];
+
+    // Group consecutive tool_call items into one assistant message,
+    // and consecutive tool_result items into one tool message.
+    let i = 0;
+    while (i < allItems.length) {
+      const item = allItems[i];
+
+      if (item.type === "message") {
+        if (item.role === "system") { i++; continue; }
+        const role = item.role as "user" | "assistant";
+        const timestamp = item.createdAt ? `[${new Date(item.createdAt).toISOString()}] ` : "";
+        messages.push({ role, content: `${timestamp}${item.content}` });
+        i++;
+      } else if (item.type === "tool_call") {
+        // Collect consecutive tool_call items into one assistant message
+        const toolCallParts: AiToolCallPart[] = [];
+        while (i < allItems.length && allItems[i].type === "tool_call") {
+          const tc = allItems[i] as ToolCallItem;
+          toolCallParts.push({
+            type: "tool-call",
+            toolCallId: tc.callId,
+            toolName: tc.toolName,
+            input: tc.toolArgs ?? {},
+          });
+          i++;
+        }
+        messages.push({ role: "assistant", content: toolCallParts });
+      } else if (item.type === "tool_result") {
+        // Collect consecutive tool_result items into one tool message
+        const toolResultParts: AiToolResultPart[] = [];
+        while (i < allItems.length && allItems[i].type === "tool_result") {
+          const tr = allItems[i] as ToolResultItem;
+          const matchingCall = allItems.find(
+            (x): x is ToolCallItem => x.type === "tool_call" && x.callId === tr.callId
+          );
+          toolResultParts.push({
+            type: "tool-result",
+            toolCallId: tr.callId,
+            toolName: matchingCall?.toolName ?? "unknown",
+            output: { type: "text" as const, value: tr.toolOutput ?? tr.toolError ?? "" },
+          });
+          i++;
+        }
+        messages.push({ role: "tool", content: toolResultParts });
+      } else {
+        // Skip reasoning items etc.
+        i++;
+      }
     }
 
     return messages;

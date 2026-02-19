@@ -359,6 +359,77 @@ export interface AgentConfigUpdate {
 }
 
 // ============================================================================
+// TRIGGER TYPES
+// ============================================================================
+
+export type TriggerType = "cron" | "webhook";
+export type TriggerRunStatus = "pending" | "running" | "completed" | "failed" | "skipped";
+
+export interface Trigger {
+  id: string;
+  userId: string;
+  name: string;
+  description: string | null;
+  agentConfigId: string;
+  triggerType: TriggerType;
+  cronExpression: string | null;
+  timezone: string | null;
+  inputTemplate: string;
+  enabled: boolean;
+  maxTurns: number;
+  maxRunsPerHour: number;
+  cooldownSeconds: number;
+  lastTriggeredAt: Date | null;
+  lastRunSessionId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TriggerRun {
+  id: string;
+  triggerId: string;
+  sessionId: string | null;
+  status: TriggerRunStatus;
+  skipReason: string | null;
+  result: string | null;
+  error: string | null;
+  eventPayload: Record<string, unknown> | null;
+  startedAt: Date | null;
+  completedAt: Date | null;
+}
+
+export interface TriggerWithRuns extends Trigger {
+  recentRuns: TriggerRun[];
+}
+
+export interface TriggerCreate {
+  name: string;
+  description?: string;
+  agentConfigId: string;
+  triggerType: TriggerType;
+  cronExpression?: string;
+  timezone?: string;
+  inputTemplate: string;
+  enabled?: boolean;
+  maxTurns?: number;
+  maxRunsPerHour?: number;
+  cooldownSeconds?: number;
+}
+
+export interface TriggerUpdate {
+  name?: string;
+  description?: string | null;
+  agentConfigId?: string;
+  cronExpression?: string | null;
+  timezone?: string | null;
+  inputTemplate?: string;
+  enabled?: boolean;
+  maxTurns?: number;
+  maxRunsPerHour?: number;
+  cooldownSeconds?: number;
+}
+
+// ============================================================================
 // API RESPONSE TYPES
 // ============================================================================
 
