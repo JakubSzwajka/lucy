@@ -117,9 +117,9 @@ export class ChatService {
             maxOutputTokens: context.maxOutputTokens,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             providerOptions: context.providerOptions as any,
-            onStepFinish: async ({ content, reasoning }) => {
+            onStepFinish: async ({ content }) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await persistStepContent(agentId, content as any[], reasoning);
+              await persistStepContent(agentId, content as any[]);
             },
             onFinish: async ({ text }) => {
               span.update({ output: text || "completed" });

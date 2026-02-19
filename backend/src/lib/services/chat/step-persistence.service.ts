@@ -42,9 +42,6 @@ interface ToolErrorPart {
 
 type ContentPart = TextPart | ReasoningPart | ToolCallPart | ToolResultPart | ToolErrorPart;
 
-interface ReasoningBlock {
-  text?: string;
-}
 
 // ============================================================================
 // Step Persistence Service
@@ -58,32 +55,13 @@ interface ReasoningBlock {
  * were streamed from the AI model.
  *
  * @param agentId - The agent ID to associate items with
- * @param content - Array of content parts from the step (text, tool-call, tool-result)
- * @param reasoning - Optional reasoning blocks from the step
+ * @param content - Array of content parts from the step (text, tool-call, tool-result, reasoning)
  */
 export async function persistStepContent(
   agentId: string,
-  content: ContentPart[],
-  reasoning?: ReasoningBlock[]
+  content: ContentPart[]
 ): Promise<void> {
-  // 1. If reasoning exists, save it first (reasoning typically comes before content)
-  if (reasoning?.length) {
-    const reasoningText = reasoning
-      .filter((r) => r.text)
-      .map((r) => r.text)
-      .join("\n");
-
-    if (reasoningText) {
-      await insertItem(agentId, {
-        type: "reasoning",
-        reasoningContent: reasoningText,
-        reasoningSummary:
-          reasoningText.slice(0, 200) + (reasoningText.length > 200 ? "..." : ""),
-      });
-    }
-  }
-
-  // 2. Process content parts in their natural order
+  // Process content parts in their natural order (reasoning is included in content array)
   let textAccumulator = "";
 
   for (const part of content) {
