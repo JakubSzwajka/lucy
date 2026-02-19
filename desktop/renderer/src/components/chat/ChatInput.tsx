@@ -58,6 +58,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 
 interface ChatInputProps {
   onSend: (message: string, files?: FileUIPart[]) => void;
+  onStop?: () => void;
   prefillText?: string;
   prefillNonce?: number;
   isLoading?: boolean;
@@ -129,6 +130,7 @@ function AttachmentButton() {
 
 function ChatInputInner({
   onSend,
+  onStop,
   prefillText,
   prefillNonce,
   isLoading,
@@ -473,7 +475,8 @@ function ChatInputInner({
             )}
           </PromptInputTools>
           <PromptInputSubmit
-            disabled={isLoading}
+            disabled={isLoading && !onStop}
+            onStop={onStop}
             className="btn-ship"
             status={isLoading ? "streaming" : undefined}
           >

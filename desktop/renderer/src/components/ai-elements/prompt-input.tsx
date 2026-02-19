@@ -1063,7 +1063,7 @@ export const PromptInputSubmit = ({
       variant={variant}
       {...props}
     >
-      {children ?? Icon}
+      {isGenerating ? Icon : (children ?? Icon)}
     </InputGroupButton>
   );
 };

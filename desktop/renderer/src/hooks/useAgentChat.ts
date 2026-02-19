@@ -61,6 +61,7 @@ interface UseSessionChatReturn {
   childSessions: ChildSessionSummary[];
   streamPlan: Plan | null;
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
+  cancelGeneration: () => void;
   isLoading: boolean;
   isInitialized: boolean;
   rawMessages: UIMessage[];
@@ -128,6 +129,7 @@ export function useSessionChat({
   const {
     messages: rawMessages,
     sendMessage: chatSendMessage,
+    stop,
     status,
     setMessages,
   } = useChat({
@@ -219,6 +221,15 @@ export function useSessionChat({
     }
   }, [sessionId, isLoadingMore, hasMoreItems, loadedItems]);
 
+  const cancelGeneration = useCallback(() => {
+    stop();
+    setMessages((prev) => {
+      const lastIndex = prev.findLastIndex((m) => m.role === "assistant");
+      if (lastIndex === -1) return prev;
+      return prev.slice(0, lastIndex);
+    });
+  }, [stop, setMessages]);
+
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions) => {
       if (!sessionId) return;
@@ -247,6 +258,7 @@ export function useSessionChat({
     childSessions,
     streamPlan,
     sendMessage,
+    cancelGeneration,
     isLoading,
     isInitialized,
     rawMessages,

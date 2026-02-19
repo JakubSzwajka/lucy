@@ -29,7 +29,7 @@ export function ChatContainer({
   enabledModels,
 }: ChatContainerProps) {
   const { getModelConfig } = useMainContext();
-  const { messages, agent, childSessions, streamPlan, sendMessage, isLoading, rawMessages, status, hasMoreItems, isLoadingMore, loadMoreItems } = useSessionChat({
+  const { messages, agent, childSessions, streamPlan, sendMessage, cancelGeneration, isLoading, rawMessages, status, hasMoreItems, isLoadingMore, loadMoreItems } = useSessionChat({
     sessionId,
     model: selectedModel,
   });
@@ -151,6 +151,7 @@ export function ChatContainer({
         {/* Input */}
         <ChatInput
           onSend={handleSendMessage}
+          onStop={cancelGeneration}
           isLoading={isLoading}
           messages={messages}
           modelConfig={modelConfig}

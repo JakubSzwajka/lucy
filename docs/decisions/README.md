@@ -26,3 +26,4 @@ An Architecture Decision Record (ADR) captures an important architecture decisio
 - [Replace fixed memory extraction with agent-config-driven reflection](0005-agent-driven-memory-reflection.md) (accepted, 2026-02-18)
 - [Add system-initiated triggers (cron jobs and webhooks)](0006-add-system-initiated-triggers.md) (proposed, 2026-02-19)
 - [Adopt recursive sessions and unified agent execution](0007-adopt-recursive-sessions-and-unified-agent-execution.md) (accepted, 2026-02-19)
+- [Persist incomplete plans across page refreshes](0008-persist-incomplete-plans-across-page-refreshes.md) (proposed, 2026-02-19)
