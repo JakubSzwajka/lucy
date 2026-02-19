@@ -23,5 +23,6 @@ An Architecture Decision Record (ADR) captures an important architecture decisio
 - [Adopt Clerk as authentication provider](0002-adopt-clerk-as-auth-provider.md) (proposed, 2026-02-17)
 - [Add cancel generation to stop in-flight AI responses](0003-add-cancel-generation.md) (proposed, 2026-02-18)
 - [Split continuity into memory-read and memory-write tools](0004-split-continuity-into-memory-read-and-memory-write-tools.md) (proposed, 2026-02-18)
-- [Replace fixed memory extraction with agent-config-driven reflection](0005-agent-driven-memory-reflection.md) (proposed, 2026-02-18)
+- [Replace fixed memory extraction with agent-config-driven reflection](0005-agent-driven-memory-reflection.md) (accepted, 2026-02-18)
 - [Add system-initiated triggers (cron jobs and webhooks)](0006-add-system-initiated-triggers.md) (proposed, 2026-02-19)
+- [Adopt recursive sessions and unified agent execution](0007-adopt-recursive-sessions-and-unified-agent-execution.md) (accepted, 2026-02-19)
