@@ -1,5 +1,5 @@
 ---
-status: "accepted"
+status: "implemented"
 date: 2026-02-19
 decision-makers: "Kuba Szwajka"
 ---

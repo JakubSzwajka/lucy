@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucy - How It Works</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #121212;
+            --bg-tertiary: #1a1a1a;
+            --border-primary: #262626;
+            --border-hover: #404040;
+            --text-primary: #d9d9d9;
+            --text-secondary: #8a8a8a;
+            --text-muted: #525252;
+            --text-bright: #f5f5f5;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --accent-cyan: #06b6d4;
+            --accent-red: #ef4444;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Nav */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-primary);
+            z-index: 100;
+        }
+        nav .inner {
+            max-width: 960px; margin: 0 auto;
+            padding: 0 2rem; height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav-logo { font-weight: 700; font-size: 1.125rem; color: var(--text-bright); text-decoration: none; }
+        .nav-right { display: flex; gap: 1.5rem; align-items: center; font-size: 0.8125rem; color: var(--text-muted); font-family: var(--font-mono); }
+        .nav-right a { color: var(--text-secondary); text-decoration: none; transition: color 0.2s; }
+        .nav-right a:hover { color: var(--text-primary); }
+
+        /* Content */
+        main { max-width: 960px; margin: 0 auto; padding: 100px 2rem 6rem; }
+
+        /* Hero */
+        .hero { text-align: center; margin-bottom: 5rem; }
+        .hero h1 {
+            font-size: clamp(2rem, 4vw, 3rem); font-weight: 700;
+            color: var(--text-bright); margin-bottom: 1rem; line-height: 1.15;
+        }
+        .hero p { color: var(--text-secondary); font-size: 1.0625rem; max-width: 580px; margin: 0 auto; }
+
+        /* Sections */
+        .section { margin-bottom: 6rem; }
+        .section-label {
+            font-family: var(--font-mono); font-size: 0.6875rem;
+            color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.1em; margin-bottom: 0.75rem;
+        }
+        .section h2 {
+            font-size: 1.5rem; font-weight: 700;
+            color: var(--text-bright); margin-bottom: 0.5rem;
+        }
+        .section > p {
+            color: var(--text-secondary); font-size: 0.9375rem;
+            margin-bottom: 2rem; max-width: 600px;
+        }
+
+        /* ── The Core Loop ── */
+        .loop-container {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .orbit-wrapper {
+            position: relative;
+            width: 560px; height: 560px;
+            margin: 0 auto;
+        }
+
+        .orbit-svg {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+        }
+
+        .loop-center {
+            position: absolute;
+            width: 160px; height: 160px;
+            border-radius: 50%;
+            border: 2px solid var(--border-primary);
+            background: var(--bg-secondary);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            transition: border-color 0.5s;
+        }
+        .loop-center.active { border-color: var(--accent-blue); box-shadow: 0 0 40px rgba(59, 130, 246, 0.1); }
+        .loop-center-label {
+            font-family: var(--font-mono); font-size: 0.5625rem;
+            color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.08em; margin-bottom: 0.25rem;
+        }
+        .loop-center-name {
+            font-family: var(--font-mono); font-size: 0.9375rem;
+            font-weight: 700; color: var(--text-bright);
+        }
+        .loop-center-sub {
+            font-size: 0.625rem; color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .orbit-node {
+            position: absolute;
+            text-align: center;
+            z-index: 3;
+            /* each node is positioned by JS */
+        }
+        .orbit-dot {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--border-primary);
+            background: var(--bg-secondary);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 0.375rem;
+            font-family: var(--font-mono); font-size: 0.75rem;
+            font-weight: 600; color: var(--text-secondary);
+            transition: all 0.4s;
+        }
+        .orbit-node.active .orbit-dot {
+            border-color: var(--accent-blue); color: var(--accent-blue);
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
+        }
+        .orbit-node-label {
+            font-family: var(--font-mono); font-size: 0.6875rem;
+            font-weight: 600; color: var(--text-bright);
+            white-space: nowrap;
+        }
+        .orbit-node-desc {
+            font-size: 0.625rem; color: var(--text-muted);
+            margin-top: 0.125rem; white-space: nowrap;
+        }
+
+        /* ── Three Modes ── */
+        .modes-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .mode-card {
+            background: var(--bg-secondary);
+            padding: 2rem 1.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
+        .mode-card:hover { background: var(--bg-tertiary); }
+        .mode-card.active { background: var(--bg-tertiary); }
+        .mode-card.active::after {
+            content: '';
+            position: absolute; bottom: 0; left: 1.5rem; right: 1.5rem;
+            height: 2px; border-radius: 1px;
+        }
+
+        .mode-icon {
+            font-size: 1.5rem; margin-bottom: 1rem;
+        }
+        .mode-name {
+            font-family: var(--font-mono); font-size: 0.875rem;
+            font-weight: 600; color: var(--text-bright);
+            margin-bottom: 0.375rem;
+        }
+        .mode-desc {
+            font-size: 0.8125rem; color: var(--text-secondary);
+            margin-bottom: 1rem; line-height: 1.5;
+        }
+        .mode-tag {
+            font-family: var(--font-mono); font-size: 0.625rem;
+            padding: 0.25rem 0.625rem; border-radius: 3px;
+            display: inline-block;
+        }
+
+        .mode-card:nth-child(1) .mode-tag { background: rgba(59,130,246,0.1); color: var(--accent-blue); }
+        .mode-card:nth-child(1).active::after { background: var(--accent-blue); }
+        .mode-card:nth-child(2) .mode-tag { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+        .mode-card:nth-child(2).active::after { background: var(--accent-purple); }
+        .mode-card:nth-child(3) .mode-tag { background: rgba(34,197,94,0.1); color: var(--accent-green); }
+        .mode-card:nth-child(3).active::after { background: var(--accent-green); }
+
+        /* ── Flow trace ── */
+        .trace-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 1.5rem;
+        }
+        .trace-header {
+            padding: 0.875rem 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex; align-items: center; gap: 0.75rem;
+            background: rgba(255,255,255,0.015);
+        }
+        .trace-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+        .trace-title {
+            font-family: var(--font-mono); font-size: 0.6875rem;
+            color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .trace-body { padding: 1.5rem; }
+
+        .trace-step {
+            display: flex; gap: 1rem;
+            padding: 0.625rem 0;
+            opacity: 0;
+            transform: translateX(-8px);
+            transition: all 0.3s ease;
+        }
+        .trace-step.visible {
+            opacity: 1; transform: translateX(0);
+        }
+        .trace-step + .trace-step {
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+        .trace-step-num {
+            font-family: var(--font-mono); font-size: 0.625rem;
+            color: var(--text-muted); width: 18px;
+            text-align: right; flex-shrink: 0;
+            padding-top: 0.125rem;
+        }
+        .trace-step-content { flex: 1; }
+        .trace-step-fn {
+            font-family: var(--font-mono); font-size: 0.8125rem;
+            font-weight: 500; color: var(--text-bright);
+        }
+        .trace-step-detail {
+            font-size: 0.75rem; color: var(--text-secondary);
+            margin-top: 0.125rem;
+        }
+        .trace-step-tag {
+            font-family: var(--font-mono); font-size: 0.5625rem;
+            padding: 0.125rem 0.375rem; border-radius: 2px;
+            display: inline-block; margin-left: 0.5rem;
+        }
+
+        /* ── Unified code ── */
+        .code-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .code-header {
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border-primary);
+            font-family: var(--font-mono); font-size: 0.6875rem;
+            color: var(--text-muted);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .code-dots {
+            display: flex; gap: 5px;
+        }
+        .code-dots span {
+            width: 10px; height: 10px; border-radius: 50%;
+        }
+        .code-dots span:nth-child(1) { background: #ef4444; }
+        .code-dots span:nth-child(2) { background: #eab308; }
+        .code-dots span:nth-child(3) { background: #22c55e; }
+
+        .code-content {
+            padding: 1.25rem 1.5rem;
+            font-family: var(--font-mono); font-size: 0.8125rem;
+            line-height: 1.7; color: var(--text-secondary);
+            overflow-x: auto;
+        }
+        .code-content .kw { color: var(--accent-purple); }
+        .code-content .fn { color: var(--accent-blue); }
+        .code-content .str { color: var(--accent-green); }
+        .code-content .cmt { color: var(--text-muted); font-style: italic; }
+        .code-content .hl { color: var(--text-bright); }
+        .code-content .dim { color: var(--text-muted); }
+
+        /* ── Data model ── */
+        .model-row {
+            display: flex; gap: 0.75rem; align-items: stretch;
+            flex-wrap: wrap;
+        }
+        .model-entity {
+            flex: 1; min-width: 140px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 1.25rem 1rem;
+            text-align: center;
+            position: relative;
+        }
+        .model-entity-name {
+            font-family: var(--font-mono); font-size: 0.8125rem;
+            font-weight: 600; color: var(--text-bright);
+            margin-bottom: 0.25rem;
+        }
+        .model-entity-desc {
+            font-size: 0.6875rem; color: var(--text-muted);
+        }
+        .model-arrow {
+            display: flex; align-items: center;
+            color: var(--text-muted); font-family: var(--font-mono);
+            font-size: 0.875rem; flex-shrink: 0;
+        }
+
+        /* ── Callout ── */
+        .callout {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 0 8px 8px 0;
+            padding: 1.25rem 1.5rem;
+            margin-top: 2rem;
+        }
+        .callout-title {
+            font-family: var(--font-mono); font-size: 0.75rem;
+            font-weight: 600; color: var(--text-bright);
+            margin-bottom: 0.375rem;
+        }
+        .callout-text {
+            font-size: 0.8125rem; color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            main { padding: 80px 1rem 4rem; }
+            .orbit-wrapper { transform: scale(0.55); transform-origin: top center; margin-bottom: -120px; }
+            .modes-grid { grid-template-columns: 1fr; }
+            .model-row { flex-direction: column; }
+            .model-arrow { transform: rotate(90deg); justify-content: center; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="inner">
+            <a href="index.html" class="nav-logo">Lucy</a>
+            <div class="nav-right">
+                <a href="index.html">Home</a>
+                <span>how it works</span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero -->
+        <div class="hero">
+            <h1>One agent loop.<br>Three execution modes.</h1>
+            <p>Chat, delegation, and reflection all run through the same unified execution core. Same tool resolution. Same persistence. Same loop.</p>
+        </div>
+
+        <!-- Section 1: The Core -->
+        <div class="section">
+            <div class="section-label">The Core</div>
+            <h2>runAgent()</h2>
+            <p>Every agent execution — whether it's the user chatting, a sub-agent running a delegated task, or a background reflection — enters through a single function.</p>
+
+            <div class="loop-container">
+                <div class="orbit-wrapper" id="orbit-wrapper">
+                    <svg class="orbit-svg" viewBox="0 0 560 560">
+                        <!-- Dashed orbit ring -->
+                        <circle cx="280" cy="280" r="220" fill="none" stroke="#262626" stroke-width="1" stroke-dasharray="6 4" />
+                        <!-- Connector lines from center to each node (drawn by JS) -->
+                        <g id="orbit-lines"></g>
+                    </svg>
+                    <div class="loop-center" id="loop-center">
+                        <div class="loop-center-label">unified core</div>
+                        <div class="loop-center-name">runAgent()</div>
+                        <div class="loop-center-sub">streaming or looped</div>
+                    </div>
+                    <!-- Nodes placed by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Three Modes -->
+        <div class="section">
+            <div class="section-label">Three Modes, Same Loop</div>
+            <h2>The only difference is how you enter</h2>
+            <p>The agent config determines what tools, model, and system prompt the agent gets. The execution mode determines streaming vs. looped generation.</p>
+
+            <div class="modes-grid">
+                <div class="mode-card active" onclick="showMode('chat')">
+                    <div class="mode-icon">💬</div>
+                    <div class="mode-name">Chat</div>
+                    <div class="mode-desc">User sends a message. The root agent runs streaming via SSE back to the frontend.</div>
+                    <span class="mode-tag">streamText()</span>
+                </div>
+                <div class="mode-card" onclick="showMode('delegate')">
+                    <div class="mode-icon">🔀</div>
+                    <div class="mode-name">Delegation</div>
+                    <div class="mode-desc">Parent agent calls a delegate tool. Child session created. Runs non-streaming in a loop.</div>
+                    <span class="mode-tag">generateText() loop</span>
+                </div>
+                <div class="mode-card" onclick="showMode('reflect')">
+                    <div class="mode-icon">🧠</div>
+                    <div class="mode-name">Reflection</div>
+                    <div class="mode-desc">Token threshold hit after a chat turn. Fire-and-forget. Reflection agent extracts memories.</div>
+                    <span class="mode-tag">background, non-streaming</span>
+                </div>
+            </div>
+
+            <div class="trace-container">
+                <div class="trace-header">
+                    <div class="trace-dot" id="trace-dot"></div>
+                    <div class="trace-title" id="trace-title">Chat message flow</div>
+                </div>
+                <div class="trace-body" id="trace-body">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Unified code -->
+        <div class="section">
+            <div class="section-label">One Function</div>
+            <h2>The branching point is one flag</h2>
+            <p>Streaming mode returns an SSE stream. Non-streaming mode loops generateText() until no more tool calls remain.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <div class="code-dots"><span></span><span></span><span></span></div>
+                    chat.service.ts
+                </div>
+                <div class="code-content"><span class="kw">async</span> <span class="fn">runAgent</span>(agentId, userId, messages, options) {
+  <span class="cmt">// Same for chat, delegation, and reflection</span>
+  <span class="kw">const</span> context = <span class="kw">await</span> <span class="fn">prepareChat</span>(agentId, userId, options)
+  <span class="cmt">// → resolves: agentConfig → model + tools + systemPrompt</span>
+
+  <span class="kw">if</span> (options.<span class="hl">streaming</span>) {
+    <span class="cmt">// Chat mode: SSE stream back to frontend</span>
+    <span class="kw">return</span> <span class="fn">streamText</span>({
+      model, messages, tools,
+      <span class="fn">onStepFinish</span>: <span class="dim">persist each step to DB</span>,
+      <span class="fn">onFinish</span>: <span class="dim">finalize + maybeAutoReflect()</span>,
+    })
+  } <span class="kw">else</span> {
+    <span class="cmt">// Delegation + reflection: loop until done</span>
+    <span class="kw">for</span> (<span class="kw">let</span> turn = 0; turn < maxTurns; turn++) {
+      <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">generateText</span>({ model, messages, tools })
+      <span class="fn">persistSteps</span>(result)
+      <span class="kw">if</span> (!result.toolCalls.length) <span class="kw">break</span>  <span class="cmt">// done</span>
+    }
+    <span class="kw">return</span> finalResult
+  }
+}</div>
+            </div>
+
+            <div class="callout">
+                <div class="callout-title">Why this matters</div>
+                <div class="callout-text">
+                    A delegate agent has the same capabilities as the root agent. A reflection agent is just another agent with memory tools. There's no special-case code for delegation or reflection — they're just agent configs pointed at runAgent().
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: prepareChat -->
+        <div class="section">
+            <div class="section-label">Config Resolution</div>
+            <h2>prepareChat() wires everything</h2>
+            <p>Each agent has an AgentConfig that determines its personality and capabilities. Resolution follows a precedence chain.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 1px; background: var(--border-primary); border: 1px solid var(--border-primary); border-radius: 12px; overflow: hidden;">
+                <div style="background: var(--bg-secondary); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 600; color: var(--text-bright);">Model Resolution</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">First non-null wins</div>
+                    </div>
+                    <div style="font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); text-align: right;">
+                        options.modelId → agent.model → config.defaultModelId
+                    </div>
+                </div>
+                <div style="background: var(--bg-secondary); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 600; color: var(--text-bright);">System Prompt</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Fallback chain</div>
+                    </div>
+                    <div style="font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); text-align: right;">
+                        agent.systemPrompt → config.override → config.promptId → default
+                    </div>
+                </div>
+                <div style="background: var(--bg-secondary); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 600; color: var(--text-bright);">Tool Assembly</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Merged from three sources</div>
+                    </div>
+                    <div style="font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); text-align: right;">
+                        BuiltinTools + McpTools + DelegateTools → filtered by config
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Data model -->
+        <div class="section">
+            <div class="section-label">Data Model</div>
+            <h2>Sessions, agents, items</h2>
+            <p>A session owns a root agent. Delegation creates child sessions. Every step is persisted as an item — messages, tool calls, tool results, reasoning.</p>
+
+            <div class="model-row">
+                <div class="model-entity">
+                    <div class="model-entity-name">Session</div>
+                    <div class="model-entity-desc">Container. Has rootAgentId, parentSessionId for delegation chains.</div>
+                </div>
+                <div class="model-arrow">→</div>
+                <div class="model-entity">
+                    <div class="model-entity-name">Agent</div>
+                    <div class="model-entity-desc">Runtime instance. Linked to AgentConfig. Status: pending → running → completed.</div>
+                </div>
+                <div class="model-arrow">→</div>
+                <div class="model-entity">
+                    <div class="model-entity-name">Items</div>
+                    <div class="model-entity-desc">Polymorphic. message | tool_call | tool_result | reasoning. Ordered by creation.</div>
+                </div>
+            </div>
+
+            <div class="callout" style="border-left-color: var(--accent-purple); margin-top: 1.5rem;">
+                <div class="callout-title">Delegation is just sessions pointing at sessions</div>
+                <div class="callout-text">
+                    When a parent agent delegates, a child session is created with <code style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-purple);">parentSessionId</code> linking back. The child has its own agent, its own items, its own config. The result flows back as a tool_result in the parent's item stream.
+                </div>
+            </div>
+
+            <div class="callout" style="border-left-color: var(--accent-green); margin-top: 1rem;">
+                <div class="callout-title">Reflection is just a session with memory tools</div>
+                <div class="callout-text">
+                    When token count crosses the threshold, a reflection session is created using the user's <code style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-green);">reflectionAgentConfigId</code>. The transcript becomes the user message. The agent runs with memory tools and decides what to persist. Fire-and-forget.
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // ── Build & animate orbit ──
+        const orbitData = [
+            { num: 1, label: 'prepareChat', desc: 'Resolve config' },
+            { num: 2, label: 'Model', desc: 'Pick provider + model' },
+            { num: 3, label: 'Tools', desc: 'Builtin + MCP + Delegate' },
+            { num: 4, label: 'Execute', desc: 'Stream or generate' },
+            { num: 5, label: 'Persist', desc: 'Steps → DB items' },
+            { num: 6, label: 'Finalize', desc: 'Status + reflection' },
+        ];
+
+        const wrapper = document.getElementById('orbit-wrapper');
+        const linesGroup = document.getElementById('orbit-lines');
+        const loopCenter = document.getElementById('loop-center');
+        const cx = 280, cy = 280, radius = 220;
+
+        // Create nodes positioned around the circle (starting from top, clockwise)
+        const orbitNodes = [];
+        orbitData.forEach((d, i) => {
+            const angle = (-Math.PI / 2) + (i * (2 * Math.PI / orbitData.length));
+            const x = cx + radius * Math.cos(angle);
+            const y = cy + radius * Math.sin(angle);
+
+            // SVG line from center to node
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', cx); line.setAttribute('y1', cy);
+            line.setAttribute('x2', x); line.setAttribute('y2', y);
+            line.setAttribute('stroke', '#1a1a1a'); line.setAttribute('stroke-width', '1');
+            line.id = `orbit-line-${i}`;
+            linesGroup.appendChild(line);
+
+            // HTML node
+            const node = document.createElement('div');
+            node.className = 'orbit-node';
+            node.innerHTML = `
+                <div class="orbit-dot">${d.num}</div>
+                <div class="orbit-node-label">${d.label}</div>
+                <div class="orbit-node-desc">${d.desc}</div>
+            `;
+            // Position: center the node on (x, y) within the 560px wrapper
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+            node.style.transform = 'translate(-50%, -50%)';
+            wrapper.appendChild(node);
+            orbitNodes.push({ node, line });
+        });
+
+        let orbitIndex = 0;
+        function animateOrbit() {
+            orbitNodes.forEach(({ node, line }) => {
+                node.classList.remove('active');
+                line.setAttribute('stroke', '#1a1a1a');
+            });
+            loopCenter.classList.add('active');
+            orbitNodes[orbitIndex].node.classList.add('active');
+            orbitNodes[orbitIndex].line.setAttribute('stroke', '#262626');
+            orbitIndex = (orbitIndex + 1) % orbitNodes.length;
+        }
+        setInterval(animateOrbit, 1500);
+        animateOrbit();
+
+        // ── Mode flows ──
+        const modeTraces = {
+            chat: {
+                title: 'Chat message flow',
+                color: '#3b82f6',
+                steps: [
+                    { fn: 'POST /sessions/:id/chat', detail: 'Frontend sends user message via API client' },
+                    { fn: 'requireAuth(request)', detail: 'JWT → extract userId' },
+                    { fn: 'executeTurn()', detail: 'Persist user message to DB, build model messages from items' },
+                    { fn: 'prepareChat()', detail: 'Load agent config → resolve model, system prompt, assemble tools' },
+                    { fn: 'streamText()', detail: 'Stream AI response with multi-step tool execution (up to 10 steps)' },
+                    { fn: 'onStepFinish → persistStepContent()', detail: 'Each step: save tool_call + tool_result + reasoning items to DB' },
+                    { fn: 'onFinish → finalizeChat()', detail: 'Agent status → "waiting", increment turnCount' },
+                    { fn: 'maybeAutoReflect()', detail: 'Fire-and-forget: check token threshold, maybe trigger reflection' },
+                    { fn: 'SSE → frontend', detail: 'Stream merges with loaded items via mergeWithStreaming()' },
+                ],
+            },
+            delegate: {
+                title: 'Delegation flow',
+                color: '#8b5cf6',
+                steps: [
+                    { fn: 'Parent agent calls delegate_to_<name>(task)', detail: 'Tool call generated from agentConfig delegate entries' },
+                    { fn: 'SessionService.create()', detail: 'Create child session with target agentConfigId + parentSessionId' },
+                    { fn: 'Persist user message', detail: 'The "task" string becomes the child agent\'s first user message' },
+                    { fn: 'runAgent(streaming: false)', detail: 'Same runAgent(), but enters the generateText() loop branch' },
+                    { fn: 'generateText() loop', detail: 'Up to maxTurns: generate → persist → check tool calls → repeat' },
+                    { fn: 'Agent status → completed', detail: 'Last assistant message becomes the result string' },
+                    { fn: 'Return to parent', detail: 'Result string flows back as tool_result in parent\'s step' },
+                ],
+            },
+            reflect: {
+                title: 'Auto-reflection flow',
+                color: '#22c55e',
+                steps: [
+                    { fn: 'Chat turn finishes', detail: 'onFinish callback fires maybeAutoReflect()' },
+                    { fn: 'Count unreflected tokens', detail: 'Items since lastReflectionItemCount → estimate tokens from all types' },
+                    { fn: 'Check threshold', detail: 'reflectionTokenThreshold (default 5000). Below? Cache count and return.' },
+                    { fn: 'Create reflection session', detail: 'Using reflectionAgentConfigId from memory settings' },
+                    { fn: 'Format transcript', detail: 'Unreflected items → plain text: "user: ...", "assistant [tool_call]: ..."' },
+                    { fn: 'runAgent(streaming: false)', detail: 'Reflection agent runs with its own tools (memory CRUD, etc.)' },
+                    { fn: 'Slide window forward', detail: 'lastReflectionItemCount = currentCount, reflectionTokenCount = 0' },
+                ],
+            },
+        };
+
+        function showMode(mode) {
+            // Update cards
+            document.querySelectorAll('.mode-card').forEach((c, i) => {
+                c.classList.toggle('active', ['chat', 'delegate', 'reflect'][i] === mode);
+            });
+
+            const trace = modeTraces[mode];
+            const dot = document.getElementById('trace-dot');
+            const title = document.getElementById('trace-title');
+            const body = document.getElementById('trace-body');
+
+            dot.style.background = trace.color;
+            title.textContent = trace.title;
+            body.innerHTML = '';
+
+            trace.steps.forEach((step, i) => {
+                const el = document.createElement('div');
+                el.className = 'trace-step';
+                el.innerHTML = `
+                    <div class="trace-step-num">${i + 1}</div>
+                    <div class="trace-step-content">
+                        <span class="trace-step-fn">${step.fn}</span>
+                        <div class="trace-step-detail">${step.detail}</div>
+                    </div>
+                `;
+                body.appendChild(el);
+
+                // Stagger animation
+                setTimeout(() => el.classList.add('visible'), i * 80);
+            });
+        }
+
+        // Init
+        showMode('chat');
+    </script>
+</body>
+</html>

@@ -17,7 +17,7 @@ The frontend uses `@ai-sdk/react`'s `useChat` hook, which exposes a `stop()` fun
 Add a stop button that replaces the send button while the AI is streaming. When clicked:
 
 1. Call `useChat`'s `stop()` to abort the SSE stream.
-2. **Discard the partial response entirely** — remove it from the conversation as if it never happened.
+2. **Discard only the partial assistant response** — remove it from the conversation, but keep the user's message so it can be edited or resent.
 3. Return the UI to the idle/ready-to-send state.
 
 ### Non-goals
@@ -32,7 +32,7 @@ Add a stop button that replaces the send button while the AI is streaming. When 
 - Good, because users can instantly recover from accidental sends without waiting.
 - Good, because it saves tokens on unwanted generations.
 - Good, because it uses the existing `stop()` mechanism from `@ai-sdk/react` — no custom abort logic needed.
-- Bad, because discarding the partial response means the user's original message is also lost (they need to retype). This is acceptable since the use case is accidental sends.
+- Good, because the user's original message is preserved, allowing them to edit and resend without retyping.
 
 ## Implementation Plan
 
@@ -53,7 +53,7 @@ Add a stop button that replaces the send button while the AI is streaming. When 
 
 ### Steps
 
-1. In `useAgentChat.ts`: destructure `stop` from `useChat`. Create a `cancelGeneration` function that calls `stop()`, then removes the last assistant message (and optionally the last user message) via `setMessages`.
+1. In `useAgentChat.ts`: destructure `stop` from `useChat`. Create a `cancelGeneration` function that calls `stop()`, then removes only the last assistant message via `setMessages` (keep the user message).
 2. In `useAgentChat.ts`: export `cancelGeneration` from the hook's return value.
 3. In `ChatContainer.tsx`: pass `cancelGeneration` and `isLoading` down to `ChatInput`.
 4. In `ChatInput.tsx`: when `isLoading` is true, render a stop button (square icon) in place of the send button. On click, call `cancelGeneration`.
@@ -62,6 +62,6 @@ Add a stop button that replaces the send button while the AI is streaming. When 
 
 - [ ] While AI is streaming, the send button is replaced by a stop button.
 - [ ] Clicking the stop button immediately halts the stream.
-- [ ] After clicking stop, the partial assistant response and the triggering user message are removed from the conversation.
+- [ ] After clicking stop, the partial assistant response is removed but the user's message remains in the conversation.
 - [ ] The chat input returns to the ready state and accepts new input.
 - [ ] When not streaming, the normal send button is shown (no stop button visible).
