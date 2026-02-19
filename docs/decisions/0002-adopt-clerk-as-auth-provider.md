@@ -110,9 +110,48 @@ Replace the entire custom auth system with **Clerk** (hosted authentication plat
 * **Custom OAuth with `arctic`**: Maximum control over OAuth flows. Rejected because it increases maintenance burden rather than reducing it — the opposite of what's needed.
 * **Supabase Auth**: Good hosted option, but Lucy doesn't use Supabase for anything else, so it would add an unnecessary platform dependency without broader benefit.
 
+## Research Notes (Feb 2026)
+
+### Clerk — Electron Complications
+
+The primary blocker for Clerk adoption is the **Electron OAuth redirect flow**. Clerk's `<SignIn />` component uses browser redirects for Google/GitHub OAuth. In Electron:
+- The renderer is a Chromium webview, not a real browser — OAuth redirects/popups don't work natively
+- Cross-origin cookies from the Clerk domain are blocked in Electron's security model
+- The standard workaround requires registering a custom protocol handler (`lucy://`) in the Electron main process, opening the system browser via `shell.openExternal()`, and intercepting the deep link callback via IPC — non-trivial plumbing in `background.ts`
+- Clerk's docs are web-first and don't cover custom protocol redirects
+- Email/password-only (no OAuth) would work fine in Electron since it stays within the webview
+
+Additional concern: `api/client.ts` currently uses synchronous `localStorage.getItem()` for tokens. Clerk's `session.getToken()` is async (may hit network to refresh), requiring `getHeaders()` and all callers to become async-aware, including the SSE `stream()` path.
+
+### Better Auth — Architecture Mismatch
+
+Better Auth was evaluated as a self-hosted alternative. Findings:
+- **Cookie-based by default** — cross-origin cookies from `:3001` to `:8888` are blocked in Electron. The Bearer plugin exists but is labeled "use cautiously"
+- **Stateful sessions** — every request hits DB to look up session row, regressing from current zero-overhead JWT `verifyToken()`. Impacts SSE chat endpoint performance
+- **CORS bug** — open GitHub issue (#4343) where `toNextJsHandler` strips CORS headers. Lucy's separated architecture would hit this immediately
+- **Schema changes** — requires 3 new tables (`session`, `account`, `verification`), password hashes must migrate from `users` to `account` table, `users` table needs `emailVerified` + `image` columns. The `users` table is FK'd by 15+ tables, making this risky
+- **Naming collision** — Better Auth's `session` table conflicts conceptually with Lucy's `sessions` (conversation containers)
+- **Effort estimate**: ~6-7 days with meaningful regression risk vs ~3 days for Arctic-based OAuth addition
+
+### Arctic — Lightweight Alternative
+
+`arctic` (by the Lucia author) is a focused OAuth 2.0 client library. It handles only the authorization code exchange — everything else (user storage, JWT, sessions) stays as-is. This means:
+- Zero changes to `middleware.ts`, `APIClient`, or schema
+- Add 4 route files (`/api/auth/google`, `/api/auth/google/callback`, same for GitHub)
+- Backend handles OAuth redirect, exchanges code, creates/finds user, issues existing JWT
+- No Electron deep-link problem for the backend callback (hits `localhost:3001`), but still need to redirect back to the Electron app after
+- Effort estimate: ~3 days
+
+### Open Question
+
+The Electron OAuth redirect problem exists regardless of provider choice (Clerk, Better Auth, Arctic, or custom). The backend callback at `localhost:3001` works fine, but redirecting back to the Electron app after OAuth completion needs a solution: custom protocol handler, or a simple "you can close this tab" landing page that the Electron app polls for completion.
+
 ## More Information
 
 - Clerk docs: https://clerk.com/docs
 - Clerk React SDK: https://clerk.com/docs/references/react/overview
 - Clerk token verification (backend): https://clerk.com/docs/references/backend/overview
+- Better Auth: https://www.better-auth.com
+- Better Auth Bearer plugin: https://www.better-auth.com/docs/plugins/bearer
+- Arctic (OAuth library): https://github.com/pilcrowonpaper/arctic
 - Revisit this decision if: Clerk pricing becomes prohibitive, Clerk has reliability issues, or Lucy needs to support self-hosted/on-premise deployments where a hosted auth provider isn't viable.
