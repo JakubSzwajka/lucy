@@ -58,7 +58,7 @@ lucy-nextjs/
 |---|---|---|
 | **Auth** | None (local single-user) | JWT on every route |
 | **Multi-user** | No | Yes (`userId` on all tables) |
-| **Database** | None (cloud-only) | SQLite (dev) or Postgres (prod) |
+| **Database** | None (cloud-only) | PostgreSQL |
 | **Runs as** | Embedded in Electron | Standalone Next.js server |
 | **Frontend** | Full React UI (calls cloud backend API) | Landing page only |
 | **Port** | Electron-managed | 3001 |
@@ -86,7 +86,7 @@ lucy-nextjs/
 |---------|-------------|
 | `npm run dev` | Start backend server on port 3001 |
 | `npm run build` | Build for production (standalone output) |
-| `npm run db:push` | Push schema to SQLite or Postgres |
+| `npm run db:push` | Push schema to PostgreSQL |
 | `npm run db:studio` | Open Drizzle Studio |
 
 ## Development Workflow
@@ -153,9 +153,7 @@ All API routes live in `backend/src/app/api/` with JWT auth + userId scoping.
 | `/api/health` | DB connectivity check |
 
 ### Database
-- **Backend only**: SQLite (dev) or PostgreSQL (prod) via `DATABASE_PROVIDER` env, schema in `backend/src/lib/db/schema.ts`
-- In dev: Database at `backend/lucy.db`
-- In prod: PostgreSQL via `DATABASE_URL`
+- **Backend only**: PostgreSQL via `DATABASE_URL` env, schema in `backend/src/lib/db/schema.ts`
 
 **Schema (shared structure, backend adds userId):**
 - `users` - User accounts (backend only)
@@ -241,14 +239,14 @@ Outputs in `desktop/dist/`:
 ### Cloud Backend
 - `cd backend && npm run build` produces standalone Next.js output
 - Deploy to Railway (or any Node.js host) with Postgres
-- Set `DATABASE_PROVIDER=postgres` + `DATABASE_URL` + `JWT_SECRET` in env
+- Set `DATABASE_URL` + `JWT_SECRET` in env
 
 ## Backend Separation Progress
 
 ### Done (Phases 1-5)
 - [x] Backend project infrastructure (package.json, tsconfig, next.config, drizzle, CORS middleware)
 - [x] Database schema with `users` table + `userId` on all data tables
-- [x] Dual database connection (SQLite / PostgreSQL via env toggle)
+- [x] PostgreSQL database connection
 - [x] Auth system (JWT, register/login/verify routes, rate limiting)
 - [x] All services copied + adapted with `userId` parameter
 - [x] All 16 API routes migrated with `requireAuth` middleware
@@ -259,8 +257,8 @@ Outputs in `desktop/dist/`:
 - [x] **Desktop separation**: Desktop app moved to `desktop/` subdirectory
 
 ### TODO (Next Phases)
-- [ ] **PostgreSQL schema**: Generate and test Drizzle migrations for Postgres dialect
+- [ ] **PostgreSQL migrations**: Generate and test Drizzle migrations
 - [ ] **Deployment**: Railway setup (Postgres, env vars, CI/CD)
-- [ ] **Offline/online mode**: Decide if desktop app works offline (local SQLite) or always hits cloud backend
+- [ ] **Offline/online mode**: Decide if desktop app works offline or always hits cloud backend
 - [ ] **API key management**: Move API keys from client-side .env to backend (centralized)
 - [ ] **Shared code extraction**: Consider shared package for types/interfaces used by both renderer and backend

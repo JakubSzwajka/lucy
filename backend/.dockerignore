@@ -1,9 +1,5 @@
 node_modules
 .next
-lucy.db
-*.db
-*.db-shm
-*.db-wal
 .env.local
 .env
 .DS_Store
