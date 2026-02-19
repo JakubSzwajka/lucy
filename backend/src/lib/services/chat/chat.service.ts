@@ -288,7 +288,7 @@ export class ChatService {
     }
   }
 
-  async prepareChat(agentId: string, userId: string, options: ChatPrepareOptions = {}): Promise<ChatContext | null> {
+  private async prepareChat(agentId: string, userId: string, options: ChatPrepareOptions = {}): Promise<ChatContext | null> {
     const { modelId, thinkingEnabled = true } = options;
 
     const loaded = await this.loadAgentWithConfig(agentId, userId);
@@ -374,14 +374,8 @@ export class ChatService {
   }
 
   private async resolveSystemPrompt(agent: Agent, userId: string, agentConfig?: AgentConfigWithTools | null): Promise<string | null> {
-    // This method might require simplification if we want to force single prompt per agent
     if (agent.systemPrompt) {
       return agent.systemPrompt;
-    }
-
-    if (agentConfig?.systemPromptOverride) {
-      // do we have it? 
-      return agentConfig.systemPromptOverride;
     }
     if (agentConfig?.systemPromptId) {
       const systemPromptService = getSystemPromptService();

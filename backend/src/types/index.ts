@@ -277,7 +277,6 @@ export interface AgentConfig {
   name: string;
   description: string | null;
   systemPromptId: string | null;
-  systemPromptOverride: string | null;
   defaultModelId: string | null;
   maxTurns: number;
   icon: string | null;
@@ -304,7 +303,6 @@ export interface AgentConfigCreate {
   name: string;
   description?: string;
   systemPromptId?: string;
-  systemPromptOverride?: string;
   defaultModelId?: string;
   maxTurns?: number;
   icon?: string;
@@ -322,7 +320,6 @@ export interface AgentConfigUpdate {
   name?: string;
   description?: string | null;
   systemPromptId?: string | null;
-  systemPromptOverride?: string | null;
   defaultModelId?: string | null;
   maxTurns?: number;
   icon?: string | null;

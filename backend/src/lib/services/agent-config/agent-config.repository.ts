@@ -22,7 +22,6 @@ function parseConfigRecord(record: AgentConfigRecord): AgentConfig {
     name: record.name,
     description: record.description,
     systemPromptId: record.systemPromptId,
-    systemPromptOverride: record.systemPromptOverride,
     defaultModelId: record.defaultModelId,
     maxTurns: record.maxTurns,
     icon: record.icon,
@@ -162,7 +161,6 @@ export class AgentConfigRepository {
       name: data.name,
       description: data.description ?? null,
       systemPromptId: data.systemPromptId ?? null,
-      systemPromptOverride: data.systemPromptOverride ?? null,
       defaultModelId: data.defaultModelId ?? null,
       maxTurns: data.maxTurns ?? 25,
       icon: data.icon ?? null,
@@ -200,7 +198,6 @@ export class AgentConfigRepository {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.systemPromptId !== undefined) updateData.systemPromptId = data.systemPromptId;
-    if (data.systemPromptOverride !== undefined) updateData.systemPromptOverride = data.systemPromptOverride;
     if (data.defaultModelId !== undefined) updateData.defaultModelId = data.defaultModelId;
     if (data.maxTurns !== undefined) updateData.maxTurns = data.maxTurns;
     if (data.icon !== undefined) updateData.icon = data.icon;

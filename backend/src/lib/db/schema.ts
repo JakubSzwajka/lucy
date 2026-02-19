@@ -16,7 +16,6 @@ export const agentConfigs = pgTable("agent_configs", {
   description: text("description"),
   systemPromptId: text("system_prompt_id")
     .references(() => systemPrompts.id, { onDelete: "set null" }),
-  systemPromptOverride: text("system_prompt_override"),
   defaultModelId: text("default_model_id"),
   maxTurns: integer("max_turns").notNull().default(25),
   icon: text("icon"),

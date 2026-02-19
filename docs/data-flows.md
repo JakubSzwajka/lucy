@@ -123,7 +123,6 @@ Model resolution (first non-null wins):
   ▼
 System prompt resolution (first non-null wins):
   │  agent.systemPrompt
-  │  → agentConfig.systemPromptOverride
   │  → agentConfig.systemPromptId → SystemPromptService.getById()
   │  → user default settings → defaultSystemPromptId
   │
