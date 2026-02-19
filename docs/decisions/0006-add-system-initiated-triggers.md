@@ -1,5 +1,5 @@
 ---
-status: "proposed"
+status: "done"
 date: 2026-02-19
 decision-makers: "Kuba"
 ---
@@ -148,9 +148,21 @@ Implemented in two phases. Phase 1 is the core; Phase 2 is frontend.
   - `POST /api/triggers/:id/test` — manually fire (JWT)
   - `POST /api/triggers/webhook/:id` — webhook entry (LUCY_API_KEY auth, returns 401/404/409 appropriately)
 
-### Phase 2 — Frontend (separate work)
+### Phase 2 — Frontend + Non-Streaming Fixes
 
-* Trigger management UI, run history view, test button
+* **Trigger management UI**: Settings > Triggers page with split-pane layout (list + editor), following AgentConfigs pattern
+* **Editor fields**: name, description, trigger type (cron/webhook), cron expression + timezone (conditional), agent config select, input template, max turns, max runs/hour, cooldown, enabled toggle
+* **Test button**: fires `POST /triggers/:id/test`, shows result inline
+* **Run history**: last 10 runs with status badges, timestamps, result/error, and **stop button** for running executions
+* **Run cancellation**: `POST /triggers/:id/runs/:runId/cancel` — AbortController registry in ChatService keyed by agentId, signal threaded into `generateText`, cancelled runs get `status: "cancelled"`
+* **Dashboard crons section**: full-width dashboard with cron trigger cards (schedule in human-readable form via `cronstrue`, next fire time via `cron-parser`, agent config name, last run) and upcoming runs timeline
+* **Sidebar**: "Triggers" nav item with clock icon between Agents group and MCP Servers
+
+### Implementation Learnings
+
+* **Non-streaming tool history bug**: `itemsToModelMessages()` only included `message` items, stripping `tool_call` and `tool_result`. This works for streaming (where `streamText` handles multi-step internally) but not for the non-streaming `generateText` loop where each turn is a separate API call. The agent saw only the original user message each turn, causing infinite tool-call loops. Fix: added `itemsToFullModelMessages()` that builds AI SDK format with `{ role: "assistant", content: [ToolCallPart] }` and `{ role: "tool", content: [ToolResultPart] }` messages.
+* **Trace naming**: Trigger-created sessions had no title, making traces unidentifiable. Fix: set session title to `[Trigger] <name>` immediately after creation.
+* **Thinking**: Explicitly pass `thinkingEnabled: true` to `runAgent` for trigger executions so they behave like regular conversations.
 
 ### Verification
 

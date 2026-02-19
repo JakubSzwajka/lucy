@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { StatsTab } from "@/components/memory/StatsTab";
 import { useTriggers } from "@/hooks/useTriggers";
 import { useAgentConfigs } from "@/hooks/useAgentConfigs";
+import { api } from "@/lib/api/client";
+import { TriggerRunList } from "@/components/settings/TriggerRunList";
 import cronstrue from "cronstrue";
 import { CronExpressionParser } from "cron-parser";
-import type { Trigger } from "@/types";
+import type { Trigger, TriggerRun } from "@/types";
 
 function getNextRuns(trigger: Trigger, count: number): Date[] {
   if (trigger.triggerType !== "cron" || !trigger.cronExpression) return [];
@@ -35,7 +38,7 @@ function getCronDescription(expr: string): string {
 function formatRelative(date: Date): string {
   const now = Date.now();
   const diff = date.getTime() - now;
-  if (diff < 0) return "now";
+  if (diff < 0) return "just now";
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "< 1 min";
   if (mins < 60) return `${mins} min`;
@@ -81,6 +84,36 @@ export default function DashboardPage() {
     for (const c of configs) m.set(c.id, c.icon ? `${c.icon} ${c.name}` : c.name);
     return m;
   }, [configs]);
+  const triggerNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of triggers) m.set(t.id, t.name);
+    return m;
+  }, [triggers]);
+
+  // Fetch recent runs for all triggers
+  const triggerIds = triggers.map((t) => t.id);
+  const { data: allRuns = [] } = useQuery({
+    queryKey: ["dashboard", "triggerRuns", triggerIds],
+    queryFn: async () => {
+      if (triggers.length === 0) return [];
+      const results = await Promise.all(
+        triggers.map((t) => api.getTriggerRuns(t.id, 10, 0).catch(() => ({ runs: [], total: 0 })))
+      );
+      const runs: TriggerRun[] = [];
+      for (const result of results) {
+        for (const run of result.runs) {
+          runs.push(run);
+        }
+      }
+      return runs.sort((a, b) => {
+        const aTime = a.startedAt ? new Date(a.startedAt).getTime() : 0;
+        const bTime = b.startedAt ? new Date(b.startedAt).getTime() : 0;
+        return bTime - aTime;
+      });
+    },
+    enabled: triggers.length > 0,
+    refetchInterval: 30000,
+  });
 
   const upcomingRuns = useMemo(() => {
     const runs: { trigger: Trigger; date: Date }[] = [];
@@ -92,6 +125,8 @@ export default function DashboardPage() {
     }
     return runs.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 10);
   }, [cronTriggers]);
+
+  const latestRuns = allRuns.slice(0, 15);
 
   return (
     <div className="flex-1 overflow-y-auto p-8">
@@ -119,21 +154,13 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Cron Triggers Section */}
-        <div className="mt-8">
-          <span className="label block mb-1">{"// SCHEDULED_TRIGGERS"}</span>
-          <h2 className="text-lg font-medium tracking-tight mb-4">
-            Cron Triggers
-          </h2>
-
-          {cronTriggers.length === 0 ? (
-            <div className="border border-border rounded-lg p-6 bg-background-secondary text-center">
-              <p className="text-sm text-muted-dark">No cron triggers configured</p>
-              <p className="text-xs text-muted-darker mt-1">
-                Create a trigger with type &quot;cron&quot; to schedule automated agent runs
-              </p>
-            </div>
-          ) : (
+        {/* Cron Triggers Cards */}
+        {cronTriggers.length > 0 && (
+          <div className="mt-8">
+            <span className="label block mb-1">{"// SCHEDULED_TRIGGERS"}</span>
+            <h2 className="text-lg font-medium tracking-tight mb-4">
+              Cron Triggers
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {cronTriggers.map((trigger) => {
                 const nextRuns = getNextRuns(trigger, 1);
@@ -193,39 +220,73 @@ export default function DashboardPage() {
                 );
               })}
             </div>
-          )}
-        </div>
-
-        {/* Upcoming Runs Timeline */}
-        {upcomingRuns.length > 0 && (
-          <div className="mt-8">
-            <span className="label block mb-1">{"// UPCOMING_RUNS"}</span>
-            <h2 className="text-lg font-medium tracking-tight mb-4">
-              Upcoming Runs
-            </h2>
-            <div className="border border-border rounded-lg bg-background-secondary overflow-hidden">
-              {upcomingRuns.map((run, i) => (
-                <div
-                  key={`${run.trigger.id}-${i}`}
-                  className="flex items-center gap-4 px-4 py-2.5 border-b border-border last:border-0"
-                >
-                  <span className="text-xs font-mono text-muted-dark w-20 flex-shrink-0">
-                    {formatRelative(run.date)}
-                  </span>
-                  <span className="text-xs font-mono text-foreground w-40 flex-shrink-0">
-                    {run.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <span className="text-sm text-foreground truncate flex-1">
-                    {run.trigger.name}
-                  </span>
-                  <span className="text-xs text-muted-dark truncate max-w-48">
-                    {configMap.get(run.trigger.agentConfigId) ?? ""}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
         )}
+
+        {/* Two-column: Upcoming + Latest */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Upcoming Runs */}
+          <div>
+            <span className="label block mb-1">{"// UPCOMING_RUNS"}</span>
+            <h2 className="text-lg font-medium tracking-tight mb-4">
+              Upcoming
+            </h2>
+            {upcomingRuns.length === 0 ? (
+              <div className="border border-border rounded-lg p-6 bg-background-secondary text-center">
+                <p className="text-sm text-muted-dark">No upcoming runs</p>
+                <p className="text-xs text-muted-darker mt-1">
+                  Enable a cron trigger to see scheduled runs
+                </p>
+              </div>
+            ) : (
+              <div className="border border-border rounded-lg bg-background-secondary overflow-hidden">
+                {upcomingRuns.map((run, i) => (
+                  <div
+                    key={`${run.trigger.id}-${i}`}
+                    className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0"
+                  >
+                    <span className="text-xs font-mono text-muted-dark w-16 flex-shrink-0">
+                      {formatRelative(run.date)}
+                    </span>
+                    <span className="text-xs font-mono text-foreground w-14 flex-shrink-0">
+                      {run.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className="text-sm text-foreground truncate flex-1">
+                      {run.trigger.name}
+                    </span>
+                    <span className="text-xs text-muted-dark truncate max-w-32">
+                      {configMap.get(run.trigger.agentConfigId) ?? ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Latest Runs */}
+          <div>
+            <span className="label block mb-1">{"// LATEST_RUNS"}</span>
+            <h2 className="text-lg font-medium tracking-tight mb-4">
+              Latest Runs
+            </h2>
+            {latestRuns.length === 0 ? (
+              <div className="border border-border rounded-lg p-6 bg-background-secondary text-center">
+                <p className="text-sm text-muted-dark">No runs yet</p>
+                <p className="text-xs text-muted-darker mt-1">
+                  Trigger runs will appear here
+                </p>
+              </div>
+            ) : (
+              <div className="border border-border rounded-lg bg-background-secondary p-3">
+                <TriggerRunList
+                  runs={latestRuns}
+                  showTriggerName
+                  triggerNameMap={triggerNameMap}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Memory Stats */}
         <div className="mt-8 border border-border rounded-lg bg-background-secondary">

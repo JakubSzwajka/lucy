@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useTriggerRuns } from "@/hooks/useTriggers";
+import { TriggerRunList } from "./TriggerRunList";
 import type {
   Trigger,
   TriggerCreate,
@@ -323,52 +324,16 @@ export function TriggerEditor({
       {!isNew && trigger && runs.length > 0 && (
         <div className="mb-4 border border-border rounded p-3">
           <span className="label-dark block mb-2">Recent Runs</span>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
-            {runs.map((run) => (
-              <div
-                key={run.id}
-                className="flex items-center gap-2 text-xs py-1 border-b border-border last:border-0"
-              >
-                <span
-                  className={`font-mono px-1.5 py-0.5 rounded ${
-                    run.status === "completed"
-                      ? "text-green-500 bg-green-500/10"
-                      : run.status === "failed"
-                      ? "text-red-500 bg-red-500/10"
-                      : run.status === "running"
-                      ? "text-blue-500 bg-blue-500/10"
-                      : "text-muted-dark bg-background-secondary"
-                  }`}
-                >
-                  {run.status}
-                </span>
-                {(run.status === "running" || run.status === "pending") && trigger && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await api.cancelTriggerRun(trigger.id, run.id);
-                        refetchRuns();
-                      } catch { /* ignore */ }
-                    }}
-                    className="px-1.5 py-0.5 text-red-500 border border-red-500 rounded hover:bg-red-500 hover:text-white font-mono"
-                  >
-                    stop
-                  </button>
-                )}
-                <span className="text-muted-dark font-mono">
-                  {run.startedAt
-                    ? new Date(run.startedAt).toLocaleString()
-                    : "—"}
-                </span>
-                {run.error && (
-                  <span className="text-red-500 truncate flex-1">{run.error}</span>
-                )}
-                {run.result && !run.error && (
-                  <span className="text-muted-dark truncate flex-1">{run.result}</span>
-                )}
-              </div>
-            ))}
-          </div>
+          <TriggerRunList
+            runs={runs}
+            triggerId={trigger.id}
+            onCancelRun={async (runId) => {
+              try {
+                await api.cancelTriggerRun(trigger.id, runId);
+                refetchRuns();
+              } catch { /* ignore */ }
+            }}
+          />
         </div>
       )}
 
