@@ -56,9 +56,21 @@ export function SessionItem({
     >
       <div className="flex justify-between items-start mb-1">
         <span className="label text-muted">{"// "}SESSION.{formatLogNumber(sessionNumber)}</span>
-        <span className="label-sm text-muted-dark">
-          {formatTime(new Date(session.updatedAt))}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {session.isPinned && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3 w-3 text-foreground"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M16 12V4H17V2H7V4H8V12L6 14V16H11.2V22H12.8V16H18V14L16 12Z" />
+            </svg>
+          )}
+          <span className="label-sm text-muted-dark">
+            {formatTime(new Date(session.updatedAt))}
+          </span>
+        </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium truncate flex-1 pr-2 flex items-center gap-1.5">
