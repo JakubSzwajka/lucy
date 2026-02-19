@@ -1,23 +1,18 @@
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { AVAILABLE_MODELS } from "@/lib/ai/models";
 import type { UserSettings, SettingsUpdate } from "@/types";
 
 // ============================================================================
 // Settings Service
 // ============================================================================
 
-function getAllModelIds(): string[] {
-  return AVAILABLE_MODELS.map((m) => m.id);
-}
-
 function parseSettings(record: typeof settings.$inferSelect): UserSettings {
   return {
     id: record.id,
     enabledModels: record.enabledModels
       ? JSON.parse(record.enabledModels)
-      : getAllModelIds(),
+      : [],
     contextWindowSize: record.contextWindowSize ?? 10,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -36,7 +31,7 @@ export class SettingsService {
       await db.insert(settings).values({
         id: settingsId,
         userId,
-        enabledModels: JSON.stringify(getAllModelIds()),
+        enabledModels: JSON.stringify([]),
       }).onConflictDoNothing();
 
       const [created] = await db

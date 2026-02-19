@@ -214,16 +214,33 @@ export interface PaginatedItemsResponse {
 export interface ModelConfig {
   id: string;
   name: string;
-  provider: "openai" | "anthropic" | "google";
+  provider: "openrouter";
   modelId: string;
   supportsReasoning?: boolean;
   maxContextTokens: number;
 }
 
 export interface AvailableProviders {
-  openai: boolean;
-  anthropic: boolean;
-  google: boolean;
+  openrouter: boolean;
+}
+
+// ============================================================================
+// OPENROUTER TYPES
+// ============================================================================
+
+export interface OpenRouterModel {
+  id: string;
+  name: string;
+  context_length: number;
+  pricing: {
+    prompt: string;
+    completion: string;
+  };
+  supported_parameters?: string[];
+}
+
+export interface OpenRouterModelsResponse {
+  data: OpenRouterModel[];
 }
 
 // ============================================================================

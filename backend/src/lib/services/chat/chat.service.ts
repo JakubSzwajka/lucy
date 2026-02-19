@@ -1,7 +1,7 @@
 import { getSystemPromptService } from "@/lib/services/config";
 import { streamText, generateText, stepCountIs, ToolSet, type ModelMessage as AiModelMessage } from "ai";
 import { buildProviderOptions, getLanguageModel } from "@/lib/ai/providers";
-import { getModelConfig, DEFAULT_MODEL } from "@/lib/ai/models";
+import { getModelConfig } from "@/lib/ai/models";
 import {
   getToolRegistry,
   initializeToolRegistry,
@@ -299,7 +299,10 @@ export class ChatService {
     if (!effectiveModelId) {
       throw new Error("No model ID provided");
     }
-    const modelConfig = getModelConfig(effectiveModelId) || DEFAULT_MODEL;
+    const modelConfig = await getModelConfig(effectiveModelId);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${effectiveModelId}`);
+    }
     const languageModel = getLanguageModel(modelConfig);
 
     let systemPrompt = await this.resolveSystemPrompt(agent, userId, agentConfig);
@@ -367,7 +370,7 @@ export class ChatService {
       modelConfig,
       tools,
       providerOptions: buildProviderOptions(modelConfig, thinkingEnabled),
-      maxOutputTokens: modelConfig.provider === "anthropic" && isThinkingActive ? 16000 : undefined,
+      maxOutputTokens: undefined,
       systemPrompt,
       isThinkingActive,
     };

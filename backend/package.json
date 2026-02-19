@@ -3,16 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -p 3009",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start -p 3009",
     "lint": "eslint .",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.23",
-    "@ai-sdk/google": "^3.0.13",
     "@ai-sdk/mcp": "^1.0.13",
     "@ai-sdk/openai": "^3.0.23",
     "@langfuse/otel": "^4.5.1",

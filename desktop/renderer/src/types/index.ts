@@ -219,16 +219,14 @@ export interface PaginatedItemsResponse {
 export interface ModelConfig {
   id: string;
   name: string;
-  provider: "openai" | "anthropic" | "google";
+  provider: "openrouter";
   modelId: string;
   supportsReasoning?: boolean;
   maxContextTokens: number;
 }
 
 export interface AvailableProviders {
-  openai: boolean;
-  anthropic: boolean;
-  google: boolean;
+  openrouter: boolean;
 }
 
 // ============================================================================

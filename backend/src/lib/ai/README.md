@@ -1,12 +1,13 @@
 # AI Module
 
-Provider-agnostic model access.
+OpenRouter-based model access. All models are fetched dynamically from OpenRouter's API.
 
 ## Public API
 
-- `AVAILABLE_MODELS`, `DEFAULT_MODEL`, `getModelConfig(modelId)` from `models.ts`
+- `fetchAvailableModels()`, `getModelConfig(modelId)` from `models.ts` (both async)
 - `getAvailableProviders()` from `providers.ts`
 - `getLanguageModel(modelConfig)` from `providers.ts`
+- `buildProviderOptions(modelConfig, thinkingEnabled)` from `providers.ts`
 
 ## Use It Like This
 
@@ -14,7 +15,7 @@ Provider-agnostic model access.
 import { getModelConfig } from "@/lib/ai/models";
 import { getLanguageModel } from "@/lib/ai/providers";
 
-const cfg = getModelConfig("gpt-4o-mini");
+const cfg = await getModelConfig("anthropic/claude-sonnet-4-6");
 if (!cfg) throw new Error("unknown model");
 const model = getLanguageModel(cfg);
 ```

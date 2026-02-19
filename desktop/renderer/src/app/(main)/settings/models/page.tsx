@@ -2,12 +2,8 @@
 
 import { ModelsSettings } from "@/components/settings/ModelsSettings";
 import { useSettings } from "@/hooks/useSettings";
-import { useMainContext } from "../../layout";
-
 export default function ModelsSettingsPage() {
   const { settings, isLoading, updateSettings } = useSettings();
-  const { availableProviders } = useMainContext();
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
@@ -28,7 +24,6 @@ export default function ModelsSettingsPage() {
     <div className="p-6">
     <ModelsSettings
       settings={settings}
-      availableProviders={availableProviders}
       onUpdateSettings={updateSettings}
     />
     </div>

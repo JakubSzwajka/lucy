@@ -855,11 +855,9 @@ export const openApiSpec: Record<string, any> = {
       AvailableProviders: {
         type: "object",
         properties: {
-          openai: { type: "boolean" },
-          anthropic: { type: "boolean" },
-          google: { type: "boolean" },
+          openrouter: { type: "boolean" },
         },
-        required: ["openai", "anthropic", "google"],
+        required: ["openrouter"],
       },
 
       // ========== MCP SERVERS ==========

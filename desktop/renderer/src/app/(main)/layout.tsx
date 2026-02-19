@@ -70,12 +70,12 @@ export default function MainLayout({
     if (selectedModel) return selectedModel;
 
     // Fallback: first available model
-    const enabledSet = settings ? new Set(settings.enabledModels) : null;
-    const firstAvailable = enabledSet && availableProviders
-      ? models.find(m => enabledSet.has(m.id) && availableProviders[m.provider])
+    const enabledSet = settings?.enabledModels?.length ? new Set(settings.enabledModels) : null;
+    const firstAvailable = enabledSet
+      ? models.find(m => enabledSet.has(m.id))
       : models[0];
     return firstAvailable?.id ?? defaultModel?.id ?? "";
-  }, [activeSessionId, sessions, configs, models, settings, availableProviders, defaultModel, selectedModel]);
+  }, [activeSessionId, sessions, configs, models, settings, defaultModel, selectedModel]);
 
   useEffect(() => {
     async function fetchProviders() {

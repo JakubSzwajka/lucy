@@ -1,53 +1,57 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMainContext } from "@/app/(main)/layout";
-import type { UserSettings, SettingsUpdate, AvailableProviders, ModelConfig } from "@/types";
+import type { UserSettings, SettingsUpdate } from "@/types";
 
 interface ModelsSettingsProps {
   settings: UserSettings;
-  availableProviders?: AvailableProviders;
   onUpdateSettings: (updates: SettingsUpdate) => Promise<void>;
 }
 
-type Provider = "openai" | "anthropic" | "google";
+function getProviderFromModelId(modelId: string): string {
+  const slashIndex = modelId.indexOf("/");
+  return slashIndex > 0 ? modelId.substring(0, slashIndex) : "openrouter";
+}
 
-const PROVIDER_NAMES: Record<Provider, string> = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  google: "Google",
-};
+function formatProviderLabel(provider: string): string {
+  const labels: Record<string, string> = {
+    openai: "OpenAI",
+    anthropic: "Anthropic",
+    google: "Google",
+    meta: "Meta",
+    mistral: "Mistral",
+    deepseek: "DeepSeek",
+    cohere: "Cohere",
+    perplexity: "Perplexity",
+    xai: "xAI",
+  };
+  return labels[provider] ?? provider.charAt(0).toUpperCase() + provider.slice(1);
+}
 
 export function ModelsSettings({
   settings,
-  availableProviders,
   onUpdateSettings,
 }: ModelsSettingsProps) {
   const { models } = useMainContext();
-  const enabledModels = new Set(settings.enabledModels);
-
-  const isProviderAvailable = (provider: Provider): boolean => {
-    if (!availableProviders) return true;
-    return availableProviders[provider];
-  };
-
-  const modelsByProvider = models.reduce(
-    (acc, model) => {
-      if (!acc[model.provider]) {
-        acc[model.provider] = [];
-      }
-      acc[model.provider].push(model);
-      return acc;
-    },
-    {} as Record<Provider, ModelConfig[]>
+  const enabledModels = new Set(
+    settings.enabledModels.length > 0 ? settings.enabledModels : models.map((m) => m.id)
   );
+
+  const modelsByProvider = useMemo(() => {
+    const grouped: Record<string, ModelConfig[]> = {};
+    for (const model of models) {
+      const provider = getProviderFromModelId(model.id);
+      if (!grouped[provider]) grouped[provider] = [];
+      grouped[provider].push(model);
+    }
+    return grouped;
+  }, [models]);
 
   const handleToggleModel = async (modelId: string) => {
     const newEnabledModels = new Set(enabledModels);
     if (newEnabledModels.has(modelId)) {
-      // Don't allow disabling if it's the last enabled model
-      if (newEnabledModels.size === 1) {
-        return;
-      }
+      if (newEnabledModels.size === 1) return;
       newEnabledModels.delete(modelId);
     } else {
       newEnabledModels.add(modelId);
@@ -55,21 +59,18 @@ export function ModelsSettings({
     await onUpdateSettings({ enabledModels: Array.from(newEnabledModels) });
   };
 
-  const handleEnableAll = async (provider: Provider) => {
+  const handleEnableAll = async (provider: string) => {
     const providerModels = modelsByProvider[provider] || [];
     const newEnabledModels = new Set(enabledModels);
     providerModels.forEach((model) => newEnabledModels.add(model.id));
     await onUpdateSettings({ enabledModels: Array.from(newEnabledModels) });
   };
 
-  const handleDisableAll = async (provider: Provider) => {
+  const handleDisableAll = async (provider: string) => {
     const providerModels = modelsByProvider[provider] || [];
     const newEnabledModels = new Set(enabledModels);
     providerModels.forEach((model) => newEnabledModels.delete(model.id));
-    // Ensure at least one model remains enabled
-    if (newEnabledModels.size === 0) {
-      return;
-    }
+    if (newEnabledModels.size === 0) return;
     await onUpdateSettings({ enabledModels: Array.from(newEnabledModels) });
   };
 
@@ -79,63 +80,50 @@ export function ModelsSettings({
         Enable or disable models from appearing in the model selector. At least one model must remain enabled.
       </p>
 
-      {(Object.keys(PROVIDER_NAMES) as Provider[]).map((provider) => {
-        const models = modelsByProvider[provider] || [];
-        const providerAvailable = isProviderAvailable(provider);
-
-        return (
-          <div key={provider} className="border border-border rounded p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="label">{PROVIDER_NAMES[provider]}</span>
-                {!providerAvailable && (
-                  <span className="text-xs text-muted-dark">(No API Key)</span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEnableAll(provider)}
-                  disabled={!providerAvailable}
-                  className="text-xs text-muted-dark hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Enable All
-                </button>
-                <span className="text-muted-darker">|</span>
-                <button
-                  onClick={() => handleDisableAll(provider)}
-                  disabled={!providerAvailable}
-                  className="text-xs text-muted-dark hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Disable All
-                </button>
-              </div>
+      {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
+        <div key={provider} className="border border-border rounded p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="label">{formatProviderLabel(provider)}</span>
             </div>
-
-            <div className="space-y-2">
-              {models.map((model) => (
-                <label
-                  key={model.id}
-                  className={`flex items-center gap-3 p-2 rounded hover:bg-background-secondary cursor-pointer ${
-                    !providerAvailable ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={enabledModels.has(model.id)}
-                    onChange={() => handleToggleModel(model.id)}
-                    disabled={!providerAvailable}
-                    className="w-4 h-4 rounded border-border bg-background-secondary accent-foreground"
-                  />
-                  <span className="text-sm">{model.name}</span>
-                  {model.supportsReasoning && (
-                    <span className="text-xs text-muted-dark">(reasoning)</span>
-                  )}
-                </label>
-              ))}
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleEnableAll(provider)}
+                className="text-xs text-muted-dark hover:text-foreground"
+              >
+                Enable All
+              </button>
+              <span className="text-muted-darker">|</span>
+              <button
+                onClick={() => handleDisableAll(provider)}
+                className="text-xs text-muted-dark hover:text-foreground"
+              >
+                Disable All
+              </button>
             </div>
           </div>
-        );
-      })}
+
+          <div className="space-y-2">
+            {providerModels.map((model) => (
+              <label
+                key={model.id}
+                className="flex items-center gap-3 p-2 rounded hover:bg-background-secondary cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={enabledModels.has(model.id)}
+                  onChange={() => handleToggleModel(model.id)}
+                  className="w-4 h-4 rounded border-border bg-background-secondary accent-foreground"
+                />
+                <span className="text-sm">{model.name}</span>
+                {model.supportsReasoning && (
+                  <span className="text-xs text-muted-dark">(reasoning)</span>
+                )}
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -60,8 +60,8 @@ export class IdentityService {
     const model = getLanguageModel({
       id: "identity-synthesis",
       name: "GPT-4o Mini",
-      provider: "openai" as const,
-      modelId: "gpt-4o-mini",
+      provider: "openrouter" as const,
+      modelId: "openai/gpt-4o-mini",
       maxContextTokens: 128000,
     });
 

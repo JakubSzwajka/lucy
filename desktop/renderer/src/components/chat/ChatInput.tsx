@@ -48,13 +48,29 @@ interface RegisteredToolInfo {
   };
 }
 
-type Provider = ModelConfig["provider"];
+/**
+ * Extract the provider prefix from an OpenRouter model ID (e.g., "openai/gpt-4o" → "openai").
+ * Falls back to "openrouter" if no slash is found.
+ */
+function getProviderFromModelId(modelId: string): string {
+  const slashIndex = modelId.indexOf("/");
+  return slashIndex > 0 ? modelId.substring(0, slashIndex) : "openrouter";
+}
 
-const PROVIDER_LABELS: Record<Provider, string> = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  google: "Google",
-};
+function formatProviderLabel(provider: string): string {
+  const labels: Record<string, string> = {
+    openai: "OpenAI",
+    anthropic: "Anthropic",
+    google: "Google",
+    meta: "Meta",
+    mistral: "Mistral",
+    deepseek: "DeepSeek",
+    cohere: "Cohere",
+    perplexity: "Perplexity",
+    xai: "xAI",
+  };
+  return labels[provider] ?? provider.charAt(0).toUpperCase() + provider.slice(1);
+}
 
 interface ChatInputProps {
   onSend: (message: string, files?: FileUIPart[]) => void;
@@ -214,24 +230,22 @@ function ChatInputInner({
   };
 
   // Model selector logic
-  const isModelAvailable = (model: ModelConfig): boolean => {
+  const isModelAvailable = (): boolean => {
     if (!availableProviders) return true;
-    return availableProviders[model.provider];
+    return availableProviders.openrouter;
   };
 
   const visibleModels = useMemo(
-    () => models.filter((model) => !enabledModels || enabledModels.includes(model.id)),
+    () => models.filter((model) => !enabledModels || enabledModels.length === 0 || enabledModels.includes(model.id)),
     [enabledModels, models]
   );
 
   const modelsByProvider = useMemo(() => {
-    const grouped: Record<Provider, ModelConfig[]> = {
-      openai: [],
-      anthropic: [],
-      google: [],
-    };
+    const grouped: Record<string, ModelConfig[]> = {};
     for (const model of visibleModels) {
-      grouped[model.provider].push(model);
+      const provider = getProviderFromModelId(model.id);
+      if (!grouped[provider]) grouped[provider] = [];
+      grouped[provider].push(model);
     }
     return grouped;
   }, [visibleModels]);
@@ -267,7 +281,7 @@ function ChatInputInner({
               <ModelSelectorTrigger asChild>
                 <PromptInputButton className="gap-1.5 text-muted-foreground hover:text-foreground">
                   {selectedModelConfig && (
-                    <ModelSelectorLogo provider={selectedModelConfig.provider} />
+                    <ModelSelectorLogo provider={getProviderFromModelId(selectedModelConfig.id)} />
                   )}
                   <span className="text-xs">{selectedModelConfig?.name ?? selectedModel}</span>
                   <ChevronDown className="size-3 opacity-50" />
@@ -277,12 +291,12 @@ function ChatInputInner({
                 <ModelSelectorInput placeholder="Search models..." />
                 <ModelSelectorList>
                   <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                  {(Object.entries(modelsByProvider) as [Provider, ModelConfig[]][])
+                  {Object.entries(modelsByProvider)
                     .filter(([, models]) => models.length > 0)
                     .map(([provider, models]) => (
-                      <ModelSelectorGroup key={provider} heading={PROVIDER_LABELS[provider]}>
+                      <ModelSelectorGroup key={provider} heading={formatProviderLabel(provider)}>
                         {models.map((model) => {
-                          const available = isModelAvailable(model);
+                          const available = isModelAvailable();
                           return (
                             <ModelSelectorItem
                               key={model.id}
@@ -291,7 +305,7 @@ function ChatInputInner({
                               disabled={!available}
                               className="flex items-center gap-2"
                             >
-                              <ModelSelectorLogo provider={model.provider} />
+                              <ModelSelectorLogo provider={getProviderFromModelId(model.id)} />
                               <ModelSelectorName>
                                 {model.name}
                                 {!available && " (N/A)"}
