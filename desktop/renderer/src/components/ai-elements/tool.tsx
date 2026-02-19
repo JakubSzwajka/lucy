@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { isValidElement, useCallback, useState } from "react";
-import { CodeBlock } from "./code-block";
 
 const CopyButton = ({ text }: { text: string }) => {
   const [copied, setCopied] = useState(false);
@@ -41,6 +40,13 @@ const CopyButton = ({ text }: { text: string }) => {
     </button>
   );
 };
+
+/** Plain JSON code display matching streamdown code block styling */
+const JsonBlock = ({ code }: { code: string }) => (
+  <pre className="m-0 px-3 py-2.5 text-xs font-mono text-muted-foreground overflow-auto whitespace-pre">
+    <code>{code}</code>
+  </pre>
+);
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -152,13 +158,11 @@ export type ToolInputProps = ComponentProps<"div"> & {
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
   <div className={cn("space-y-1.5 overflow-hidden", className)} {...props}>
     <div className="flex items-center justify-between">
-      <h4 className="font-mono font-medium text-muted-foreground text-xs uppercase tracking-wide">
-        Parameters
-      </h4>
+      <span className="label-dark">Parameters</span>
       <CopyButton text={JSON.stringify(input, null, 2)} />
     </div>
-    <div className="rounded-md bg-muted/50 max-h-48 overflow-auto">
-      <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+    <div className="rounded border border-border bg-[hsla(0,0%,4%)] max-h-48 overflow-auto">
+      <JsonBlock code={JSON.stringify(input, null, 2)} />
     </div>
   </div>
 );
@@ -178,41 +182,39 @@ export const ToolOutput = ({
     return null;
   }
 
-  let Output = <div>{output as ReactNode}</div>;
-
-  if (typeof output === "object" && !isValidElement(output)) {
-    Output = (
-      <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />
-    );
-  } else if (typeof output === "string") {
-    Output = <CodeBlock code={output} language="json" />;
-  }
+  const outputText =
+    typeof output === "object" && !isValidElement(output)
+      ? JSON.stringify(output, null, 2)
+      : typeof output === "string"
+        ? output
+        : null;
 
   return (
     <div className={cn("space-y-1.5", className)} {...props}>
       <div className="flex items-center justify-between">
-        <h4 className="font-mono font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        <span className={errorText ? "label-dark text-destructive" : "label-dark"}>
           {errorText ? "Error" : "Result"}
-        </h4>
-        <CopyButton
-          text={
-            errorText ||
-            (typeof output === "object" && !isValidElement(output)
-              ? JSON.stringify(output, null, 2)
-              : String(output ?? ""))
-          }
-        />
+        </span>
+        <CopyButton text={errorText || outputText || String(output ?? "")} />
       </div>
       <div
         className={cn(
-          "overflow-x-auto rounded-md text-xs max-h-48 overflow-auto [&_table]:w-full",
+          "rounded max-h-48 overflow-auto",
           errorText
-            ? "bg-destructive/10 text-destructive"
-            : "bg-muted/50 text-foreground"
+            ? "border border-destructive/30 bg-destructive/10 text-destructive"
+            : "border border-border bg-[hsla(0,0%,4%)]"
         )}
       >
-        {errorText && <div>{errorText}</div>}
-        {Output}
+        {errorText && (
+          <pre className="m-0 px-3 py-2.5 text-xs font-mono text-destructive whitespace-pre-wrap">
+            {errorText}
+          </pre>
+        )}
+        {outputText ? (
+          <JsonBlock code={outputText} />
+        ) : output && !errorText ? (
+          <div className="px-3 py-2.5 text-xs">{output as ReactNode}</div>
+        ) : null}
       </div>
     </div>
   );
