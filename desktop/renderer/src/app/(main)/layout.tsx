@@ -53,6 +53,7 @@ export default function MainLayout({
     sessions,
     createSession,
     deleteSession,
+    pinSession,
   } = useSessions();
 
   // Resolve selected model: user selection wins, then agent config default, then fallback
@@ -120,6 +121,16 @@ export default function MainLayout({
     setActiveSessionId(id);
   }, []);
 
+  const handlePinSession = useCallback(
+    async (id: string) => {
+      const session = sessions.find((s) => s.id === id);
+      if (session) {
+        await pinSession(id, !session.isPinned);
+      }
+    },
+    [sessions, pinSession]
+  );
+
   const router = useRouter();
   const pathname = usePathname();
 
@@ -174,6 +185,7 @@ export default function MainLayout({
               onSelectSession={handleSelectSession}
               onNewChat={handleNewChat}
               onDeleteSession={handleDeleteSession}
+              onPinSession={handlePinSession}
               collapsed={sidebarCollapsed}
               onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
             />

@@ -79,6 +79,32 @@ export function SessionItem({
           )}
           {session.title}
         </div>
+        {onPin && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPin();
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-border rounded transition-opacity text-muted-dark hover:text-foreground"
+            aria-label={session.isPinned ? "Unpin session" : "Pin session"}
+            title={session.isPinned ? "Unpin session" : "Pin session"}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3.5 w-3.5"
+              fill={session.isPinned ? "currentColor" : "none"}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 4h3v2h-3V4zm-9 0h3v2H6V4zm3 2v10l-3 3h12l-3-3V6H9z"
+              />
+            </svg>
+          </button>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -86,6 +112,7 @@ export function SessionItem({
           }}
           className="opacity-0 group-hover:opacity-100 p-1 hover:bg-border rounded transition-opacity text-muted-dark hover:text-foreground"
           aria-label="Delete session"
+          title="Delete session"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

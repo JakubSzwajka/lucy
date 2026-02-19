@@ -111,6 +111,7 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onNewChat: (agentConfigId?: string) => void;
   onDeleteSession: (id: string) => void;
+  onPinSession: (id: string) => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -121,6 +122,7 @@ export function Sidebar({
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  onPinSession,
   collapsed = false,
   onToggleCollapse,
 }: SidebarProps) {
@@ -354,6 +356,7 @@ export function Sidebar({
                   isActive={session.id === activeSessionId}
                   onSelect={() => handleSessionClick(session.id)}
                   onDelete={() => onDeleteSession(session.id)}
+                  onPin={() => onPinSession(session.id)}
                 />
               ))
             )}
