@@ -129,6 +129,31 @@ export class ItemService {
     });
   }
 
+  async rewindToItem(
+    itemId: string,
+    newContent: string,
+    userId: string
+  ): Promise<{ item: Item; agentId: string; sessionId: string } | { error: string; status: number }> {
+    const item = await this.repository.findById(itemId);
+    if (!item) {
+      return { error: "Item not found", status: 404 };
+    }
+    if (item.type !== "message" || (item as import("@/types").MessageItem).role !== "user") {
+      return { error: "Can only rewind to a user message", status: 400 };
+    }
+
+    const agentCheck = await this.repository.agentExists(item.agentId, userId);
+    if (!agentCheck.exists) {
+      return { error: "Unauthorized", status: 403 };
+    }
+
+    await this.repository.deleteAfterSequence(item.agentId, item.sequence);
+    await this.repository.updateItemContent(itemId, newContent);
+
+    const updated = await this.repository.findById(itemId);
+    return { item: updated!, agentId: item.agentId, sessionId: agentCheck.sessionId! };
+  }
+
   async updateToolCallStatus(callId: string, status: ToolCallStatus): Promise<boolean> {
     return this.repository.updateToolCallStatus(callId, status);
   }

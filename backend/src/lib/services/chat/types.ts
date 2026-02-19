@@ -19,6 +19,8 @@ export interface ChatPrepareOptions {
 export interface ExecuteTurnOptions {
   modelId?: string;
   thinkingEnabled?: boolean;
+  skipPersist?: boolean;
+  agentId?: string;
 }
 
 /**

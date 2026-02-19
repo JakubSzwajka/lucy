@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { items, agents, sessions } from "@/lib/db/schema";
 import type { NewItem, ItemRecord } from "@/lib/db/schema";
-import { eq, asc, desc, sql, and, lt } from "drizzle-orm";
+import { eq, asc, desc, sql, and, lt, gt } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import type {
   Item,
@@ -241,6 +241,20 @@ export class ItemRepository {
       .update(items)
       .set({ toolStatus: status })
       .where(eq(items.callId, callId));
+    return true;
+  }
+
+  async deleteAfterSequence(agentId: string, afterSequence: number): Promise<number> {
+    const result = await db
+      .delete(items)
+      .where(and(eq(items.agentId, agentId), gt(items.sequence, afterSequence)));
+    return result.rowCount ?? 0;
+  }
+
+  async updateItemContent(id: string, content: string): Promise<boolean> {
+    const existing = await this.findById(id);
+    if (!existing) return false;
+    await db.update(items).set({ content }).where(eq(items.id, id));
     return true;
   }
 

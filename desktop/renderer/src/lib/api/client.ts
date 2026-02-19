@@ -232,6 +232,13 @@ class APIClient {
     );
   }
 
+  async rewindSession(sessionId: string, itemId: string, newContent: string) {
+    return this.request<{ success: boolean }>(`/api/sessions/${sessionId}/rewind`, {
+      method: "POST",
+      body: JSON.stringify({ itemId, newContent }),
+    });
+  }
+
   async testTrigger(id: string) {
     return this.request<{ success: boolean; runId: string; sessionId: string }>(
       `/api/triggers/${id}/test`,

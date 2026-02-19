@@ -44,6 +44,7 @@ function prepareSendMessage({ messages, body }: { messages: UIMessage[]; body: R
       message: { content, parts },
       model: body?.model,
       thinkingEnabled: body?.thinkingEnabled,
+      skipPersist: body?.skipPersist,
     },
   };
 }
@@ -65,6 +66,7 @@ interface UseSessionChatReturn {
   childSessions: ChildSessionSummary[];
   streamPlan: Plan | null;
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
+  rewindToMessage: (itemId: string, newContent: string) => Promise<void>;
   cancelGeneration: () => void;
   isLoading: boolean;
   isInitialized: boolean;
@@ -216,6 +218,46 @@ export function useSessionChat({
     });
   }, [stop, setMessages]);
 
+  const rewindToMessage = useCallback(
+    async (itemId: string, newContent: string) => {
+      if (!sessionId) return;
+
+      const targetIndex = rawMessages.findIndex((m) => m.id === itemId);
+      if (targetIndex === -1) return;
+
+      // Optimistically truncate messages to BEFORE the target.
+      // chatSendMessage will re-add the user message, so we exclude it here
+      // to avoid duplicates in mergeWithStreaming.
+      setMessages((prev) => prev.slice(0, targetIndex));
+
+      // Truncate loaded items to before the target (exclusive)
+      const targetItem = loadedItems.find((item) => item.id === itemId);
+      if (targetItem) {
+        setLoadedItems((prev) =>
+          prev.filter((item) => item.sequence < targetItem.sequence)
+        );
+      }
+
+      try {
+        // Call rewind API to clean up DB and update the message content
+        await api.rewindSession(sessionId, itemId, newContent);
+
+        // Trigger generation through the normal useChat transport with skipPersist
+        // since the user message already exists in DB
+        thinkingEnabledRef.current = true;
+        chatSendMessage(
+          { text: newContent },
+          { body: { sessionId, skipPersist: true } }
+        );
+      } catch (error) {
+        console.error("[Chat] Rewind failed:", error);
+        // Reload session to restore consistent state
+        prevSessionIdRef.current = null;
+      }
+    },
+    [sessionId, rawMessages, loadedItems, setMessages, chatSendMessage]
+  );
+
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions) => {
       if (!sessionId) return;
@@ -252,6 +294,7 @@ export function useSessionChat({
     childSessions,
     streamPlan,
     sendMessage,
+    rewindToMessage,
     cancelGeneration,
     isLoading,
     isInitialized,

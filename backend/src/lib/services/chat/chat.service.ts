@@ -45,7 +45,7 @@ export class ChatService {
    * Execute a full chat turn: persist user message, build history from DB, stream AI response.
    */
   async executeTurn(sessionId: string, userId: string, message: IncomingUserMessage, options: ExecuteTurnOptions = {}) {
-    const { modelId, thinkingEnabled } = options;
+    const { modelId, thinkingEnabled, skipPersist } = options;
 
     const sessionService = getSessionService();
     const session = await sessionService.getById(sessionId, userId);
@@ -54,15 +54,18 @@ export class ChatService {
       return { error: "Session not found" as const, status: 404 as const };
     }
 
-    const rootAgentId = session.rootAgentId;
-    if (!rootAgentId) {
+    const effectiveAgentId = options.agentId || session.rootAgentId;
+    if (!effectiveAgentId) {
       return { error: "Session has no root agent" as const, status: 400 as const };
     }
+    const rootAgentId = effectiveAgentId;
 
-    // Persist user message (including multimodal parts if present)
-    const userInputText = message.content;
-    const contentPartsJson = message.parts?.length ? JSON.stringify(message.parts) : null;
-    await this.persistUserMessage(rootAgentId, sessionId, userInputText, userId, contentPartsJson);
+    // Persist user message unless skipPersist is set (e.g. rewind — message already in DB)
+    if (!skipPersist) {
+      const userInputText = message.content;
+      const contentPartsJson = message.parts?.length ? JSON.stringify(message.parts) : null;
+      await this.persistUserMessage(rootAgentId, sessionId, userInputText, userId, contentPartsJson);
+    }
 
     // Build model messages from DB (authoritative source)
     const userSettings = await getSettingsService().get(userId);

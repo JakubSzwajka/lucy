@@ -29,7 +29,7 @@ export function ChatContainer({
   enabledModels,
 }: ChatContainerProps) {
   const { getModelConfig } = useMainContext();
-  const { messages, agent, childSessions, streamPlan, sendMessage, cancelGeneration, isLoading, rawMessages, status, hasMoreItems, isLoadingMore, loadMoreItems } = useSessionChat({
+  const { messages, agent, childSessions, streamPlan, sendMessage, rewindToMessage, cancelGeneration, isLoading, rawMessages, status, hasMoreItems, isLoadingMore, loadMoreItems } = useSessionChat({
     sessionId,
     model: selectedModel,
   });
@@ -143,6 +143,7 @@ export function ChatContainer({
           hasMoreItems={hasMoreItems}
           isLoadingMore={isLoadingMore}
           onLoadMore={loadMoreItems}
+          onRewind={rewindToMessage}
         />
 
         {/* Plan Panel (shows above input when plan exists) */}

@@ -38,6 +38,7 @@ import {
   CopyIcon,
   CheckIcon,
   Loader2Icon,
+  PencilIcon,
   Volume2Icon,
   SquareIcon,
   WrenchIcon,
@@ -116,6 +117,7 @@ interface MessageListProps {
   hasMoreItems?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  onRewind?: (messageId: string, newContent: string) => void;
 }
 
 function GapDivider({ date }: { date: Date }) {
@@ -241,6 +243,7 @@ interface MessageItemProps {
   message: ChatMessage;
   isStreaming?: boolean;
   childSessionsByCallId?: Map<string, ChildSessionSummary>;
+  onRewind?: (messageId: string, newContent: string) => void;
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -267,11 +270,27 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageItemProps) {
+function MessageItem({ message, isStreaming, childSessionsByCallId, onRewind }: MessageItemProps) {
   const isUser = message.role === "user";
   const hasParts = message.parts && message.parts.length > 0;
   const hasContent = message.content && message.content.trim().length > 0;
   const tts = useContext(TtsContext);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const editRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isEditing && editRef.current) {
+      editRef.current.textContent = editContent;
+      editRef.current.focus();
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(editRef.current);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+  }, [isEditing, editContent]);
 
   const formatTime = (date?: Date | string) => {
     if (!date) return "";
@@ -367,25 +386,61 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
     return (
       <Message from="user">
         <MessageContent>
-          {fileParts && fileParts.length > 0 && (
-            <div className="flex gap-2 flex-wrap mb-2">
-              {fileParts.map((fp) => (
-                fp.mediaType?.startsWith("image/") ? (
-                  <img
-                    key={fp.id}
-                    src={fp.url}
-                    alt="attached image"
-                    className="max-h-48 max-w-xs rounded-md border border-border object-contain"
-                  />
-                ) : null
-              ))}
-            </div>
+          {isEditing ? (
+            <div
+              ref={editRef}
+              contentEditable
+              suppressContentEditableWarning
+              className="outline-none whitespace-pre-wrap break-words min-h-[1.5em] text-foreground ring-1 ring-primary/50 rounded px-1 -mx-1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  const text = editRef.current?.textContent?.trim();
+                  if (text && onRewind) {
+                    onRewind(message.id, text);
+                    setIsEditing(false);
+                  }
+                }
+                if (e.key === "Escape") {
+                  setIsEditing(false);
+                }
+              }}
+            />
+          ) : (
+            <>
+              {fileParts && fileParts.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-2">
+                  {fileParts.map((fp) => (
+                    fp.mediaType?.startsWith("image/") ? (
+                      <img
+                        key={fp.id}
+                        src={fp.url}
+                        alt="attached image"
+                        className="max-h-48 max-w-xs rounded-md border border-border object-contain"
+                      />
+                    ) : null
+                  ))}
+                </div>
+              )}
+              {hasContent && <MessageResponse>{message.content}</MessageResponse>}
+            </>
           )}
-          {hasContent && <MessageResponse>{message.content}</MessageResponse>}
         </MessageContent>
         <div className="label-sm mr-1 flex items-center gap-2">
           <span>SENT{message.createdAt && ` // ${formatTime(message.createdAt)}`}</span>
           <span className="flex items-center gap-1">
+            {message.content && onRewind && (
+              <button
+                onClick={() => {
+                  setEditContent(message.content || "");
+                  setIsEditing(true);
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                title="Edit message"
+              >
+                <PencilIcon className="size-3.5" />
+              </button>
+            )}
             {hasContent && <CopyButton text={message.content!} />}
           </span>
         </div>
@@ -452,7 +507,7 @@ function MessageItem({ message, isStreaming, childSessionsByCallId }: MessageIte
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-export function MessageList({ messages, isLoading, childSessions, hasMoreItems, isLoadingMore, onLoadMore }: MessageListProps) {
+export function MessageList({ messages, isLoading, childSessions, hasMoreItems, isLoadingMore, onLoadMore, onRewind }: MessageListProps) {
   const tts = useTts();
 
   // Force re-render every 30s to update relative timestamps
@@ -538,6 +593,7 @@ export function MessageList({ messages, isLoading, childSessions, hasMoreItems, 
                 message={message}
                 isStreaming={isAssistantStreaming}
                 childSessionsByCallId={childSessionsByCallId}
+                onRewind={onRewind}
               />
             </React.Fragment>
           );

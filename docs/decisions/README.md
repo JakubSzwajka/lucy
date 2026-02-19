@@ -32,3 +32,4 @@ An Architecture Decision Record (ADR) captures an important architecture decisio
 - [Add pinned/favorite sessions to sidebar](0011-add-pinned-sessions.md) (proposed, 2026-02-19)
 - [Replace memory list with tag-based retrieval](0012-replace-memory-list-with-tag-based-retrieval.md) (proposed, 2026-02-19)
 - [Add user-level privacy mode with encryption at rest](0013-add-user-privacy-mode-with-encryption-at-rest.md) (proposed, 2026-02-19)
+- [Add destructive rewind with inline message editing](0014-add-destructive-rewind-with-inline-message-editing.md) (proposed, 2026-02-19)

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   if ("error" in authResult) return authResult.error;
   const { userId } = authResult.user;
 
-  const { sessionId, message, model: modelId, thinkingEnabled = true } = await request.json();
+  const { sessionId, message, model: modelId, thinkingEnabled = true, skipPersist = false } = await request.json();
 
   if (!sessionId || typeof sessionId !== "string") {
     return Response.json({ error: "sessionId is required" }, { status: 400 });
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   const chatService = getChatService();
-  const result = await chatService.executeTurn(sessionId, userId, message, { modelId, thinkingEnabled });
+  const result = await chatService.executeTurn(sessionId, userId, message, { modelId, thinkingEnabled, skipPersist });
 
   if ("error" in result) {
     return Response.json({ error: result.error }, { status: result.status });
