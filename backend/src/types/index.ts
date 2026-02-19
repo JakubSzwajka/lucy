@@ -217,6 +217,7 @@ export interface ModelConfig {
   provider: "openrouter";
   modelId: string;
   supportsReasoning?: boolean;
+  supportsImages?: boolean;
   maxContextTokens: number;
 }
 
@@ -237,6 +238,11 @@ export interface OpenRouterModel {
     completion: string;
   };
   supported_parameters?: string[];
+  architecture?: {
+    modality?: string;
+    tokenizer?: string;
+    instruct_type?: string;
+  };
 }
 
 export interface OpenRouterModelsResponse {

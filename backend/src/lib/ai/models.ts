@@ -22,6 +22,8 @@ export async function fetchAvailableModels(): Promise<ModelConfig[]> {
 }
 
 function mapOpenRouterModel(model: OpenRouterModel): ModelConfig {
+  // modality format: "text+image->text", "text->text", etc.
+  const inputModality = model.architecture?.modality?.split("->")[0] ?? "";
   return {
     id: model.id,
     name: model.name,
@@ -29,6 +31,7 @@ function mapOpenRouterModel(model: OpenRouterModel): ModelConfig {
     modelId: model.id,
     supportsReasoning:
       model.supported_parameters?.includes("reasoning") ?? false,
+    supportsImages: inputModality.includes("image"),
     maxContextTokens: model.context_length,
   };
 }

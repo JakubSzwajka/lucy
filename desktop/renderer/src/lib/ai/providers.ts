@@ -1,8 +1,7 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { ModelConfig, AvailableProviders } from "@/types";
 
-const openrouter = createOpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
+const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
@@ -13,5 +12,5 @@ export function getAvailableProviders(): AvailableProviders {
 }
 
 export function getLanguageModel(config: ModelConfig) {
-  return openrouter(config.modelId);
+  return openrouter.chat(config.modelId);
 }

@@ -89,7 +89,12 @@ export class ChatService {
       throw new Error("Agent not found");
     }
 
-    const messagesWithSystem = this.prependSystemPrompt(messages, context.systemPrompt);
+    // Strip image parts if the model doesn't support them
+    const sanitizedMessages = context.modelConfig.supportsImages === false
+      ? this.stripImageParts(messages)
+      : messages;
+
+    const messagesWithSystem = this.prependSystemPrompt(sanitizedMessages, context.systemPrompt);
     const hasTools = Object.keys(context.tools).length > 0;
     const agentName = context.agent.name || "assistant";
 
@@ -463,6 +468,20 @@ export class ChatService {
     }
 
     return messages;
+  }
+
+  private stripImageParts(messages: ModelMessage[]): ModelMessage[] {
+    return messages.map((msg) => {
+      if (!Array.isArray(msg.content)) return msg;
+      const filtered = msg.content
+        .map((part) => {
+          if ("image" in part && part.type === "image") {
+            return { type: "text" as const, text: "[image attachment omitted — model does not support images]" };
+          }
+          return part;
+        });
+      return { ...msg, content: filtered };
+    });
   }
 
   private prependSystemPrompt(messages: ModelMessage[], systemPrompt: string | null): ModelMessage[] {

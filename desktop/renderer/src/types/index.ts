@@ -222,6 +222,7 @@ export interface ModelConfig {
   provider: "openrouter";
   modelId: string;
   supportsReasoning?: boolean;
+  supportsImages?: boolean;
   maxContextTokens: number;
 }
 
