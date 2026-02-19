@@ -27,3 +27,5 @@ An Architecture Decision Record (ADR) captures an important architecture decisio
 - [Add system-initiated triggers (cron jobs and webhooks)](0006-add-system-initiated-triggers.md) (proposed, 2026-02-19)
 - [Adopt recursive sessions and unified agent execution](0007-adopt-recursive-sessions-and-unified-agent-execution.md) (accepted, 2026-02-19)
 - [Persist incomplete plans across page refreshes](0008-persist-incomplete-plans-across-page-refreshes.md) (proposed, 2026-02-19)
+- [Add light mode with three-way theme toggle](0009-add-light-mode-with-three-way-theme-toggle.md) (proposed, 2026-02-19)
+- [Replace direct AI providers with OpenRouter](0010-replace-direct-providers-with-openrouter.md) (proposed, 2026-02-19)
