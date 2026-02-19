@@ -60,7 +60,7 @@ async function build() {
 
   // Step 4: Compile main process TypeScript
   console.log("\n📦 Compiling main process...");
-  run("npx tsc");
+  run("npx tsc --noEmit false");
 
   // Step 5: Copy native modules to standalone
   console.log("\n📦 Copying native modules...");

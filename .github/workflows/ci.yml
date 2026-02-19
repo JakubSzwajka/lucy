@@ -156,7 +156,7 @@ jobs:
           done
 
       - name: Compile main process
-        run: npx tsc
+        run: npx tsc --noEmit false
         working-directory: desktop
 
       - name: Build Electron (macOS)
