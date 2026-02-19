@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/query/keys";
@@ -17,6 +17,8 @@ interface UsePlanReturn {
   error: string | null;
   refresh: () => Promise<void>;
 }
+
+const TERMINAL_STATUSES: Set<string> = new Set(["completed", "failed", "cancelled"]);
 
 export function usePlan({
   sessionId,
@@ -50,7 +52,19 @@ export function usePlan({
   }, [sessionId, qc]);
 
   // Stream wins when available
-  const plan = streamPlan ?? dbPlan;
+  const resolved = streamPlan ?? dbPlan;
+
+  // ADR-0008: Hide terminal plans that were already terminal on page load.
+  // A streamPlan means we witnessed the plan being created/updated live,
+  // so we've seen it non-terminal. dbPlan alone with terminal status means
+  // it was already done before this page load.
+  const plan = useMemo(() => {
+    if (!resolved) return null;
+    if (!TERMINAL_STATUSES.has(resolved.status)) return resolved;
+    // Terminal plan — only show if we witnessed it via streaming
+    if (streamPlan) return resolved;
+    return null;
+  }, [resolved, streamPlan]);
 
   return {
     plan,
