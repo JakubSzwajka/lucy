@@ -11,13 +11,11 @@
 
 import type { AnyToolModule } from "../types";
 import { notesModule } from "./notes";
-import { memoryModule } from "./memory";
 import { continuityModule } from "./continuity";
 import { planModule } from "./plan";
 
 // Re-export individual modules
 export { notesModule } from "./notes";
-export { memoryModule } from "./memory";
 export { continuityModule } from "./continuity";
 export { planModule } from "./plan";
 
@@ -31,7 +29,6 @@ export { planModule } from "./plan";
  */
 export const allToolModules: AnyToolModule[] = [
   notesModule,
-  memoryModule,
   continuityModule,
   planModule,
 ];

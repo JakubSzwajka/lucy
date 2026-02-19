@@ -29,7 +29,6 @@ export {
   getToolModule,
   getToolModuleByIntegration,
   notesModule,
-  memoryModule,
 } from "./modules";
 
 // Delegate Tools
