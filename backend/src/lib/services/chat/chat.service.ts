@@ -70,8 +70,8 @@ export class ChatService {
     // Build model messages from DB (authoritative source)
     const userSettings = await getSettingsService().get(userId);
     const allItems = await getItemService().getByAgentId(rootAgentId);
-    const windowedItems = this.applySlidingWindow(allItems, userSettings.contextWindowSize);
-    const modelMessages = this.itemsToModelMessages(windowedItems);
+    // const windowedItems = this.applySlidingWindow(allItems, userSettings.contextWindowSize);
+    const modelMessages = this.itemsToModelMessages(allItems);
 
     const runResult = await this.runAgent(rootAgentId, userId, modelMessages, {
       sessionId,
