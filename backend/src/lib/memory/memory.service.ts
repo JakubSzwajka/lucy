@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getMemoryStore } from "./storage";
 import type { MemoryStore } from "./storage/memory-store.interface";
 import type {
@@ -125,6 +125,15 @@ export class MemoryService {
     evidence: CreateEvidenceInput
   ): Promise<MemoryEvidence> {
     return this.store.addEvidence(userId, memoryId, evidence);
+  }
+
+  async getDistinctTags(userId: string): Promise<string[]> {
+    const rows = await db
+      .selectDistinct({ tag: sql<string>`jsonb_array_elements_text(${memoriesTable.tags})` })
+      .from(memoriesTable)
+      .where(and(eq(memoriesTable.userId, userId), eq(memoriesTable.status, "active")));
+
+    return rows.map((r) => r.tag).sort();
   }
 
   private calculateSimilarity(a: string, b: string): number {

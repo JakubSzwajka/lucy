@@ -22,6 +22,7 @@ ACTIONS:
 - "update": Modify an existing memory's content, type, or confidence
 - "supersede": Replace an outdated memory with a corrected version
 - "delete": Permanently remove a memory by ID (use when information is wrong, irrelevant, or user asks to forget)
+- "list_tags": List all tags currently used across memories. Prefer reusing existing tags when saving new memories — fewer, well-connected tags build stronger links between memories. You are not limited to existing tags though; create new ones when nothing fits.
 - "list_questions": Browse pending or resolved questions with optional filters (status, timing, scope, limit, offset)
 - "resolve_question": Mark a surfaced question as answered (requires questionId and answer)
 
@@ -39,17 +40,24 @@ WHEN TO SAVE:
 - Important context about projects, relationships, or goals
 - Skills, tools, or technologies the user works with
 
+TAG FORMAT:
+- Always lowercase, hyphens instead of spaces (e.g. "machine-learning", "tech-stack", "work-philosophy")
+- Tags are auto-normalized server-side, but prefer sending them in the correct format
+- Use list_tags to see existing tags before creating new ones
+- Reuse existing tags whenever possible — fewer, well-connected tags make the memory graph more useful
+- Only create a new tag when no existing tag fits
+
 Always set appropriate confidence based on how the information was obtained.`,
 
       inputSchema: z.object({
-        action: z.enum(["save", "find", "list", "update", "supersede", "delete", "list_questions", "resolve_question"]).describe("Action to perform"),
+        action: z.enum(["save", "find", "list", "update", "supersede", "delete", "list_tags", "list_questions", "resolve_question"]).describe("Action to perform"),
 
         // For save
         type: z.enum(memoryTypes).optional().describe("Memory type"),
         content: z.string().optional().describe("Memory content - clear, concise statement"),
         confidenceScore: z.number().min(0).max(1).optional().describe("Confidence 0.0-1.0"),
         confidenceLevel: z.enum(confidenceLevels).optional().describe("Confidence tier"),
-        tags: z.array(z.string()).optional().describe("Categorization tags"),
+        tags: z.array(z.string()).optional().describe("Categorization tags (lowercase, hyphens instead of spaces, e.g. 'machine-learning')"),
         scope: z.string().optional().describe("Scope: 'global' or 'project:<name>'"),
 
         // For find
@@ -87,6 +95,10 @@ Always set appropriate confidence based on how the information was obtained.`,
         const service = getMemoryService();
         const { userId } = context;
 
+        // Normalize tags: lowercase, spaces → hyphens, deduplicate
+        const normalizeTags = (tags?: string[]): string[] | undefined =>
+          tags?.map((t) => t.trim().toLowerCase().replace(/\s+/g, "-")).filter(Boolean);
+
         // ========== SAVE ==========
         if (args.action === "save") {
           const { type, content, confidenceScore, confidenceLevel, tags, scope } = args;
@@ -101,7 +113,7 @@ Always set appropriate confidence based on how the information was obtained.`,
             content,
             confidenceScore,
             confidenceLevel,
-            tags,
+            tags: normalizeTags(tags),
             scope,
           }, {
             sourceType: "session",
@@ -147,8 +159,8 @@ Always set appropriate confidence based on how the information was obtained.`,
         // ========== LIST ==========
         if (args.action === "list") {
           const memories = await service.list(userId, {
-            type: args.type,
-            scope: args.scope,
+            type: args.type || undefined,
+            scope: args.scope || undefined,
             status: "active",
             limit: Math.min(args.limit ?? 50, 100),
             offset: args.offset ?? 0,
@@ -175,7 +187,8 @@ Always set appropriate confidence based on how the information was obtained.`,
           if (!memoryId) return { error: "memoryId is required for update" };
           if (!updateData) return { error: "updates object is required for update" };
 
-          const memory = await service.update(userId, memoryId, updateData);
+          const normalized = updateData.tags ? { ...updateData, tags: normalizeTags(updateData.tags) } : updateData;
+          const memory = await service.update(userId, memoryId, normalized);
 
           return {
             success: true,
@@ -203,7 +216,7 @@ Always set appropriate confidence based on how the information was obtained.`,
             content,
             confidenceScore,
             confidenceLevel,
-            tags,
+            tags: normalizeTags(tags),
             scope,
           });
 
@@ -230,13 +243,23 @@ Always set appropriate confidence based on how the information was obtained.`,
           return { success: true, deleted: memoryId };
         }
 
+        // ========== LIST TAGS ==========
+        if (args.action === "list_tags") {
+          const tags = await service.getDistinctTags(userId);
+
+          return {
+            tags,
+            count: tags.length,
+          };
+        }
+
         // ========== LIST QUESTIONS ==========
         if (args.action === "list_questions") {
           const questionService = getQuestionService();
           const questions = await questionService.list(userId, {
-            status: args.questionStatus ?? "pending",
-            timing: args.questionTiming,
-            scope: args.scope,
+            status: args.questionStatus || undefined,
+            timing: args.questionTiming || undefined,
+            scope: args.scope || undefined,
             limit: Math.min(args.limit ?? 50, 100),
             offset: args.offset ?? 0,
           });
