@@ -15,9 +15,9 @@ services:
       timeout: 3s
       retries: 5
 
-  backend:
+  app:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     ports:
       - "3001:3001"

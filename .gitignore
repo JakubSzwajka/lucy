@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -65,18 +66,3 @@ storybook-static/
 
 # Turbo
 .turbo/
-
-# Electron (desktop)
-/desktop/app
-/desktop/dist
-*.dmg
-*.AppImage
-*.exe
-*.snap
-
-# Renderer Next.js
-/desktop/renderer/.next/
-/desktop/renderer/out/
-
-# Backend Next.js
-/backend/.next/

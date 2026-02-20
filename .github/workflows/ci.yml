@@ -21,21 +21,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install desktop dependencies
+      - name: Install dependencies
         run: npm ci
-        working-directory: desktop
 
-      - name: Lint desktop
+      - name: Lint
         run: npm run lint
-        working-directory: desktop
-
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: backend
-
-      - name: Lint backend
-        run: npm run lint
-        working-directory: backend
 
   typecheck:
     name: Type Check
@@ -47,159 +37,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install desktop dependencies
-        run: npm ci
-        working-directory: desktop
-
-      - name: Type check (main process)
-        run: npx tsc --noEmit -p tsconfig.json
-        working-directory: desktop
-
-      - name: Type check (renderer)
-        run: npx tsc --noEmit -p renderer/tsconfig.json
-        working-directory: desktop
-
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: backend
-
-      - name: Type check (backend)
-        run: npx tsc --noEmit
-        working-directory: backend
-
-  # --- Release desktop app (only on push to main, after backend deploy) ---
-
-  tag:
-    name: Create CalVer Tag
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [deploy-backend]
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate CalVer tag
-        id: version
-        run: |
-          DATE_TAG="v$(date -u +'%Y.%m.%d')"
-          EXISTING=$(git tag -l "${DATE_TAG}*" | sort -V | tail -1)
-          if [ -z "$EXISTING" ]; then
-            VERSION="$DATE_TAG"
-          elif [ "$EXISTING" = "$DATE_TAG" ]; then
-            VERSION="${DATE_TAG}.1"
-          else
-            SUFFIX=$(echo "$EXISTING" | sed "s/${DATE_TAG}\.//")
-            NEXT=$((SUFFIX + 1))
-            VERSION="${DATE_TAG}.${NEXT}"
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Tagging as $VERSION"
-
-      - name: Create and push tag
-        run: |
-          git tag "${{ steps.version.outputs.version }}"
-          git push origin "${{ steps.version.outputs.version }}"
-
-  build-macos:
-    name: Build macOS
-    needs: [tag]
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
       - name: Install dependencies
         run: npm ci
-        working-directory: desktop
 
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
+      - name: Type check
+        run: npx tsc --noEmit
 
-      - name: Resolve backend URL
-        id: backend-url
-        run: |
-          DOMAIN=$(railway variables --service lucy-backend --json | python3 -c "import sys,json; print(json.load(sys.stdin)['RAILWAY_PUBLIC_DOMAIN'])")
-          echo "url=https://${DOMAIN}" >> "$GITHUB_OUTPUT"
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Build Next.js
-        run: npx next build renderer
-        working-directory: desktop
-        env:
-          NEXT_PUBLIC_API_URL: ${{ steps.backend-url.outputs.url }}
-
-      - name: Prepare standalone
-        working-directory: desktop
-        run: |
-          mkdir -p app/standalone
-          cp -r renderer/.next/standalone/ app/standalone/
-          mkdir -p app/standalone/renderer/.next
-          cp -r renderer/.next/static app/standalone/renderer/.next/static
-          if [ -d renderer/public ]; then cp -r renderer/public app/standalone/renderer/public; fi
-          if [ -d drizzle ]; then cp -r drizzle app/standalone/drizzle; fi
-          echo '{"name":"lucy-standalone","version":"1.0.0","main":"server.js"}' > app/standalone/package.json
-
-      - name: Copy native modules
-        working-directory: desktop
-        run: |
-          for mod in better-sqlite3 bindings file-uri-to-path prebuild-install; do
-            if [ -d "node_modules/$mod" ]; then
-              cp -r "node_modules/$mod" "app/standalone/node_modules/$mod"
-            fi
-          done
-
-      - name: Compile main process
-        run: npx tsc --noEmit false
-        working-directory: desktop
-
-      - name: Build Electron (macOS)
-        run: npx electron-builder --config electron-builder.yml --mac
-        working-directory: desktop
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-builds
-          path: |
-            desktop/dist/*.dmg
-            desktop/dist/*.zip
-
-  publish-release:
-    name: Publish GitHub Release
-    needs: [tag, build-macos]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.tag.outputs.version }}
-          name: ${{ needs.tag.outputs.version }}
-          generate_release_notes: true
-          files: |
-            artifacts/macos-builds/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # --- Deploy backend to Railway (only on push to main) ---
-
-  deploy-backend:
-    name: Deploy Backend to Railway
+  deploy:
+    name: Deploy to Railway
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [lint, typecheck]
     runs-on: ubuntu-latest
@@ -225,6 +70,36 @@ jobs:
             CORS_ORIGINS="*" \
             --service $SERVICE
 
-      - name: Deploy backend
+      - name: Deploy
         run: railway up --service $SERVICE
-        working-directory: backend
+
+  tag:
+    name: Create CalVer Tag
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate CalVer tag
+        id: version
+        run: |
+          DATE_TAG="v$(date -u +'%Y.%m.%d')"
+          EXISTING=$(git tag -l "${DATE_TAG}*" | sort -V | tail -1)
+          if [ -z "$EXISTING" ]; then
+            VERSION="$DATE_TAG"
+          elif [ "$EXISTING" = "$DATE_TAG" ]; then
+            VERSION="${DATE_TAG}.1"
+          else
+            SUFFIX=$(echo "$EXISTING" | sed "s/${DATE_TAG}\.//")
+            NEXT=$((SUFFIX + 1))
+            VERSION="${DATE_TAG}.${NEXT}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          git tag "${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}"
