@@ -23,10 +23,8 @@ interface AgentConfigEditorProps {
 }
 
 const BUILTIN_MODULES = [
-  { id: "memory", label: "Memory" },
-  { id: "notes", label: "Notes" },
-  { id: "plan", label: "Plan" },
-  { id: "continuity", label: "Continuity" },
+  { id: "continuity", label: "Memory" },
+  { id: "plan", label: "Planning" },
 ];
 
 export function AgentConfigEditor({

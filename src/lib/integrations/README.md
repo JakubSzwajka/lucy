@@ -5,7 +5,7 @@ Registry of integration adapters that provide clients to tool modules.
 ## Public API
 
 - `allIntegrations`, `getIntegration(id)`
-- concrete integration exports: `obsidian`, `conversations`, `filesystem`, `plan`, `mcp`
+- concrete integration exports: `plan`, `mcp`
 - `SimpleIntegration` contract
 
 ## Use It Like This
@@ -21,4 +21,3 @@ It does not define tool behavior (that is `tools/modules`).
 
 - `../tools/modules/README.md`
 - `mcp/README.md`
-- `obsidian/README.md`

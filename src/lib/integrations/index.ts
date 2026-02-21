@@ -27,22 +27,6 @@ export type { McpTestResult, McpStatusResult, ValidationResult } from "./mcp";
 // Service Integrations
 // ============================================================================
 
-// Obsidian
-export { obsidianIntegration, ObsidianClient } from "./obsidian";
-export type { NoteInfo, NoteContent } from "./obsidian";
-
-// Conversations
-export { conversationsIntegration, ConversationsClient } from "./conversations";
-export type {
-  ConversationSearchResult,
-  ConversationSearchOptions,
-  ContextItem,
-} from "./conversations";
-
-// Filesystem
-export { filesystemIntegration, FilesystemService } from "./filesystem";
-export type { FileInfo, FilesystemServiceConfig } from "./filesystem";
-
 // Plan
 export { planIntegration } from "./plan";
 
@@ -68,9 +52,6 @@ export type AnyIntegration = SimpleIntegration<any>;
 // Integration Registry
 // ============================================================================
 
-import { obsidianIntegration } from "./obsidian";
-import { conversationsIntegration } from "./conversations";
-import { filesystemIntegration } from "./filesystem";
 import { planIntegration } from "./plan";
 
 /**
@@ -82,9 +63,6 @@ import { planIntegration } from "./plan";
  * 3. Add it to this array
  */
 export const allIntegrations: AnyIntegration[] = [
-  obsidianIntegration,
-  conversationsIntegration,
-  filesystemIntegration,
   planIntegration,
 ];
 

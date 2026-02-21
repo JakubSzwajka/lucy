@@ -4,18 +4,16 @@
  * Abstract tool modules that use integrations for their backends.
  *
  * Each module:
- * - Has an abstract ID (e.g., "tasks", "notes", "files")
+ * - Has an abstract ID (e.g., "continuity", "plan")
  * - References an integration by ID
  * - Creates tools that receive a client from the integration
  */
 
 import type { AnyToolModule } from "../types";
-import { notesModule } from "./notes";
 import { continuityModule } from "./continuity";
 import { planModule } from "./plan";
 
 // Re-export individual modules
-export { notesModule } from "./notes";
 export { continuityModule } from "./continuity";
 export { planModule } from "./plan";
 
@@ -28,7 +26,6 @@ export { planModule } from "./plan";
  * 3. Add it to this array
  */
 export const allToolModules: AnyToolModule[] = [
-  notesModule,
   continuityModule,
   planModule,
 ];
