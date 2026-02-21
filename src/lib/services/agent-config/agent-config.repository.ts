@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { agentConfigs, agentConfigTools } from "@/lib/db/schema";
 import type { AgentConfigRecord, AgentConfigToolRecord } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type {
   AgentConfigWithTools,
   AgentConfigTool,
@@ -153,7 +153,7 @@ export class AgentConfigRepository {
    * Create a new config with tools
    */
   async create(data: AgentConfigCreate, userId: string): Promise<AgentConfigWithTools> {
-    const configId = uuidv4();
+    const configId = nanoid();
 
     await db.insert(agentConfigs).values({
       id: configId,
@@ -171,7 +171,7 @@ export class AgentConfigRepository {
     if (data.tools && data.tools.length > 0) {
       await db.insert(agentConfigTools).values(
         data.tools.map((t) => ({
-          id: uuidv4(),
+          id: nanoid(),
           agentConfigId: configId,
           toolType: t.type,
           toolRef: t.ref,
@@ -216,7 +216,7 @@ export class AgentConfigRepository {
       if (data.tools.length > 0) {
         await db.insert(agentConfigTools).values(
           data.tools.map((t) => ({
-            id: uuidv4(),
+            id: nanoid(),
             agentConfigId: id,
             toolType: t.type,
             toolRef: t.ref,

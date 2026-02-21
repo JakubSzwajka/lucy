@@ -67,10 +67,6 @@ export class ItemService {
       const agentCheck = await this.repository.agentExists(agentId, userId);
       if (agentCheck.sessionId) {
         await this.repository.updateSessionTimestamp(agentCheck.sessionId);
-
-        if (data.type === "message" && data.role === "user") {
-          await this.maybeUpdateSessionTitle(agentCheck.sessionId, data.content);
-        }
       }
     }
 
@@ -204,13 +200,6 @@ export class ItemService {
     return { valid: true };
   }
 
-  private async maybeUpdateSessionTitle(sessionId: string, content: string): Promise<void> {
-    const currentTitle = await this.repository.getSessionTitle(sessionId);
-    if (currentTitle === "New Chat") {
-      const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
-      await this.repository.updateSessionTitle(sessionId, title);
-    }
-  }
 }
 
 // ============================================================================

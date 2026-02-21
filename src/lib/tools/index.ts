@@ -18,7 +18,7 @@ export {
 } from "./types";
 
 // Registry
-export { ToolRegistry, getToolRegistry, resetToolRegistry } from "./registry";
+export { ToolRegistry, getToolRegistry } from "./registry";
 
 // Providers
 export { McpToolProvider, BuiltinToolProvider } from "./providers";

@@ -9,9 +9,3 @@ export type {
 
 export { ItemService, getItemService } from "./item.service";
 export type { CreateItemResult } from "./item.service";
-
-export {
-  ItemTransformer,
-  itemsToContentParts,
-  itemsToChatMessages,
-} from "./item.transformer";

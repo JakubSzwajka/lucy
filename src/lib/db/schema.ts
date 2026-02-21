@@ -374,49 +374,6 @@ export const mcpServers = pgTable("mcp_servers", {
 ]);
 
 // ============================================================================
-// SESSION MCP SERVERS - Junction table for session-to-MCP mapping
-// ============================================================================
-
-export const sessionMcpServers = pgTable("session_mcp_servers", {
-  id: text("id").primaryKey(),
-  sessionId: text("session_id")
-    .notNull()
-    .references(() => sessions.id, { onDelete: "cascade" }),
-  mcpServerId: text("mcp_server_id")
-    .notNull()
-    .references(() => mcpServers.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (table) => [
-  index("session_mcp_session_idx").on(table.sessionId),
-  index("session_mcp_server_idx").on(table.mcpServerId),
-]);
-
-// ============================================================================
-// INTEGRATIONS - Third-party service integrations (Todoist, Notion, etc.)
-// ============================================================================
-
-export const integrations = pgTable("integrations", {
-  id: text("id").primaryKey(), // e.g., "todoist", "notion"
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id),
-  name: text("name").notNull(), // Display name
-  enabled: boolean("enabled").notNull().default(false),
-  credentials: text("credentials"), // JSON: { "apiKey": "..." }
-  config: text("config"), // JSON: integration-specific config
-  createdAt: timestamp("created_at")
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: timestamp("updated_at")
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (table) => [
-  index("integrations_user_idx").on(table.userId),
-]);
-
-// ============================================================================
 // MEMORIES - Structured memory storage for continuity system
 // ============================================================================
 
@@ -718,11 +675,6 @@ export type PlanStepStatus = (typeof planStepStatusEnum)[number];
 export type McpTransportType = (typeof mcpTransportTypeEnum)[number];
 export type McpServerRecord = typeof mcpServers.$inferSelect;
 export type NewMcpServer = typeof mcpServers.$inferInsert;
-export type SessionMcpServerRecord = typeof sessionMcpServers.$inferSelect;
-export type NewSessionMcpServer = typeof sessionMcpServers.$inferInsert;
-
-export type IntegrationRecord = typeof integrations.$inferSelect;
-export type NewIntegration = typeof integrations.$inferInsert;
 
 export type MemoryRecord = typeof memories.$inferSelect;
 export type NewMemory = typeof memories.$inferInsert;

@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { triggers, triggerRuns } from "@/lib/db/schema";
 import type { TriggerRecord, TriggerRunRecord } from "@/lib/db/schema";
 import { eq, and, desc, gte, count } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type {
   Trigger,
   TriggerRun,
@@ -108,7 +108,7 @@ export class TriggerRepository {
   }
 
   async create(data: TriggerCreate, userId: string): Promise<Trigger> {
-    const id = uuidv4();
+    const id = nanoid();
 
     await db.insert(triggers).values({
       id,
@@ -209,7 +209,7 @@ export class TriggerRepository {
   }
 
   async createRun(triggerId: string, eventPayload?: Record<string, unknown>): Promise<TriggerRun> {
-    const id = uuidv4();
+    const id = nanoid();
 
     await db.insert(triggerRuns).values({
       id,

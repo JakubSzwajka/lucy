@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { agents, items, sessions } from "@/lib/db/schema";
 import type { AgentRecord, ItemRecord } from "@/lib/db/schema";
 import { eq, asc, desc, and, sql } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type { Repository } from "../repository.types";
 import type {
   Agent,
@@ -156,7 +156,7 @@ export class AgentRepository implements Repository<Agent, AgentCreate, AgentUpda
    * Create a new agent
    */
   async create(data: AgentCreate, userId: string): Promise<Agent> {
-    const id = uuidv4();
+    const id = nanoid();
 
     await db.insert(agents).values({
       id,

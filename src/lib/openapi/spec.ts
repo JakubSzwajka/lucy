@@ -12,7 +12,7 @@ export const openApiSpec: Record<string, any> = {
   },
   servers: [
     {
-      url: "http://localhost:8888",
+      url: "http://localhost:3009",
       description: "Development server",
     },
   ],

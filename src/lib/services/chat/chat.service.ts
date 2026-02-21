@@ -12,7 +12,6 @@ import { getAgentService } from "../agent";
 import { getAgentConfigService } from "../agent-config";
 import { getSessionService } from "../session";
 import { getItemService } from "../item";
-import { getSettingsService } from "../config/settings.service";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingUserMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
@@ -68,9 +67,7 @@ export class ChatService {
     }
 
     // Build model messages from DB (authoritative source)
-    const userSettings = await getSettingsService().get(userId);
     const allItems = await getItemService().getByAgentId(rootAgentId);
-    // const windowedItems = this.applySlidingWindow(allItems, userSettings.contextWindowSize);
     const modelMessages = this.itemsToModelMessages(allItems);
 
     const runResult = await this.runAgent(rootAgentId, userId, modelMessages, {

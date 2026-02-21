@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { mcpServers } from "@/lib/db/schema";
 import type { McpServerRecord } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type { Repository } from "@/lib/services/repository.types";
 import type { McpServer, McpServerCreate, McpServerUpdate } from "@/types";
 
@@ -46,7 +46,7 @@ export class McpRepository implements Repository<McpServer, McpServerCreate, Mcp
   }
 
   async create(data: McpServerCreate, userId: string): Promise<McpServer> {
-    const id = uuidv4();
+    const id = nanoid();
     const now = new Date();
 
     await db.insert(mcpServers).values({

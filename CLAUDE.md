@@ -40,7 +40,7 @@ lucy-nextjs/
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server on port 3001 |
+| `npm run dev` | Start dev server on port 3009 |
 | `npm run build` | Build for production (standalone output) |
 | `npm run lint` | Lint source code |
 | `npm run db:push` | Push schema to PostgreSQL |
@@ -53,7 +53,7 @@ lucy-nextjs/
 npm install
 cp .env.example .env.local   # Fill in JWT_SECRET + API keys
 npm run db:push              # Initialize database schema
-npm run dev                  # Starts on port 3001
+npm run dev                  # Starts on port 3009
 ```
 
 ## Project Structure Conventions
@@ -74,16 +74,26 @@ All API routes live in `src/app/api/` with JWT auth + userId scoping.
 
 | Route | Description |
 |-------|-------------|
+| `/api/auth/*` | Register/login/verify |
 | `/api/sessions` | Session CRUD |
-| `/api/sessions/[id]/chat` | AI chat streaming (SSE) |
+| `/api/sessions/[id]` | Single session operations |
+| `/api/sessions/[id]/items` | Items for a session |
 | `/api/sessions/[id]/plans` | Plans for a session |
+| `/api/sessions/[id]/rewind` | Rewind session state |
+| `/api/chat` | AI chat streaming (SSE) |
+| `/api/agent-configs` | Agent configuration CRUD |
 | `/api/providers` | Available AI providers |
+| `/api/models` | Available AI models |
 | `/api/settings` | App settings (per-user) |
 | `/api/system-prompts` | System prompt management |
 | `/api/mcp-servers` | MCP server management |
 | `/api/tools` | Tool listing |
+| `/api/identity` | Identity document management |
+| `/api/memories` | Memory CRUD and graph |
+| `/api/memory-settings` | Memory settings |
+| `/api/questions` | Question management |
+| `/api/triggers` | Trigger management and webhooks |
 | `/api/openapi` | OpenAPI spec |
-| `/api/auth/*` | Register/login/verify |
 | `/api/health` | DB connectivity check |
 
 ### Database

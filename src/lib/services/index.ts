@@ -2,14 +2,6 @@
 // Service Layer Exports
 // ============================================================================
 
-// Repository Types
-export type {
-  Repository,
-  PaginatedRepository,
-  QueryOptions,
-  PaginatedResult,
-} from "./repository.types";
-
 // MCP Service (re-export from lib/mcp)
 export {
   McpService,
@@ -22,11 +14,6 @@ export type { McpTestResult, McpStatusResult, ValidationResult } from "@/lib/int
 // Item Service
 export { ItemService, getItemService } from "./item";
 export { ItemRepository, getItemRepository } from "./item";
-export {
-  ItemTransformer,
-  itemsToContentParts,
-  itemsToChatMessages,
-} from "./item";
 export type {
   CreateItemData,
   CreateMessageData,

@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type {
   ToolDefinition,
   ToolProvider,
@@ -38,10 +38,6 @@ export class ToolRegistry {
     this.providers.set(provider.name, provider);
   }
 
-  unregisterProvider(name: string): void {
-    this.providers.delete(name);
-  }
-
   getProvider(name: string): ToolProvider | undefined {
     return this.providers.get(name);
   }
@@ -53,11 +49,6 @@ export class ToolRegistry {
   registerTool(definition: ToolDefinition): void {
     const key = this.getToolKey(definition.source, definition.name);
     this.tools.set(key, definition);
-  }
-
-  unregisterTool(source: ToolSource, name: string): void {
-    const key = this.getToolKey(source, name);
-    this.tools.delete(key);
   }
 
   // -------------------------------------------------------------------------
@@ -166,7 +157,7 @@ export class ToolRegistry {
     args: unknown,
     contextPartial: Omit<ToolExecutionContext, "callId" | "getState" | "setState">
   ): Promise<unknown> {
-    const callId = uuidv4();
+    const callId = nanoid();
     const startTime = Date.now();
     const { sessionId } = contextPartial;
 
@@ -305,17 +296,6 @@ export class ToolRegistry {
     }
   }
 
-  parseToolKey(key: string): { sourceType: string; sourceId: string; name: string } | null {
-    const parts = key.split("__");
-    if (parts.length !== 3) return null;
-
-    return {
-      sourceType: parts[0],
-      sourceId: parts[1],
-      name: parts[2],
-    };
-  }
-
   // -------------------------------------------------------------------------
   // Session State Management
   // -------------------------------------------------------------------------
@@ -333,10 +313,6 @@ export class ToolRegistry {
       this.toolState.set(sessionId, sessionState);
     }
     sessionState.set(key, value);
-  }
-
-  clearSessionState(sessionId: string): void {
-    this.toolState.delete(sessionId);
   }
 
   // -------------------------------------------------------------------------
@@ -385,9 +361,3 @@ export function getToolRegistry(): ToolRegistry {
   return globalRegistry;
 }
 
-export function resetToolRegistry(): void {
-  if (globalRegistry) {
-    globalRegistry.dispose();
-    globalRegistry = null;
-  }
-}

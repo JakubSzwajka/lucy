@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { sessions, agents } from "@/lib/db/schema";
 import type { SessionRecord } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type { Repository } from "../repository.types";
 import type { Session, SessionCreate, SessionUpdate, SessionStatus } from "@/types";
 
@@ -64,8 +64,8 @@ export class SessionRepository implements Repository<Session, SessionCreate, Ses
    * Create a new session with a root agent
    */
   async create(data: SessionCreate & { agentName?: string; systemPrompt?: string; model?: string; agentConfigId?: string }, userId: string): Promise<Session> {
-    const sessionId = uuidv4();
-    const agentId = uuidv4();
+    const sessionId = nanoid();
+    const agentId = nanoid();
 
     // Create session
     await db.insert(sessions).values({

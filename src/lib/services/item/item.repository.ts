@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { items, agents, sessions } from "@/lib/db/schema";
 import type { NewItem, ItemRecord } from "@/lib/db/schema";
 import { eq, asc, desc, sql, and, lt, gt } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type {
   Item,
   MessageItem,
@@ -172,7 +172,7 @@ export class ItemRepository {
   }
 
   async create(agentId: string, data: CreateItemData): Promise<Item> {
-    const id = uuidv4();
+    const id = nanoid();
     const sequence = await this.getNextSequence(agentId);
 
     let itemData: NewItem;
@@ -258,16 +258,6 @@ export class ItemRepository {
     return true;
   }
 
-  async delete(id: string): Promise<boolean> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      return false;
-    }
-
-    await db.delete(items).where(eq(items.id, id));
-    return true;
-  }
-
   /**
    * Check if agent exists (scoped to user via agent's userId)
    */
@@ -282,16 +272,6 @@ export class ItemRepository {
       .where(eq(sessions.id, sessionId));
   }
 
-  async getSessionTitle(sessionId: string): Promise<string | null> {
-    const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId));
-    return session?.title || null;
-  }
-
-  async updateSessionTitle(sessionId: string, title: string): Promise<void> {
-    await db.update(sessions)
-      .set({ title })
-      .where(eq(sessions.id, sessionId));
-  }
 }
 
 // ============================================================================

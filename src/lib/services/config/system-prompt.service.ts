@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { systemPrompts } from "@/lib/db/schema";
 import { eq, asc, and } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import type { SystemPrompt, SystemPromptCreate, SystemPromptUpdate } from "@/types";
 
 // ============================================================================
@@ -44,7 +44,7 @@ export class SystemPromptService {
     }
 
     const now = new Date();
-    const id = uuidv4();
+    const id = nanoid();
 
     await db.insert(systemPrompts).values({
       id,

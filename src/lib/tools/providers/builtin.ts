@@ -13,7 +13,7 @@
 
 import type { ToolProvider, ToolDefinition, AnyToolModule } from "../types";
 import { allToolModules, getToolModulesByIntegration } from "../modules";
-import { allIntegrations, getIntegration, type AnyIntegration } from "@/lib/integrations";
+import { allIntegrations } from "@/lib/integrations";
 
 export class BuiltinToolProvider implements ToolProvider {
   readonly name = "builtin";
@@ -52,20 +52,6 @@ export class BuiltinToolProvider implements ToolProvider {
    */
   getModule(id: string): AnyToolModule | undefined {
     return allToolModules.find((m) => m.id === id);
-  }
-
-  /**
-   * Get all available integrations.
-   */
-  getIntegrations(): AnyIntegration[] {
-    return [...allIntegrations];
-  }
-
-  /**
-   * Get a specific integration by ID.
-   */
-  getIntegration(id: string): AnyIntegration | undefined {
-    return getIntegration(id);
   }
 
   /**

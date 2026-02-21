@@ -24,7 +24,7 @@ import { startActiveObservation, updateActiveTrace, propagateAttributes } from "
 // via ChatService.runAgent(). The agent's tools and system prompt are
 // determined by its agent config.
 //
-// See: backend/src/lib/memory/README.md
+// See: src/lib/memory/README.md
 
 // In-memory mutex to prevent concurrent reflections per session.
 const reflecting = new Set<string>();
