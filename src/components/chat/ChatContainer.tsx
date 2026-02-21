@@ -107,7 +107,7 @@ export function ChatContainer({
   return (
     <div className="relative flex h-full bg-background">
       <div className="flex flex-col flex-1 min-w-0">
-        <header className="h-16 border-b border-border flex items-center justify-between px-6">
+        <header className="h-16 border-b border-border flex items-center justify-between px-6 backdrop-blur-md bg-background/80">
           <div className="flex items-center gap-3">
             <div className={`w-2 h-2 rounded-full ${getStatusIndicator()}`} />
             <div className="flex items-center gap-2">

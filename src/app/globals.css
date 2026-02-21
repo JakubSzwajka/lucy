@@ -4,44 +4,44 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Core colors - Architect/Terminal aesthetic */
-  --background: 0 0% 4%;
-  --background-secondary: 0 0% 7%;
-  --background-tertiary: 0 0% 5%;
-  --foreground: 0 0% 85%;
+  /* Core colors - Deep Dark elevation scale */
+  --background: 220 15% 7%;
+  --background-secondary: 220 13% 10%;
+  --background-tertiary: 220 13% 8%;
+  --foreground: 214 32% 91%;
 
   /* shadcn/ui standard variables */
-  --card: 0 0% 7%;
-  --card-foreground: 0 0% 96%;
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 96%;
+  --card: 220 12% 14%;
+  --card-foreground: 214 32% 91%;
+  --popover: 220 11% 16%;
+  --popover-foreground: 214 32% 91%;
   --primary: 0 0% 96%;
-  --primary-foreground: 0 0% 4%;
-  --secondary: 0 0% 15%;
-  --secondary-foreground: 0 0% 96%;
-  --muted: 0 0% 15%;
-  --muted-foreground: 0 0% 53%;
-  --accent: 0 0% 15%;
-  --accent-foreground: 0 0% 96%;
+  --primary-foreground: 220 15% 7%;
+  --secondary: 220 12% 14%;
+  --secondary-foreground: 214 32% 91%;
+  --muted: 220 12% 14%;
+  --muted-foreground: 215 16% 62%;
+  --accent: 220 12% 14%;
+  --accent-foreground: 214 32% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 96%;
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 0 0% 53%;
-  --radius: 0.5rem;
+  --border: 220 13% 14%;
+  --input: 220 12% 14%;
+  --ring: 215 16% 47%;
+  --radius: 0.75rem;
 
   /* Legacy custom variables for existing components */
-  --muted-dark: #555555;
-  --muted-darker: #444444;
-  --muted-darkest: #333333;
+  --muted-dark: #64748b;
+  --muted-darker: #475569;
+  --muted-darkest: #334155;
   --accent-hover: #f5f5f5;
-  --accent-muted: #444444;
+  --accent-muted: #475569;
 
-  /* Message bubbles - Border focused */
-  --user-bubble: #1a1a1a;
-  --user-bubble-border: #444444;
-  --assistant-bubble: #121212;
-  --assistant-bubble-border: #262626;
+  /* Message bubbles - Elevation based */
+  --user-bubble: #1e2229;
+  --user-bubble-border: rgba(255,255,255,0.08);
+  --assistant-bubble: #16191f;
+  --assistant-bubble-border: rgba(255,255,255,0.05);
 
   /* Status colors */
   --status-online: #22c55e;
@@ -89,11 +89,12 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
+  line-height: 1.6;
 }
 
 /* Bold = brighter: optical popping for dark mode hierarchy */
 b, strong, .font-bold, .font-semibold {
-  color: #ffffff;
+  color: #f1f5f9;
 }
 
 /* Utility classes for the architect aesthetic */
@@ -158,7 +159,7 @@ textarea {
   font-weight: 500;
   padding: 6px 16px;
   border: 1px solid hsl(var(--border));
-  border-radius: 4px;
+  border-radius: 12px;
   background: transparent;
   color: hsl(var(--foreground));
   transition: all 0.2s ease;
@@ -167,6 +168,7 @@ textarea {
 .btn-ship:hover {
   background: hsl(var(--foreground));
   color: hsl(var(--background));
+  box-shadow: 0 0 12px rgba(255,255,255,0.06);
 }
 
 .btn-ship:disabled {
@@ -184,8 +186,8 @@ textarea {
   max-width: 80%;
   border: 1px solid var(--assistant-bubble-border);
   background: var(--assistant-bubble);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 1.25rem;
 }
 
 .message-bubble.sent {
@@ -205,7 +207,7 @@ textarea {
   content: "";
   flex: 1;
   height: 1px;
-  background: hsl(var(--border));
+  background: rgba(255,255,255,0.05);
 }
 
 .session-divider span {
@@ -279,14 +281,14 @@ textarea {
 }
 
 [data-streamdown="code-block-header"] {
-  background: hsla(0, 0%, 7%);
+  background: hsl(var(--background-secondary));
   padding: 0.25rem 0.625rem;
   font-size: 10px;
 }
 
 [data-streamdown="code-block-body"] {
   padding: 0.75rem;
-  background: hsla(0, 0%, 4%);
+  background: hsl(var(--background));
 }
 
 .markdown-content ul,
