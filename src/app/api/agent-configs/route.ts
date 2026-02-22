@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getAgentConfigService } from "@/lib/server/services";
+import { getAgentConfigService } from "@/lib/server/domain";
 
 // GET /api/agent-configs - List all agent configs
 export async function GET(request: NextRequest) {

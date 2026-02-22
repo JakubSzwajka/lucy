@@ -1,8 +1,7 @@
 import { TriggerRepository, getTriggerRepository } from "./trigger.repository";
-import { getSessionService } from "../session";
-import { getItemService } from "../item";
-import { getChatService, cancelAgent } from "../chat";
-import { getAgentService } from "../agent";
+import { getSessionService } from "@/lib/server/domain/session";
+import { getItemService } from "@/lib/server/domain/item";
+import { getChatService, cancelAgent } from "@/lib/server/chat";
 import type { TriggerCreate, TriggerUpdate, Trigger, TriggerWithRuns } from "@/types";
 
 // ============================================================================

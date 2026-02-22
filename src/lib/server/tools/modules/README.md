@@ -11,8 +11,7 @@ Builtin tool definitions grouped by capability.
 
 Each module defines:
 - `id`, `name`, `description`
-- `integrationId` (`null` for internal-only modules)
-- `createTools(client)` returning tool definitions
+- `createTools(null)` returning tool definitions (modules load their own dependencies)
 
 ## Responsibility Boundary
 

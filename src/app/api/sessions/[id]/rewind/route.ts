@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getItemService } from "@/lib/server/services/item";
+import { getItemService } from "@/lib/server/domain/item";
 
 export async function POST(
   request: NextRequest,

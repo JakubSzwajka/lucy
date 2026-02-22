@@ -7,18 +7,21 @@
 
 import { z } from "zod";
 import { defineToolModule, defineTool } from "../../types";
-import type { PlanService } from "@/lib/server/services/plan";
+import { getPlanService } from "@/lib/server/domain/plan";
 
 /**
  * Plan module definition.
+ * Loads PlanService directly — no integration indirection.
  */
-export const planModule = defineToolModule<PlanService>({
+export const planModule = defineToolModule<null>({
   id: "plan",
   name: "Planning",
   description: "Create and manage execution plans for complex tasks",
-  integrationId: "plan",
+  integrationId: null,
 
-  createTools: (planService) => [
+  createTools: () => {
+    const planService = getPlanService();
+    return [
     defineTool({
       name: "create_plan",
       description: `Create an execution plan for a complex task. Use this when a task requires multiple steps that should be tracked systematically.
@@ -220,5 +223,6 @@ The plan status is automatically derived from step statuses unless explicitly se
         };
       },
     }),
-  ],
+  ];
+  },
 });

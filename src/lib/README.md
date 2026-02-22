@@ -4,11 +4,15 @@ Two sub-trees with an explicit boundary:
 
 ## `server/` — Backend modules (Node.js only)
 
-- `services/` - orchestration layer used by API routes
+- `chat/` - chat orchestration (streaming turns, agent execution)
+- `domain/` - entity CRUD (session, agent, item, plan, agent-config, config)
 - `ai/` - model registry + provider clients
 - `tools/` - tool registry/providers/modules for agent tool calls
 - `memory/` - structured continuity memory subsystem
-- `integrations/` - external/internal integration clients
+- `mcp/` - Model Context Protocol client, pool, and management
+- `triggers/` - webhook triggers and scheduling
+- `search/` - conversation search and retrieval
+- `filesystem/` - sandboxed filesystem operations
 - `auth/` - JWT and route auth guards
 - `db/` - schema and DB singleton
 - `openapi/` - spec builder

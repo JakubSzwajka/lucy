@@ -3,7 +3,7 @@ import { mcpServers } from "@/lib/server/db/schema";
 import type { McpServerRecord } from "@/lib/server/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { Repository } from "@/lib/server/services/repository.types";
+import type { Repository } from "@/lib/server/domain/repository.types";
 import type { McpServer, McpServerCreate, McpServerUpdate } from "@/types";
 
 // ============================================================================

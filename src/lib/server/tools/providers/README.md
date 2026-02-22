@@ -4,7 +4,7 @@ Providers supply tool definitions into the registry.
 
 ## Providers
 
-- `BuiltinToolProvider` - loads tool modules via integrations/internal modules
+- `BuiltinToolProvider` - loads tools from all registered tool modules
 - `McpToolProvider` - exposes tools from connected MCP servers
 
 ## Use It Like This

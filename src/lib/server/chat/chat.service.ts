@@ -1,4 +1,4 @@
-import { getSystemPromptService } from "@/lib/server/services/config";
+import { getSystemPromptService } from "@/lib/server/domain/config";
 import { streamText, generateText, stepCountIs, ToolSet, type ModelMessage as AiModelMessage, type ToolCallPart as AiToolCallPart, type ToolResultPart as AiToolResultPart } from "ai";
 import { buildProviderOptions, getLanguageModel } from "@/lib/server/ai/providers";
 import { getModelConfig } from "@/lib/server/ai/models";
@@ -8,10 +8,10 @@ import {
   getMcpProvider,
 } from "@/lib/server/tools";
 import { EnvironmentContextService } from "./environment-context.service";
-import { getAgentService } from "../agent";
-import { getAgentConfigService } from "../agent-config";
-import { getSessionService } from "../session";
-import { getItemService } from "../item";
+import { getAgentService } from "@/lib/server/domain/agent";
+import { getAgentConfigService } from "@/lib/server/domain/agent-config";
+import { getSessionService } from "@/lib/server/domain/session";
+import { getItemService } from "@/lib/server/domain/item";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingUserMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";

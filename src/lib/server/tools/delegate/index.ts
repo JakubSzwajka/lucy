@@ -1,10 +1,10 @@
 import { z } from "zod";
 import type { ToolDefinition, DelegateToolSource } from "../types";
 import type { AgentConfigWithTools } from "@/types";
-import { getAgentConfigService } from "@/lib/server/services";
-import { getSessionService } from "@/lib/server/services/session";
-import { getItemService } from "@/lib/server/services/item";
-import { getChatService } from "@/lib/server/services/chat";
+import { getAgentConfigService } from "@/lib/server/domain";
+import { getSessionService } from "@/lib/server/domain/session";
+import { getItemService } from "@/lib/server/domain/item";
+import { getChatService } from "@/lib/server/chat";
 
 export async function generateDelegateTools(
   agentConfig: AgentConfigWithTools,

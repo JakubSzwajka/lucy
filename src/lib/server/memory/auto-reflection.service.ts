@@ -1,8 +1,8 @@
 import { getMemorySettings } from "./settings";
 import { estimateTokens } from "@/lib/server/ai/tokens";
-import { getItemService } from "@/lib/server/services/item";
-import { getSessionService } from "@/lib/server/services/session";
-import { getChatService } from "@/lib/server/services/chat/chat.service";
+import { getItemService } from "@/lib/server/domain/item";
+import { getSessionService } from "@/lib/server/domain/session";
+import { getChatService } from "@/lib/server/chat";
 import type { Item } from "@/types";
 import type { MemorySettings } from "./types";
 import { startActiveObservation, updateActiveTrace, propagateAttributes } from "@langfuse/tracing";

@@ -1,19 +1,12 @@
 /**
  * Builtin Tool Provider
  *
- * Loads tools from configured integrations.
- * Integrations are configured via environment variables.
- *
- * Flow:
- * 1. Loop through all integrations
- * 2. For each configured integration, find the tool module that uses it
- * 3. Create a client using the integration's createClient factory
- * 4. Pass the client to the tool module's createTools factory
+ * Loads tools from all registered tool modules.
+ * Each module creates its own tools internally (no integration indirection).
  */
 
 import type { ToolProvider, ToolDefinition, AnyToolModule } from "../types";
-import { allToolModules, getToolModulesByIntegration } from "../modules";
-import { allIntegrations } from "@/lib/server/integrations";
+import { allToolModules } from "../modules";
 
 export class BuiltinToolProvider implements ToolProvider {
   readonly name = "builtin";
@@ -55,55 +48,21 @@ export class BuiltinToolProvider implements ToolProvider {
   }
 
   /**
-   * Refresh tools from configured integrations.
+   * Refresh tools from all registered modules.
    */
   async refresh(): Promise<void> {
     this.tools = [];
 
-    // 1. Load tools from integration-backed modules (existing behavior)
-    for (const integration of allIntegrations) {
-      if (!integration.isConfigured()) {
-        continue;
-      }
-
-      const toolModules = getToolModulesByIntegration(integration.id);
-      if (toolModules.length === 0) {
-        console.warn(`[Tools] No module found for integration ${integration.id}`);
-        continue;
-      }
-
-      try {
-        const client = integration.createClient();
-        if (!client) {
-          console.warn(`[Tools] Integration ${integration.id} returned null client`);
-          continue;
-        }
-
-        for (const toolModule of toolModules) {
-          const moduleTools = toolModule.createTools(client);
-          this.tools.push(...moduleTools);
-
-          console.log(
-            `[Tools] Loaded ${moduleTools.length} from ${toolModule.name} (via ${integration.name})`
-          );
-        }
-      } catch (error) {
-        console.error(`[Tools] Failed to initialize integration ${integration.id}:`, error);
-      }
-    }
-
-    // 2. Load tools from internal modules (no integration needed)
-    const internalModules = allToolModules.filter((m) => m.integrationId === null);
-    for (const toolModule of internalModules) {
+    for (const toolModule of allToolModules) {
       try {
         const moduleTools = toolModule.createTools(null);
         this.tools.push(...moduleTools);
 
         console.log(
-          `[Tools] Loaded ${moduleTools.length} from ${toolModule.name} (internal)`
+          `[Tools] Loaded ${moduleTools.length} from ${toolModule.name}`
         );
       } catch (error) {
-        console.error(`[Tools] Failed to initialize internal module ${toolModule.id}:`, error);
+        console.error(`[Tools] Failed to initialize module ${toolModule.id}:`, error);
       }
     }
   }

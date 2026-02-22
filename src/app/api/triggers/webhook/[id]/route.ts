@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTriggerService, getTriggerRepository } from "@/lib/server/services";
+import { getTriggerService, getTriggerRepository } from "@/lib/server/triggers";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

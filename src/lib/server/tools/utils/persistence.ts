@@ -1,5 +1,5 @@
-import { getItemService } from "@/lib/server/services";
-import type { CreateItemData } from "@/lib/server/services";
+import { getItemService } from "@/lib/server/domain";
+import type { CreateItemData } from "@/lib/server/domain";
 import type { ToolCallStatus } from "@/types";
 
 /**

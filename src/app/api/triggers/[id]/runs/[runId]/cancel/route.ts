@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getTriggerService } from "@/lib/server/services";
+import { getTriggerService } from "@/lib/server/triggers";
 
 type RouteContext = { params: Promise<{ id: string; runId: string }> };
 

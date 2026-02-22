@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getSystemPromptService } from "@/lib/server/services";
+import { getSystemPromptService } from "@/lib/server/domain/config";
 
 // GET /api/system-prompts - List all system prompts
 export async function GET(request: NextRequest) {

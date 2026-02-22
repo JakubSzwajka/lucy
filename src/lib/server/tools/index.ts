@@ -27,7 +27,6 @@ export { McpToolProvider, BuiltinToolProvider } from "./providers";
 export {
   allToolModules,
   getToolModule,
-  getToolModuleByIntegration,
 } from "./modules";
 
 // Delegate Tools

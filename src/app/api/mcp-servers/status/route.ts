@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getMcpService } from "@/lib/server/services";
+import { getMcpService } from "@/lib/server/mcp";
 
 // GET /api/mcp-servers/status - Get connection status of all enabled MCP servers
 export async function GET(request: NextRequest) {
