@@ -24,7 +24,9 @@ lucy-nextjs/
 │   │   └── register/        # Register page
 │   ├── components/          # React components
 │   ├── hooks/               # Custom hooks
-│   ├── lib/                 # Services, database, auth, AI providers
+│   ├── lib/
+│   │   ├── server/          # Backend: services, db, auth, AI, tools, memory
+│   │   └── client/          # Browser: API client, query helpers, utilities
 │   └── types/               # TypeScript types
 ├── public/                  # Static assets
 ├── docs/                    # Documentation
