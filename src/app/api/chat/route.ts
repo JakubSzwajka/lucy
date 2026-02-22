@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getChatService } from "@/lib/services";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getChatService } from "@/lib/server/services";
 
 // Generic chat endpoint that accepts sessionId in body
 // This is needed because useChat transport doesn't properly switch URLs

@@ -27,12 +27,12 @@ import {
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { api } from "@/lib/api/client";
-import { estimateConversationTokens, getContextUsage } from "@/lib/ai/tokens";
+import { api } from "@/lib/client/api/client";
+import { estimateConversationTokens, getContextUsage } from "@/lib/server/ai/tokens";
 import { useMainContext } from "@/app/(main)/layout";
 import type { ChatMessage, ModelConfig, AvailableProviders, McpServer, McpServerStatus } from "@/types";
 import { ChevronDown, Lightbulb, Wrench, Server, Loader2, Paperclip, X } from "lucide-react";
-import { compressImageDataUrl } from "@/lib/utils/image-compress";
+import { compressImageDataUrl } from "@/lib/client/utils/image-compress";
 
 interface RegisteredToolInfo {
   key: string;

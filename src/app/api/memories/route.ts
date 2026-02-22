@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getMemoryService } from "@/lib/memory";
-import type { MemoryFilters } from "@/lib/memory";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getMemoryService } from "@/lib/server/memory";
+import type { MemoryFilters } from "@/lib/server/memory";
 
 // GET /api/memories - List memories with filters, or search
 export async function GET(request: NextRequest) {

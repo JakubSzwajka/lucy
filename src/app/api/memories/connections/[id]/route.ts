@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getMemoryStore } from "@/lib/memory";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getMemoryStore } from "@/lib/server/memory";
 
 interface RouteParams {
   params: Promise<{ id: string }>;

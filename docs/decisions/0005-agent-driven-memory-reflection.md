@@ -44,12 +44,12 @@ Chosen option: **Option A — Agent-config-driven reflection via ChatService**, 
 
 ### Phase 1: Schema + Settings
 
-* **`backend/src/lib/db/schema.ts`**:
+* **`backend/src/lib/server/db/schema.ts`**:
   - Add `reflectionAgentConfigId` column to `memory_settings` table — nullable FK to `agentConfigs`
   - Remove `autoSaveThreshold` column from `memory_settings`
   - Remove `extractionModel` column from `memory_settings` (model comes from agent config now)
 
-* **`backend/src/lib/memory/settings.ts`**:
+* **`backend/src/lib/server/memory/settings.ts`**:
   - Update defaults: remove `autoSaveThreshold` and `extractionModel`
   - Add `reflectionAgentConfigId: null` to defaults
 
@@ -60,7 +60,7 @@ Chosen option: **Option A — Agent-config-driven reflection via ChatService**, 
 
 ### Phase 2: Agent Execution in Auto-Reflection
 
-* **`backend/src/lib/memory/auto-reflection.service.ts`**:
+* **`backend/src/lib/server/memory/auto-reflection.service.ts`**:
   - Replace the `ExtractionService.extract()` + auto-confirm flow
   - Load `reflectionAgentConfigId` from memory settings; if null, skip (log warning)
   - Create a temporary session + root agent using the config (via `SessionService.create()` or direct repo call)
@@ -92,14 +92,14 @@ Chosen option: **Option A — Agent-config-driven reflection via ChatService**, 
 * **Remove `autoSaveThreshold`** from all code paths (settings types, API validation, auto-reflection logic)
 * **Remove `extractionModel`** from all code paths
 * **Stop writing to `reflections` table** from auto-reflection (table can stay for now — manual extraction may still use it)
-* **Update memory settings types** in `backend/src/lib/memory/types.ts`
+* **Update memory settings types** in `backend/src/lib/server/memory/types.ts`
 
 ### Affected Paths
 
-* `backend/src/lib/db/schema.ts` — memory_settings table
-* `backend/src/lib/memory/settings.ts` — defaults
-* `backend/src/lib/memory/types.ts` — settings types
-* `backend/src/lib/memory/auto-reflection.service.ts` — core change
+* `backend/src/lib/server/db/schema.ts` — memory_settings table
+* `backend/src/lib/server/memory/settings.ts` — defaults
+* `backend/src/lib/server/memory/types.ts` — settings types
+* `backend/src/lib/server/memory/auto-reflection.service.ts` — core change
 * `backend/src/app/api/memory-settings/route.ts` — API
 * `desktop/renderer/src/` — memory settings UI component (find via grep for memory settings)
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getAgentConfigService } from "@/lib/services";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getAgentConfigService } from "@/lib/server/services";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

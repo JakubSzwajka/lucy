@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, lazy, Suspense } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/client/utils";
 import { MemoriesTab } from "@/components/memory/MemoriesTab";
 import { QuestionsTab } from "@/components/memory/QuestionsTab";
 import { IdentityTab } from "@/components/memory/IdentityTab";

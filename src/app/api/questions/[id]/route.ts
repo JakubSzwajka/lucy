@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getQuestionService } from "@/lib/memory";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getQuestionService } from "@/lib/server/memory";
 import { eq, and } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { questions, questionMemoryLinks, memories } from "@/lib/db/schema";
+import { db } from "@/lib/server/db";
+import { questions, questionMemoryLinks, memories } from "@/lib/server/db/schema";
 
 interface RouteParams {
   params: Promise<{ id: string }>;

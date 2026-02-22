@@ -5,7 +5,7 @@ import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import { useMemorySettings, useUpdateMemorySettings } from "@/hooks/useMemorySettings";
 import { useModels } from "@/hooks/useModels";
 import { useSettings } from "@/hooks/useSettings";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/client/utils";
 import type { AgentConfigWithTools } from "@/types";
 
 // ---------------------------------------------------------------------------

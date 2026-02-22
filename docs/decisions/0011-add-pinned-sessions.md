@@ -18,7 +18,7 @@ Add a boolean `isPinned` column to the `sessions` table. Pinned sessions sort to
 
 ### 1. Schema + Types
 
-**`backend/src/lib/db/schema.ts`** — add to sessions table:
+**`backend/src/lib/server/db/schema.ts`** — add to sessions table:
 ```typescript
 isPinned: integer("is_pinned", { mode: "boolean" }).notNull().default(false),
 ```
@@ -34,11 +34,11 @@ isPinned?: boolean;
 
 ### 2. Backend Repository + Service
 
-**`backend/src/lib/services/session/session.repository.ts`**:
+**`backend/src/lib/server/services/session/session.repository.ts`**:
 - Change `findAll()` sort from `orderBy(desc(sessions.updatedAt))` to `orderBy(desc(sessions.isPinned), desc(sessions.updatedAt))`
 - Ensure `update()` method passes `isPinned` through when present in update data
 
-**`backend/src/lib/services/session/session.service.ts`**:
+**`backend/src/lib/server/services/session/session.service.ts`**:
 - No new methods needed — existing `update(id, userId, data)` handles it since `SessionUpdate` will include `isPinned`
 
 ### 3. API
@@ -61,10 +61,10 @@ No new routes needed. The existing `PATCH /api/sessions/[id]` route already call
 - Optionally render a visual separator between pinned and unpinned groups
 
 ### Affected paths
-- `backend/src/lib/db/schema.ts`
+- `backend/src/lib/server/db/schema.ts`
 - `backend/src/types/index.ts`
 - `desktop/renderer/src/types/index.ts`
-- `backend/src/lib/services/session/session.repository.ts`
+- `backend/src/lib/server/services/session/session.repository.ts`
 - `desktop/renderer/src/hooks/useSessions.ts`
 - `desktop/renderer/src/components/sidebar/SessionItem.tsx`
 - `desktop/renderer/src/components/sidebar/Sidebar.tsx`

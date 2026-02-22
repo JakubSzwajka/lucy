@@ -97,7 +97,7 @@ All API routes live in `src/app/api/` with JWT auth + userId scoping.
 | `/api/health` | DB connectivity check |
 
 ### Database
-- PostgreSQL via `DATABASE_URL` env, schema in `src/lib/db/schema.ts`
+- PostgreSQL via `DATABASE_URL` env, schema in `src/lib/server/db/schema.ts`
 
 **Schema:**
 - `users` - User accounts

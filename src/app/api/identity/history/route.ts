@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getIdentityService } from "@/lib/memory";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getIdentityService } from "@/lib/server/memory";
 
 // GET /api/identity/history - List all identity document versions
 export async function GET(request: NextRequest) {

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { SessionItem } from "./SessionItem";
 import { AgentConfigPicker } from "@/components/agent-config-picker/AgentConfigPicker";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/client/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import type { Session } from "@/types";

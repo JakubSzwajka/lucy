@@ -93,8 +93,8 @@ Implemented in two phases. Phase 1 is the core; Phase 2 is frontend.
 ### Phase 1 — Schema + Service + CRUD API + Webhooks + Cron
 
 * **Affected paths**:
-  - `backend/src/lib/db/schema.ts` — add `triggers` and `triggerRuns` tables
-  - `backend/src/lib/services/trigger/` — new directory: `TriggerRepository`, `TriggerService`, `TriggerScheduler`
+  - `backend/src/lib/server/db/schema.ts` — add `triggers` and `triggerRuns` tables
+  - `backend/src/lib/server/services/trigger/` — new directory: `TriggerRepository`, `TriggerService`, `TriggerScheduler`
   - `backend/src/app/api/triggers/` — CRUD routes (collection + `[id]`)
   - `backend/src/app/api/triggers/[id]/runs/` — run history route
   - `backend/src/app/api/triggers/[id]/test/` — manual fire route

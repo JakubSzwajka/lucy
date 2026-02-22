@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { cleanTextForSpeech } from "@/lib/tts";
+import { cleanTextForSpeech } from "@/lib/server/tts";
 
 export function useTts() {
   const [speakingId, setSpeakingId] = useState<string | null>(null);

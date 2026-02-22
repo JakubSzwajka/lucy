@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getMcpService } from "@/lib/services";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getMcpService } from "@/lib/server/services";
 import type { McpServerUpdate } from "@/types";
 
 // GET /api/mcp-servers/[id] - Get a single MCP server

@@ -26,7 +26,7 @@ Keep the code but disable it. The action will not be advertised in the tool desc
 
 ### 3. Remove the Obsidian `memory` module
 
-Delete `backend/src/lib/tools/modules/memory/` entirely and remove its export from the modules index. This module depends on `ObsidianClient` and `conversationsIntegration` which are no longer part of the active architecture.
+Delete `backend/src/lib/server/tools/modules/memory/` entirely and remove its export from the modules index. This module depends on `ObsidianClient` and `conversationsIntegration` which are no longer part of the active architecture.
 
 ### Non-goals
 
@@ -47,12 +47,12 @@ Delete `backend/src/lib/tools/modules/memory/` entirely and remove its export fr
 
 ### Affected paths
 
-- `backend/src/lib/tools/modules/continuity/index.ts` — add `list_tags`, comment out `list`
-- `backend/src/lib/tools/modules/memory/` — delete directory
-- `backend/src/lib/tools/modules/index.ts` — remove `memoryModule` export
-- `backend/src/lib/memory/memory.service.ts` — add `listTags()` method
-- `backend/src/lib/memory/storage/memory-store.interface.ts` — add `listTags` to interface
-- `backend/src/lib/memory/storage/postgres-memory-store.ts` — implement `listTags` query
+- `backend/src/lib/server/tools/modules/continuity/index.ts` — add `list_tags`, comment out `list`
+- `backend/src/lib/server/tools/modules/memory/` — delete directory
+- `backend/src/lib/server/tools/modules/index.ts` — remove `memoryModule` export
+- `backend/src/lib/server/memory/memory.service.ts` — add `listTags()` method
+- `backend/src/lib/server/memory/storage/memory-store.interface.ts` — add `listTags` to interface
+- `backend/src/lib/server/memory/storage/postgres-memory-store.ts` — implement `listTags` query
 
 ### Dependencies
 
@@ -71,8 +71,8 @@ None added or removed.
 3. Add `listTags()` method to `MemoryService` delegating to store
 4. Add `list_tags` action to continuity tool — calls `service.listTags(userId)`, returns `{ tags: [...], total: N }`
 5. Comment out `list` action block and remove `"list"` from the action enum and tool description
-6. Delete `backend/src/lib/tools/modules/memory/` directory
-7. Remove `memoryModule` import and export from `backend/src/lib/tools/modules/index.ts`
+6. Delete `backend/src/lib/server/tools/modules/memory/` directory
+7. Remove `memoryModule` import and export from `backend/src/lib/server/tools/modules/index.ts`
 
 ### Verification
 

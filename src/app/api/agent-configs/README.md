@@ -14,4 +14,4 @@ CRUD for agent configurations (personas, tool sets, delegation rules).
 
 ## Related
 
-- [Agent Config Service](../../../lib/services/agent-config/README.md)
+- [Agent Config Service](../../../lib/server/services/agent-config/README.md)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api/client";
+import { api } from "@/lib/client/api/client";
 import { useTriggerRuns } from "@/hooks/useTriggers";
 import { TriggerRunList } from "./TriggerRunList";
 import type {

@@ -5,9 +5,9 @@ Backend source root.
 ## Layers
 
 - `app/api/` - HTTP adapters (route handlers)
-- `lib/services/` - orchestration and business services
+- `lib/server/services/` - orchestration and business services
 - `lib/*` capability modules - auth, AI, tools, memory, integrations
-- `lib/db/` - schema and DB access
+- `lib/server/db/` - schema and DB access
 - `types/` - shared backend domain types
 
 ## Design Rule

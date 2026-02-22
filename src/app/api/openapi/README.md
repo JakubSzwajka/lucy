@@ -6,4 +6,4 @@
 
 ## Purpose
 
-Serve OpenAPI schema generated from `src/lib/openapi/spec.ts`.
+Serve OpenAPI schema generated from `src/lib/server/openapi/spec.ts`.

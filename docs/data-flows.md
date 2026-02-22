@@ -45,7 +45,7 @@ Frontend
 **Key files:**
 - [`desktop/renderer/src/hooks/useAgentChat.ts`](../desktop/renderer/src/hooks/useAgentChat.ts) — `useSessionChat` hook
 - [`backend/src/app/api/sessions/[id]/chat/route.ts`](../backend/src/app/api/sessions/[id]/chat/route.ts) — API route
-- [`backend/src/lib/services/chat/`](../backend/src/lib/services/chat/README.md) — ChatService
+- [`backend/src/lib/server/services/chat/`](../backend/src/lib/server/services/chat/README.md) — ChatService
 
 ## 2. Session Creation Flow
 
@@ -68,7 +68,7 @@ SessionRepository.create()
 ```
 
 **Key files:**
-- [`backend/src/lib/services/session/`](../backend/src/lib/services/session/README.md) — SessionService + Repository
+- [`backend/src/lib/server/services/session/`](../backend/src/lib/server/services/session/README.md) — SessionService + Repository
 
 ## 3. Delegation / Sub-Agent Flow
 
@@ -103,8 +103,8 @@ Result string returned to parent agent as tool result
 **Continuing a sub-agent:** The `continue_session` tool sends a follow-up message to an existing child session, validates `parentSessionId` matches, and runs another non-streaming `runAgent` loop.
 
 **Key files:**
-- [`backend/src/lib/tools/delegate/`](../backend/src/lib/tools/delegate/README.md) — `generateDelegateTools()`
-- [`backend/src/lib/services/chat/`](../backend/src/lib/services/chat/README.md) — `runAgent()` non-streaming path
+- [`backend/src/lib/server/tools/delegate/`](../backend/src/lib/server/tools/delegate/README.md) — `generateDelegateTools()`
+- [`backend/src/lib/server/services/chat/`](../backend/src/lib/server/services/chat/README.md) — `runAgent()` non-streaming path
 
 ## 4. Agent Config Resolution
 
@@ -138,8 +138,8 @@ Returns ChatContext { agent, languageModel, tools, systemPrompt, ... }
 ```
 
 **Key files:**
-- [`backend/src/lib/services/agent-config/`](../backend/src/lib/services/agent-config/README.md) — AgentConfigService
-- [`backend/src/lib/services/chat/chat.service.ts`](../backend/src/lib/services/chat/chat.service.ts) — `prepareChat()`, `resolveSystemPrompt()`
+- [`backend/src/lib/server/services/agent-config/`](../backend/src/lib/server/services/agent-config/README.md) — AgentConfigService
+- [`backend/src/lib/server/services/chat/chat.service.ts`](../backend/src/lib/server/services/chat/chat.service.ts) — `prepareChat()`, `resolveSystemPrompt()`
 
 ## 5. Auto-Reflection Flow
 
@@ -173,6 +173,6 @@ Threshold exceeded
 - `reflectionAgentConfigId` — agent config to use for reflection (required for reflection to run)
 
 **Key files:**
-- [`backend/src/lib/memory/auto-reflection.service.ts`](../backend/src/lib/memory/auto-reflection.service.ts) — `maybeAutoReflect()`
-- [`backend/src/lib/memory/`](../backend/src/lib/memory/README.md) — Memory module
+- [`backend/src/lib/server/memory/auto-reflection.service.ts`](../backend/src/lib/server/memory/auto-reflection.service.ts) — `maybeAutoReflect()`
+- [`backend/src/lib/server/memory/`](../backend/src/lib/server/memory/README.md) — Memory module
 - [`desktop/renderer/src/components/chat/ReflectionIndicator.tsx`](../desktop/renderer/src/components/chat/ReflectionIndicator.tsx) — Frontend indicator

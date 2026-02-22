@@ -49,22 +49,22 @@ Full spec: [`docs/specs/recursive-sessions-spec.md`](../specs/recursive-sessions
 
 ### Phase 1: Unified `ChatService.runAgent()`
 
-* **`backend/src/lib/services/chat/chat.service.ts`**: Single `runAgent()` method with discriminated union on `streaming: true | false`. Shared logic: `prepareChat()`, system prompt building, step persistence, tracing, agent status updates. Branch: `streamText()` vs `generateText()` loop.
-* **`backend/src/lib/services/chat/types.ts`**: `RunAgentOptions`, `RunAgentResult` types.
+* **`backend/src/lib/server/services/chat/chat.service.ts`**: Single `runAgent()` method with discriminated union on `streaming: true | false`. Shared logic: `prepareChat()`, system prompt building, step persistence, tracing, agent status updates. Branch: `streamText()` vs `generateText()` loop.
+* **`backend/src/lib/server/services/chat/types.ts`**: `RunAgentOptions`, `RunAgentResult` types.
 
 ### Phase 2: Schema migration
 
-* **`backend/src/lib/db/schema.ts`**: Add `parentSessionId` (FK → sessions) and `sourceCallId` to `sessions` table. Add index on `parentSessionId`. Remove `parentId` and `sourceCallId` from `agents` table.
+* **`backend/src/lib/server/db/schema.ts`**: Add `parentSessionId` (FK → sessions) and `sourceCallId` to `sessions` table. Add index on `parentSessionId`. Remove `parentId` and `sourceCallId` from `agents` table.
 * **`backend/src/types/index.ts`**: Update `Session`, `SessionCreate`, add `ChildSessionSummary` type.
 
 ### Phase 3: Delegate tools use child sessions
 
-* **`backend/src/lib/tools/delegate/index.ts`**: `generateDelegateTools()` creates child sessions via `sessionService.create()` with `parentSessionId` + `sourceCallId`, then calls `chatService.runAgent()` non-streaming. Also provides `continue_session` tool.
+* **`backend/src/lib/server/tools/delegate/index.ts`**: `generateDelegateTools()` creates child sessions via `sessionService.create()` with `parentSessionId` + `sourceCallId`, then calls `chatService.runAgent()` non-streaming. Also provides `continue_session` tool.
 
 ### Phase 4: Session tree queries
 
-* **`backend/src/lib/services/session/session.service.ts`**: `getChildSessions()`, `getWithAgents()` returns `childSessions` array.
-* **`backend/src/lib/services/session/session.repository.ts`**: `findAll()` filters `WHERE parentSessionId IS NULL`. `findByParentSessionId()` for children.
+* **`backend/src/lib/server/services/session/session.service.ts`**: `getChildSessions()`, `getWithAgents()` returns `childSessions` array.
+* **`backend/src/lib/server/services/session/session.repository.ts`**: `findAll()` filters `WHERE parentSessionId IS NULL`. `findByParentSessionId()` for children.
 * **`backend/src/app/api/sessions/[id]/route.ts`**: `GET` returns `SessionWithAgents` including `childSessions`.
 
 ### Phase 5: Frontend display

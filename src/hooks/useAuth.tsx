@@ -7,7 +7,7 @@ import {
   createContext,
   useContext,
 } from "react";
-import { api } from "@/lib/api/client";
+import { api } from "@/lib/client/api/client";
 
 interface AuthUser {
   id: string;

@@ -273,7 +273,7 @@ const [error, setError] = useState<Error | null>(null);
 const fetchData = useCallback(async () => {
   try {
     setError(null);
-    import { api } from "@/lib/api/client";
+    import { api } from "@/lib/client/api/client";
     const result = await api.request<T[]>("/api/resource");
     setData(result);
   } catch (err) {
@@ -453,8 +453,8 @@ function PlanView({ sessionId, streamPlan }: Props) {
 
 | Hook | API Routes | External Libraries |
 |------|------------|-------------------|
-| All hooks | - | `@/lib/api/client` (API client for authenticated requests) |
-| `useAuth` | `/api/auth/verify`, `/api/auth/login`, `/api/auth/register` | `@/lib/api/client` |
+| All hooks | - | `@/lib/client/api/client` (API client for authenticated requests) |
+| `useAuth` | `/api/auth/verify`, `/api/auth/login`, `/api/auth/register` | `@/lib/client/api/client` |
 | `useSessionChat` | `/api/sessions/:id/chat`, `/api/sessions/:id` | `@ai-sdk/react`, `ai` |
 | `useSessions` | `/api/sessions`, `/api/sessions/:id` | - |
 | `useSystemPrompts` | `/api/system-prompts`, `/api/system-prompts/:id` | - |

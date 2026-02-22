@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getMcpService } from "@/lib/services";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getMcpService } from "@/lib/server/services";
 
 // POST /api/mcp-servers/[id]/test - Test connection to an MCP server
 export async function POST(

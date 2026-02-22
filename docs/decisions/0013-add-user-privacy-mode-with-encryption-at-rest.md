@@ -74,11 +74,11 @@ Chosen option: **"Option A: Envelope encryption at rest"**, because it provides 
 
 ### Affected paths
 
-- `backend/src/lib/db/schema.ts` — Add `privacyMode` boolean to `settings` table. Add `encryptedKek` column to `users` table. Add `encryptedDek` + `dekIv` columns to `sessions` table. Add `contentIv` + `contentTag` columns to `items` table (or store as a single encrypted blob).
+- `backend/src/lib/server/db/schema.ts` — Add `privacyMode` boolean to `settings` table. Add `encryptedKek` column to `users` table. Add `encryptedDek` + `dekIv` columns to `sessions` table. Add `contentIv` + `contentTag` columns to `items` table (or store as a single encrypted blob).
 - `backend/src/lib/crypto/` — **New module**. Envelope encryption utilities: `generateDek()`, `wrapKey()`, `unwrapKey()`, `encryptContent()`, `decryptContent()`. Uses Node.js `crypto` (no external deps).
-- `backend/src/lib/services/item/item.repository.ts` — Encrypt on write, decrypt on read. Add encryption/decryption layer around content persistence.
-- `backend/src/lib/services/chat/chat.service.ts` — Conditional Langfuse tracing: wrap `startActiveObservation` calls with privacy check. Pass encryption context to item persistence.
-- `backend/src/lib/memory/auto-reflection.service.ts` — Conditional Langfuse tracing (same pattern as ChatService).
+- `backend/src/lib/server/services/item/item.repository.ts` — Encrypt on write, decrypt on read. Add encryption/decryption layer around content persistence.
+- `backend/src/lib/server/services/chat/chat.service.ts` — Conditional Langfuse tracing: wrap `startActiveObservation` calls with privacy check. Pass encryption context to item persistence.
+- `backend/src/lib/server/memory/auto-reflection.service.ts` — Conditional Langfuse tracing (same pattern as ChatService).
 - `backend/src/instrumentation.ts` — No change needed (span processor stays; privacy-mode users simply won't generate spans).
 - `backend/src/app/api/settings/route.ts` — Expose `privacyMode` toggle in settings API.
 - `desktop/renderer/src/` — Settings UI: add privacy mode toggle with clear explanation of what it does and doesn't guarantee.

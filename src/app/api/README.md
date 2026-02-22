@@ -28,6 +28,6 @@ Each route should:
 
 ## Read Next
 
-- `../../lib/services/README.md`
-- `../../lib/memory/README.md`
-- `../../lib/tools/README.md`
+- `../../lib/server/services/README.md`
+- `../../lib/server/memory/README.md`
+- `../../lib/server/tools/README.md`

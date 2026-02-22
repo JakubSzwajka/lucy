@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo, createContext, useContext } 
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { AuthGuard } from "@/components/auth-guard";
-import { api } from "@/lib/api/client";
+import { api } from "@/lib/client/api/client";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
 import { useModels } from "@/hooks/useModels";

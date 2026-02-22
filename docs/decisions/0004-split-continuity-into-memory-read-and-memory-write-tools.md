@@ -30,7 +30,7 @@ Replace the single `continuity` tool and the Obsidian `memory` module with two n
 - Source: `{ type: "builtin", moduleId: "memory_write" }`
 
 ### Non-goals
-- No changes to the memory service layer (`@/lib/memory`) or DB schema
+- No changes to the memory service layer (`@/lib/server/memory`) or DB schema
 - No new API routes
 - No migration of Obsidian memory data
 
@@ -43,12 +43,12 @@ Replace the single `continuity` tool and the Obsidian `memory` module with two n
 ## Implementation Plan
 
 * **Affected paths**:
-  - `backend/src/lib/tools/modules/continuity/` — delete entirely
-  - `backend/src/lib/tools/modules/memory/` — replace Obsidian module with new `memory_read` module
-  - `backend/src/lib/tools/modules/memory-write/` — new directory for `memory_write` module
-  - `backend/src/lib/tools/modules/index.ts` — update exports and `allToolModules` array
+  - `backend/src/lib/server/tools/modules/continuity/` — delete entirely
+  - `backend/src/lib/server/tools/modules/memory/` — replace Obsidian module with new `memory_read` module
+  - `backend/src/lib/server/tools/modules/memory-write/` — new directory for `memory_write` module
+  - `backend/src/lib/server/tools/modules/index.ts` — update exports and `allToolModules` array
 
-* **Dependencies**: None added or removed. Existing `@/lib/memory` services unchanged.
+* **Dependencies**: None added or removed. Existing `@/lib/server/memory` services unchanged.
 
 * **Patterns to follow**:
   - `defineToolModule` / `defineTool` pattern from `../../types`
@@ -62,12 +62,12 @@ Replace the single `continuity` tool and the Obsidian `memory` module with two n
 
 ### Steps
 
-1. Create `backend/src/lib/tools/modules/memory-read/index.ts` with `find` and `list` actions extracted from current continuity tool
-2. Create `backend/src/lib/tools/modules/memory-write/index.ts` with `save`, `update`, `supersede`, `delete`, `resolve_question` actions extracted from current continuity tool
-3. Delete `backend/src/lib/tools/modules/continuity/`
-4. Replace `backend/src/lib/tools/modules/memory/index.ts` (remove Obsidian module)
-5. Update `backend/src/lib/tools/modules/index.ts` — remove old imports, add new modules
-6. Update `backend/src/lib/tools/modules/memory/README.md` and `continuity/README.md` (or delete and create new READMEs)
+1. Create `backend/src/lib/server/tools/modules/memory-read/index.ts` with `find` and `list` actions extracted from current continuity tool
+2. Create `backend/src/lib/server/tools/modules/memory-write/index.ts` with `save`, `update`, `supersede`, `delete`, `resolve_question` actions extracted from current continuity tool
+3. Delete `backend/src/lib/server/tools/modules/continuity/`
+4. Replace `backend/src/lib/server/tools/modules/memory/index.ts` (remove Obsidian module)
+5. Update `backend/src/lib/server/tools/modules/index.ts` — remove old imports, add new modules
+6. Update `backend/src/lib/server/tools/modules/memory/README.md` and `continuity/README.md` (or delete and create new READMEs)
 
 ### Verification
 

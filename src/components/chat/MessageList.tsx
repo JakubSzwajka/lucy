@@ -29,8 +29,8 @@ import {
   type ToolPart,
 } from "@/components/ai-elements/tool";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { formatMessageTimestamp, formatGapTimestamp } from "@/lib/utils/format-timestamp";
+import { cn } from "@/lib/client/utils";
+import { formatMessageTimestamp, formatGapTimestamp } from "@/lib/client/utils/format-timestamp";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -44,7 +44,7 @@ import {
   WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
-import { api } from "@/lib/api/client";
+import { api } from "@/lib/client/api/client";
 import { useTts } from "@/hooks/useTts";
 import type { ChatMessage, ContentPart, ChildSessionSummary, SessionWithAgents, Item, MessageItem } from "@/types";
 

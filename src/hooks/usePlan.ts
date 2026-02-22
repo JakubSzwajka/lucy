@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
-import { queryKeys } from "@/lib/query/keys";
+import { api } from "@/lib/client/api/client";
+import { queryKeys } from "@/lib/client/query/keys";
 import type { Plan } from "@/components/plan";
 
 interface UsePlanOptions {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getIdentityService } from "@/lib/memory";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getIdentityService } from "@/lib/server/memory";
 
 // POST /api/identity/generate - Generate new identity version from memories
 export async function POST(request: NextRequest) {

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { StatsTab } from "@/components/memory/StatsTab";
 import { useTriggers } from "@/hooks/useTriggers";
 import { useAgentConfigs } from "@/hooks/useAgentConfigs";
-import { api } from "@/lib/api/client";
+import { api } from "@/lib/client/api/client";
 import { TriggerRunList } from "@/components/settings/TriggerRunList";
 import cronstrue from "cronstrue";
 import { CronExpressionParser } from "cron-parser";

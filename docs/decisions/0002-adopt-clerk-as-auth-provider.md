@@ -15,12 +15,12 @@ The app is being prepared for sharing with friends and family. This requires:
 2. **Offloaded security** — password storage, token management, rate limiting, and OAuth complexity should be handled by a dedicated auth provider rather than maintained in-house.
 
 Current auth footprint:
-- `backend/src/lib/auth/` — JWT utilities (`jwt.ts`), middleware (`middleware.ts`), types
+- `backend/src/lib/server/auth/` — JWT utilities (`jwt.ts`), middleware (`middleware.ts`), types
 - `backend/src/app/api/auth/` — register, login, verify routes with bcrypt + rate limiting
-- `backend/src/lib/db/schema.ts` — `users` table with `passwordHash` column
+- `backend/src/lib/server/db/schema.ts` — `users` table with `passwordHash` column
 - `desktop/renderer/src/hooks/useAuth.tsx` — AuthProvider managing tokens in localStorage
 - `desktop/renderer/src/app/login/` and `/register/` — custom login/register pages
-- `desktop/renderer/src/lib/api/client.ts` — Bearer token injection from manual storage
+- `desktop/renderer/src/lib/client/api/client.ts` — Bearer token injection from manual storage
 
 No existing users need to be migrated — the user base can start fresh on Clerk.
 
@@ -62,22 +62,22 @@ Replace the entire custom auth system with **Clerk** (hosted authentication plat
 * **Affected paths**:
 
   ### Backend
-  - `backend/src/lib/auth/middleware.ts` — Replace `verifyToken()` with Clerk's `verifyToken()` or `clerkClient.verifyToken()`. Keep the `requireAuth` / `optionalAuth` function signatures returning `{ user: { userId, email } }`.
-  - `backend/src/lib/auth/jwt.ts` — Delete entirely. Clerk handles token issuance.
-  - `backend/src/lib/auth/types.ts` — Keep `AuthUser` and `AuthResult` interfaces (contract unchanged).
+  - `backend/src/lib/server/auth/middleware.ts` — Replace `verifyToken()` with Clerk's `verifyToken()` or `clerkClient.verifyToken()`. Keep the `requireAuth` / `optionalAuth` function signatures returning `{ user: { userId, email } }`.
+  - `backend/src/lib/server/auth/jwt.ts` — Delete entirely. Clerk handles token issuance.
+  - `backend/src/lib/server/auth/types.ts` — Keep `AuthUser` and `AuthResult` interfaces (contract unchanged).
   - `backend/src/app/api/auth/login/route.ts` — Delete. Clerk handles login.
   - `backend/src/app/api/auth/register/route.ts` — Delete. Clerk handles registration.
   - `backend/src/app/api/auth/verify/route.ts` — Delete or replace with a thin proxy to Clerk's session check.
-  - `backend/src/lib/db/schema.ts` — Remove `passwordHash` from `users` table. Add `clerkId` column (text, unique). User records are created on first authenticated request (upsert by Clerk ID).
+  - `backend/src/lib/server/db/schema.ts` — Remove `passwordHash` from `users` table. Add `clerkId` column (text, unique). User records are created on first authenticated request (upsert by Clerk ID).
   - `backend/.env.local` — Add `CLERK_SECRET_KEY`. Remove `JWT_SECRET`.
-  - `backend/src/lib/rate-limit.ts` — Keep for non-auth endpoints; remove auth-specific rate limiting (Clerk handles it).
+  - `backend/src/lib/server/rate-limit.ts` — Keep for non-auth endpoints; remove auth-specific rate limiting (Clerk handles it).
 
   ### Desktop Frontend
   - `desktop/renderer/src/hooks/useAuth.tsx` — Replace manual JWT/localStorage management with Clerk's `useAuth()` / `useUser()` hooks via `@clerk/clerk-react`.
   - `desktop/renderer/src/app/login/page.tsx` — Replace with Clerk's `<SignIn />` component.
   - `desktop/renderer/src/app/register/page.tsx` — Replace with Clerk's `<SignUp />` component.
   - `desktop/renderer/src/components/auth-guard.tsx` — Simplify using Clerk's `<SignedIn>` / `<SignedOut>` components or `useAuth()`.
-  - `desktop/renderer/src/lib/api/client.ts` — Get Bearer token from `clerk.session.getToken()` instead of localStorage.
+  - `desktop/renderer/src/lib/client/api/client.ts` — Get Bearer token from `clerk.session.getToken()` instead of localStorage.
   - `desktop/renderer/.env.local` — Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
 
 * **Patterns to follow**:

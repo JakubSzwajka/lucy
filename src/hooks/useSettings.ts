@@ -2,8 +2,8 @@
 
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
-import { queryKeys } from "@/lib/query/keys";
+import { api } from "@/lib/client/api/client";
+import { queryKeys } from "@/lib/client/query/keys";
 import type { UserSettings, SettingsUpdate } from "@/types";
 
 function parseSettings(data: Record<string, unknown>): UserSettings {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { db } from "@/lib/db";
-import { memorySettings, agentConfigs } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { db } from "@/lib/server/db";
+import { memorySettings, agentConfigs } from "@/lib/server/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { UpdateMemorySettingsInput } from "@/lib/memory/types";
-import { MEMORY_SETTINGS_DEFAULTS } from "@/lib/memory/types";
+import type { UpdateMemorySettingsInput } from "@/lib/server/memory/types";
+import { MEMORY_SETTINGS_DEFAULTS } from "@/lib/server/memory/types";
 
 // GET /api/memory-settings - Get user's memory settings (or defaults)
 export async function GET(request: NextRequest) {

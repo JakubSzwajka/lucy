@@ -31,8 +31,8 @@ desktop/renderer/src/app/layout.tsx →  backend/src/app/layout.tsx  (replaces e
 desktop/renderer/src/app/globals.css → backend/src/app/globals.css (replaces existing)
 desktop/renderer/src/components/    →  backend/src/components/
 desktop/renderer/src/hooks/         →  backend/src/hooks/
-desktop/renderer/src/lib/api/       →  backend/src/lib/api/        (client.ts etc.)
-desktop/renderer/src/lib/utils.ts   →  backend/src/lib/utils.ts
+desktop/renderer/src/lib/client/api/       →  backend/src/lib/client/api/        (client.ts etc.)
+desktop/renderer/src/lib/client/utils.ts   →  backend/src/lib/client/utils.ts
 desktop/renderer/src/types/         →  backend/src/types/
 desktop/renderer/public/            →  backend/public/
 ```
@@ -41,7 +41,7 @@ No import path changes needed — both use `@/* → ./src/*`.
 
 ### 2. Fix the API client
 
-`desktop/renderer/src/lib/api/client.ts` currently does:
+`desktop/renderer/src/lib/client/api/client.ts` currently does:
 ```ts
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 ```

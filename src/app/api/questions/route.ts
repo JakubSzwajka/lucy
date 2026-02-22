@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getQuestionService } from "@/lib/memory";
-import type { QuestionFilters } from "@/lib/memory";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getQuestionService } from "@/lib/server/memory";
+import type { QuestionFilters } from "@/lib/server/memory";
 
 // GET /api/questions - List questions with filters
 export async function GET(request: NextRequest) {

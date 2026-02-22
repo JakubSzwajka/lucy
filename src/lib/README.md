@@ -1,10 +1,10 @@
 # lib
 
-Backend capability and orchestration modules.
+Two sub-trees with an explicit boundary:
 
-## Module Graph
+## `server/` — Backend modules (Node.js only)
 
-- `services/` - orchestration layer used by routes
+- `services/` - orchestration layer used by API routes
 - `ai/` - model registry + provider clients
 - `tools/` - tool registry/providers/modules for agent tool calls
 - `memory/` - structured continuity memory subsystem
@@ -12,16 +12,17 @@ Backend capability and orchestration modules.
 - `auth/` - JWT and route auth guards
 - `db/` - schema and DB singleton
 - `openapi/` - spec builder
+- `rate-limit.ts` - rate limiting utility
+- `tts.ts` - text-to-speech utility
+
+## `client/` — Browser-safe modules
+
+- `api/` - API client singleton
+- `query/` - React Query helpers
+- `utils.ts` - `cn()` classname helper
+- `utils/` - shared client utilities
 
 ## Layering Rule
 
-Higher-level modules call lower-level modules through stable interfaces.
+Server modules never import from `client/`; client modules never import from `server/`.
 Each directory README explains only that directory's contract.
-
-## Read Next
-
-- `services/README.md`
-- `ai/README.md`
-- `tools/README.md`
-- `memory/README.md`
-- `integrations/README.md`

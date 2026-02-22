@@ -2,8 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useCallback } from "react";
-import { api } from "@/lib/api/client";
-import { queryKeys } from "@/lib/query/keys";
+import { api } from "@/lib/client/api/client";
+import { queryKeys } from "@/lib/client/query/keys";
 import type { ModelConfig } from "@/types";
 
 export function useModels() {

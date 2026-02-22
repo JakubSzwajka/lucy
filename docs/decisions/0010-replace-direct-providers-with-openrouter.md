@@ -47,13 +47,13 @@ Replace all three direct provider integrations with a single OpenRouter provider
 ## Implementation Plan
 
 * **Affected paths**:
-  - `backend/src/lib/ai/providers.ts` — rewrite: single OpenRouter client via `createOpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY })`
-  - `backend/src/lib/ai/models.ts` — rewrite: replace static array with function that fetches from OpenRouter `/api/v1/models` and maps to `ModelConfig`
-  - `backend/src/lib/ai/types/index.ts` — simplify: `ModelConfig.provider` becomes `"openrouter"` (single value), add OpenRouter response types
+  - `backend/src/lib/server/ai/providers.ts` — rewrite: single OpenRouter client via `createOpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY })`
+  - `backend/src/lib/server/ai/models.ts` — rewrite: replace static array with function that fetches from OpenRouter `/api/v1/models` and maps to `ModelConfig`
+  - `backend/src/lib/server/ai/types/index.ts` — simplify: `ModelConfig.provider` becomes `"openrouter"` (single value), add OpenRouter response types
   - `backend/src/app/api/models/route.ts` — update: call new dynamic model fetcher
   - `backend/src/app/api/providers/route.ts` — simplify: just check `OPENROUTER_API_KEY` exists
-  - `backend/src/lib/services/chat/chat.service.ts` — simplify: remove provider switching in `buildProviderOptions()`, remove multi-provider model resolution
-  - `backend/src/lib/services/config/settings.service.ts` — review: `enabledModels` filter still works against dynamic list
+  - `backend/src/lib/server/services/chat/chat.service.ts` — simplify: remove provider switching in `buildProviderOptions()`, remove multi-provider model resolution
+  - `backend/src/lib/server/services/config/settings.service.ts` — review: `enabledModels` filter still works against dynamic list
   - `backend/package.json` — remove `@ai-sdk/anthropic`, `@ai-sdk/google`; keep `@ai-sdk/openai`
   - `.env.example` — replace `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` with `OPENROUTER_API_KEY`
 
@@ -74,10 +74,10 @@ Replace all three direct provider integrations with a single OpenRouter provider
 
 ### Steps
 
-1. Add OpenRouter response types to `backend/src/lib/ai/types/index.ts`
-2. Rewrite `backend/src/lib/ai/providers.ts` — single OpenRouter client, simplified `getLanguageModel()` and `getAvailableProviders()`
-3. Rewrite `backend/src/lib/ai/models.ts` — fetch from OpenRouter, map to `ModelConfig`
-4. Simplify `backend/src/lib/services/chat/chat.service.ts` — remove `buildProviderOptions()` branching
+1. Add OpenRouter response types to `backend/src/lib/server/ai/types/index.ts`
+2. Rewrite `backend/src/lib/server/ai/providers.ts` — single OpenRouter client, simplified `getLanguageModel()` and `getAvailableProviders()`
+3. Rewrite `backend/src/lib/server/ai/models.ts` — fetch from OpenRouter, map to `ModelConfig`
+4. Simplify `backend/src/lib/server/services/chat/chat.service.ts` — remove `buildProviderOptions()` branching
 5. Update `backend/src/app/api/models/route.ts` and `backend/src/app/api/providers/route.ts`
 6. Update `.env.example`, remove old API key references
 7. Remove `@ai-sdk/anthropic` and `@ai-sdk/google` from `package.json`

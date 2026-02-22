@@ -17,9 +17,9 @@ Think of this as a graph: route layer -> service layer -> capability/integration
 ## Entry Points
 
 - App routes: `src/app/api/`
-- Service orchestrators: `src/lib/services/`
-- Capabilities: `src/lib/memory/`, `src/lib/tools/`, `src/lib/integrations/`, `src/lib/ai/`
-- Persistence: `src/lib/db/`
+- Service orchestrators: `src/lib/server/services/`
+- Capabilities: `src/lib/server/memory/`, `src/lib/server/tools/`, `src/lib/server/integrations/`, `src/lib/server/ai/`
+- Persistence: `src/lib/server/db/`
 
 ## Start
 

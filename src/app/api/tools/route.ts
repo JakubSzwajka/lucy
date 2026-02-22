@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getToolRegistry, initializeToolRegistry } from "@/lib/tools";
-import { getChatService } from "@/lib/services/chat/chat.service";
-import { getSessionService } from "@/lib/services/session";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getToolRegistry, initializeToolRegistry } from "@/lib/server/tools";
+import { getChatService } from "@/lib/server/services/chat/chat.service";
+import { getSessionService } from "@/lib/server/services/session";
 
 /**
  * GET /api/tools

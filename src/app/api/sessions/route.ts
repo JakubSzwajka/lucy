@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getSessionService } from "@/lib/services";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getSessionService } from "@/lib/server/services";
 
 // GET /api/sessions - List all sessions
 export async function GET(request: NextRequest) {

@@ -3,10 +3,10 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import { api, API_BASE_URL } from "@/lib/api/client";
+import { api, API_BASE_URL } from "@/lib/client/api/client";
 import {
   mergeWithStreaming,
-} from "@/lib/utils/item-transformer";
+} from "@/lib/client/utils/item-transformer";
 import { extractPlanFromMessages } from "./usePlanStream";
 import type { Plan } from "@/components/plan";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";

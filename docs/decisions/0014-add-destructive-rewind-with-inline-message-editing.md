@@ -56,11 +56,11 @@ Add a **destructive rewind** feature: the user can inline-edit any of their sent
 
 - **Affected paths**:
   - `backend/src/app/api/sessions/[id]/rewind/route.ts` — new POST endpoint
-  - `backend/src/lib/services/item/item.repository.ts` — add `deleteAfter(agentId, createdAt)` method
-  - `backend/src/lib/services/item/item.service.ts` — add `rewindToItem(itemId, newContent, userId)` method
+  - `backend/src/lib/server/services/item/item.repository.ts` — add `deleteAfter(agentId, createdAt)` method
+  - `backend/src/lib/server/services/item/item.service.ts` — add `rewindToItem(itemId, newContent, userId)` method
   - `desktop/renderer/src/components/chat/MessageBubble.tsx` (or equivalent message component) — add pencil button, contentEditable state
   - `desktop/renderer/src/hooks/useAgentChat.ts` — add `rewindToMessage(itemId, newContent)` function
-  - `desktop/renderer/src/lib/api/client.ts` — add `rewindSession(sessionId, itemId, newContent)` API call
+  - `desktop/renderer/src/lib/client/api/client.ts` — add `rewindSession(sessionId, itemId, newContent)` API call
 
 - **Dependencies**: None — uses existing DB operations, existing SSE streaming, existing contentEditable browser API.
 

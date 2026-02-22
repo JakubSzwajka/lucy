@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/middleware";
-import { getTriggerService } from "@/lib/services";
+import { requireAuth } from "@/lib/server/auth/middleware";
+import { getTriggerService } from "@/lib/server/services";
 
 // GET /api/triggers - List all triggers
 export async function GET(request: NextRequest) {
