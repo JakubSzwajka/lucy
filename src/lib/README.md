@@ -4,20 +4,18 @@ Two sub-trees with an explicit boundary:
 
 ## `server/` — Backend modules (Node.js only)
 
-- `chat/` - chat orchestration (streaming turns, agent execution)
-- `domain/` - entity CRUD (session, agent, item, plan, agent-config, config)
+- `chat/` - agent execution engine (orchestration, tools, step persistence)
+- `sessions/` - conversation data model (session, agent, item CRUD)
+- `config/` - agent configs, system prompts, settings
+- `plans/` - plan and step CRUD
 - `ai/` - model registry + provider clients
-- `tools/` - tool registry/providers/modules for agent tool calls
 - `memory/` - structured continuity memory subsystem
 - `mcp/` - Model Context Protocol client, pool, and management
 - `triggers/` - webhook triggers and scheduling
-- `search/` - conversation search and retrieval
-- `filesystem/` - sandboxed filesystem operations
 - `auth/` - JWT and route auth guards
 - `db/` - schema and DB singleton
 - `openapi/` - spec builder
 - `rate-limit.ts` - rate limiting utility
-- `tts.ts` - text-to-speech utility
 
 ## `client/` — Browser-safe modules
 
@@ -25,6 +23,7 @@ Two sub-trees with an explicit boundary:
 - `query/` - React Query helpers
 - `utils.ts` - `cn()` classname helper
 - `utils/` - shared client utilities
+- `tts.ts` - text-to-speech utility
 
 ## Layering Rule
 

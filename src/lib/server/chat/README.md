@@ -1,6 +1,6 @@
 # Chat
 
-Core chat orchestration — streaming turns, non-streaming agent execution, and step persistence.
+The agent execution engine — takes a query + tools + model, streams or generates a response.
 
 ## Public API
 
@@ -11,10 +11,11 @@ Core chat orchestration — streaming turns, non-streaming agent execution, and 
 
 ## Responsibility Boundary
 
-Owns the full chat lifecycle: system prompt resolution, tool loading, model invocation, step persistence, and agent finalization. Delegates entity CRUD to `domain/`, tool resolution to `tools/`, and config lookup to `config/`.
+Owns the full chat lifecycle: system prompt resolution, tool loading, model invocation, step persistence, and agent finalization. Delegates entity CRUD to `sessions/`, config lookup to `config/`. Tool registry and builtin tools live inside `tools/` as a child module.
 
 ## Read Next
 
-- [Domain](../domain/README.md)
-- [Tools](../tools/README.md)
+- [Tools](./tools/README.md)
+- [Sessions](../sessions/README.md)
 - [Config](../config/README.md)
+- [Memory](../memory/README.md)

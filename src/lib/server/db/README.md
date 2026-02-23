@@ -23,5 +23,5 @@ Business semantics belong in repository/service/capability modules.
 
 ## Read Next
 
-- [Services Layer](../services/README.md) — business logic that queries these tables
-- [Auth Module](../auth/README.md) — user authentication (JWT, middleware)
+- [Sessions](../sessions/README.md) — conversation data model
+- [Auth](../auth/README.md) — user authentication (JWT, middleware)

@@ -11,8 +11,8 @@ Model Context Protocol client management — connecting to, pooling, and queryin
 
 ## Responsibility Boundary
 
-Owns MCP server connections and tool discovery. Tool registration into the agent runtime is handled by `tools/providers/mcp.ts`.
+Owns MCP server connections and tool discovery. Tool registration into the agent runtime is handled by `chat/tools/mcp-provider.ts`.
 
 ## Read Next
 
-- [Tools](../tools/README.md)
+- [Chat Tools](../chat/tools/README.md)
