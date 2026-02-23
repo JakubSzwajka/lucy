@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getSettingsService } from "@/lib/server/domain/config";
+import { getSettingsService } from "@/lib/server/config";
 
 // GET /api/settings - Fetch current settings
 export async function GET(request: NextRequest) {

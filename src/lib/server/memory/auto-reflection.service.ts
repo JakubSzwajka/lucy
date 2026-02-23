@@ -1,7 +1,7 @@
 import { getMemorySettings } from "./settings";
 import { estimateTokens } from "@/lib/server/ai/tokens";
-import { getItemService } from "@/lib/server/domain/item";
-import { getSessionService } from "@/lib/server/domain/session";
+import { getItemService } from "@/lib/server/sessions";
+import { getSessionService } from "@/lib/server/sessions";
 import { getChatService } from "@/lib/server/chat";
 import type { Item } from "@/types";
 import type { MemorySettings } from "./types";

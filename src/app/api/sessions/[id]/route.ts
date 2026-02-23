@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getSessionService } from "@/lib/server/domain";
+import { getSessionService } from "@/lib/server/sessions";
 
 interface RouteParams {
   params: Promise<{ id: string }>;

@@ -1,4 +1,4 @@
-import { getSystemPromptService } from "@/lib/server/domain/config";
+import { getSystemPromptService } from "@/lib/server/config";
 import { streamText, generateText, stepCountIs, ToolSet, type ModelMessage as AiModelMessage, type ToolCallPart as AiToolCallPart, type ToolResultPart as AiToolResultPart } from "ai";
 import { buildProviderOptions, getLanguageModel } from "@/lib/server/ai/providers";
 import { getModelConfig } from "@/lib/server/ai/models";
@@ -6,19 +6,19 @@ import {
   getToolRegistry,
   initializeToolRegistry,
   getMcpProvider,
-} from "@/lib/server/tools";
+} from "./tools";
 import { EnvironmentContextService } from "./environment-context.service";
-import { getAgentService } from "@/lib/server/domain/agent";
-import { getAgentConfigService } from "@/lib/server/domain/agent-config";
-import { getSessionService } from "@/lib/server/domain/session";
-import { getItemService } from "@/lib/server/domain/item";
+import { getAgentService } from "@/lib/server/sessions";
+import { getAgentConfigService } from "@/lib/server/config";
+import { getSessionService } from "@/lib/server/sessions";
+import { getItemService } from "@/lib/server/sessions";
 import { persistStepContent } from "./step-persistence.service";
 import { startActiveObservation, propagateAttributes, updateActiveTrace } from "@langfuse/tracing";
 import type { ChatContext, ChatPrepareOptions, ExecuteTurnOptions, IncomingUserMessage, ModelMessage, ChatFinishResult, RunAgentOptions, RunAgentResult } from "./types";
 import type { MessageItem, ToolCallItem, ToolResultItem, Item, Agent, AgentConfigWithTools } from "@/types";
-import type { ToolFilter } from "@/lib/server/tools";
-import type { ToolSource } from "@/lib/server/tools/types";
-import { generateDelegateTools } from "@/lib/server/tools/delegate";
+import type { ToolFilter } from "./tools";
+import type { ToolSource } from "./tools/types";
+import { generateDelegateTools } from "./tools/builtin/delegate";
 
 import { maybeAutoReflect } from "@/lib/server/memory/auto-reflection.service";
 import { getIdentityService } from "@/lib/server/memory";

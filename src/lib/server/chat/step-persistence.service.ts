@@ -1,9 +1,35 @@
-import {
-  insertItem,
-  saveToolCall,
-  saveToolResult,
-  updateToolCallStatus,
-} from "@/lib/server/tools";
+import { getItemService } from "@/lib/server/sessions";
+import type { CreateItemData } from "@/lib/server/sessions";
+import type { ToolCallStatus } from "@/types";
+
+async function insertItem(agentId: string, itemData: CreateItemData): Promise<void> {
+  const itemService = getItemService();
+  const result = await itemService.create(agentId, itemData);
+  if (result.error || !result.item) {
+    throw new Error(result.error || "Failed to insert item");
+  }
+}
+
+async function saveToolCall(agentId: string, callId: string, toolName: string, toolArgs: Record<string, unknown>, status: ToolCallStatus = "running"): Promise<void> {
+  const itemService = getItemService();
+  const result = await itemService.createToolCall(agentId, callId, toolName, toolArgs, status);
+  if (result.error || !result.item) {
+    throw new Error(result.error || "Failed to save tool call");
+  }
+}
+
+async function saveToolResult(agentId: string, callId: string, result?: unknown, error?: string): Promise<void> {
+  const itemService = getItemService();
+  const itemResult = await itemService.createToolResult(agentId, callId, result, error);
+  if (itemResult.error || !itemResult.item) {
+    throw new Error(itemResult.error || "Failed to save tool result");
+  }
+}
+
+async function updateToolCallStatus(callId: string, status: ToolCallStatus): Promise<void> {
+  const itemService = getItemService();
+  await itemService.updateToolCallStatus(callId, status);
+}
 
 // ============================================================================
 // Types for AI SDK Step Content

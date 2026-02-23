@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getSessionService } from "@/lib/server/domain";
-import { getItemRepository } from "@/lib/server/domain/item/item.repository";
+import { getSessionService, getItemRepository } from "@/lib/server/sessions";
 import type { PaginatedItemsResponse } from "@/types";
 
 interface RouteParams {

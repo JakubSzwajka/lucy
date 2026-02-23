@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/server/auth/middleware";
-import { getSystemPromptService } from "@/lib/server/domain/config";
+import { getSystemPromptService } from "@/lib/server/config";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
