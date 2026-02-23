@@ -117,8 +117,6 @@ const COMMAND_CENTER_NAV: NavItem[] = [
 
 interface SidebarProps {
   sessions: Session[];
-  activeSessionId: string | null;
-  onSelectSession: (id: string) => void;
   onNewChat: (agentConfigId?: string) => void;
   onDeleteSession: (id: string) => void;
   onPinSession: (id: string) => void;
@@ -128,8 +126,6 @@ interface SidebarProps {
 
 export function Sidebar({
   sessions,
-  activeSessionId,
-  onSelectSession,
   onNewChat,
   onDeleteSession,
   onPinSession,
@@ -137,6 +133,8 @@ export function Sidebar({
   onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
+  // Derive activeSessionId from the URL
+  const activeSessionId = pathname?.match(/^\/chat\/([^/]+)/)?.[1] ?? null;
   const router = useRouter();
   const { user, logout } = useAuth();
   const { configs } = useAgentConfigs();
@@ -147,24 +145,17 @@ export function Sidebar({
   }, [configs]);
   const [showConfigPicker, setShowConfigPicker] = useState(false);
   const [agentsExpanded, setAgentsExpanded] = useState(true);
-  const isOnSettings = pathname?.startsWith("/settings");
-  const isOnDashboard = pathname?.startsWith("/dashboard");
-  const isOnChat = !isOnSettings && !isOnDashboard;
+  const isOnChat = pathname?.startsWith("/chat/");
 
   const handleSessionClick = (id: string) => {
-    onSelectSession(id);
-    if (!isOnChat) {
-      router.push("/");
-    }
+    router.push(`/chat/${id}`);
   };
 
   const handleNewChatClick = () => {
     if (configs.length === 0) {
       onNewChat();
-      if (!isOnChat) router.push("/");
     } else if (configs.length === 1) {
       onNewChat(configs[0].id);
-      if (!isOnChat) router.push("/");
     } else {
       setShowConfigPicker(true);
     }
@@ -173,7 +164,6 @@ export function Sidebar({
   const handleConfigSelect = (configId: string) => {
     setShowConfigPicker(false);
     onNewChat(configId);
-    if (!isOnChat) router.push("/");
   };
 
   return (
@@ -218,7 +208,7 @@ export function Sidebar({
       <div className={`border-b border-border ${collapsed ? "p-2" : "p-2 px-4"}`}>
         {collapsed ? (
           <div className="flex flex-col items-center gap-1">
-            <button onClick={() => router.push("/")} className={cn("w-10 h-10 rounded flex items-center justify-center transition-colors", isOnChat ? "bg-background-secondary text-foreground" : "text-muted-dark hover:text-foreground hover:bg-background/50")} title="Chat">
+            <button onClick={() => router.push(sessions[0] ? `/chat/${sessions[0].id}` : "/dashboard")} className={cn("w-10 h-10 rounded flex items-center justify-center transition-colors", isOnChat ? "bg-background-secondary text-foreground" : "text-muted-dark hover:text-foreground hover:bg-background/50")} title="Chat">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
             </button>
             <button onClick={() => router.push("/dashboard")} className={cn("w-10 h-10 rounded flex items-center justify-center transition-colors", !isOnChat ? "bg-background-secondary text-foreground" : "text-muted-dark hover:text-foreground hover:bg-background/50")} title="Command Center">
@@ -227,7 +217,7 @@ export function Sidebar({
           </div>
         ) : (
           <div className="flex bg-background rounded-md p-0.5">
-            <button onClick={() => router.push("/")} className={cn("flex-1 px-2 py-1 text-[10px] mono uppercase tracking-wide rounded flex items-center justify-center gap-1.5 transition-colors", isOnChat ? "bg-background-secondary text-foreground" : "text-muted-dark hover:text-foreground")}>
+            <button onClick={() => router.push(sessions[0] ? `/chat/${sessions[0].id}` : "/dashboard")} className={cn("flex-1 px-2 py-1 text-[10px] mono uppercase tracking-wide rounded flex items-center justify-center gap-1.5 transition-colors", isOnChat ? "bg-background-secondary text-foreground" : "text-muted-dark hover:text-foreground")}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               Chat
             </button>

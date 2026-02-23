@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMainContext } from "@/app/(main)/layout";
 import type { TriggerRun } from "@/types";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -40,11 +39,9 @@ export function TriggerRunList({
   onCancelRun,
 }: TriggerRunListProps) {
   const router = useRouter();
-  const { setActiveSessionId } = useMainContext();
 
   const navigateToSession = (sessionId: string) => {
-    setActiveSessionId(sessionId);
-    router.push("/");
+    router.push(`/chat/${sessionId}`);
   };
 
   if (runs.length === 0) return null;

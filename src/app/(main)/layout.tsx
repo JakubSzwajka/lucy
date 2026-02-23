@@ -8,18 +8,15 @@ import { api } from "@/lib/client/api/client";
 import { useSessions } from "@/hooks/useSessions";
 import { useSettings } from "@/hooks/useSettings";
 import { useModels } from "@/hooks/useModels";
-import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import type { AvailableProviders, ModelConfig } from "@/types";
 
 interface MainContextType {
-  activeSessionId: string | null;
   selectedModel: string;
   availableProviders?: AvailableProviders;
   settings: ReturnType<typeof useSettings>["settings"];
   models: ModelConfig[];
   getModelConfig: (id: string) => ModelConfig | undefined;
   sidebarCollapsed: boolean;
-  setActiveSessionId: (id: string | null) => void;
   setSelectedModel: (model: string) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   handleNewChat: (agentConfigId?: string) => Promise<void>;
@@ -40,11 +37,10 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
   const { settings } = useSettings();
   const { models, defaultModel, getModelConfig } = useModels();
-  const { configs } = useAgentConfigs();
-
   const [selectedModel, setSelectedModel] = useState("");
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -56,19 +52,12 @@ export default function MainLayout({
     pinSession,
   } = useSessions();
 
-  // Resolve selected model: user selection wins, then agent config default, then fallback
+  // Resolve selected model: user selection wins, then fallback
   const resolvedModel = useMemo(() => {
     if (models.length === 0) return selectedModel;
 
     // User-selected model takes priority
     if (selectedModel) return selectedModel;
-
-    // Agent config default for active session (used as initial value)
-    const activeSession = sessions.find(s => s.id === activeSessionId);
-    if (activeSession?.agentConfigId) {
-      const config = configs.find(c => c.id === activeSession.agentConfigId);
-      if (config?.defaultModelId) return config.defaultModelId;
-    }
 
     // Fallback: first available model
     const enabledSet = settings?.enabledModels?.length ? new Set(settings.enabledModels) : null;
@@ -76,7 +65,7 @@ export default function MainLayout({
       ? models.find(m => enabledSet.has(m.id))
       : models[0];
     return firstAvailable?.id ?? defaultModel?.id ?? "";
-  }, [activeSessionId, sessions, configs, models, settings, defaultModel, selectedModel]);
+  }, [models, settings, defaultModel, selectedModel]);
 
   useEffect(() => {
     async function fetchProviders() {
@@ -90,36 +79,24 @@ export default function MainLayout({
     fetchProviders();
   }, []);
 
-  // Select first session on load if available
-  useEffect(() => {
-    if (sessions.length > 0 && !activeSessionId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- initializing activeSessionId from async-loaded sessions; cannot compute during render
-      setActiveSessionId(sessions[0].id);
-    }
-  }, [sessions, activeSessionId]);
-
   const handleNewChat = useCallback(async (agentConfigId?: string) => {
     const newSession = await createSession(undefined, agentConfigId);
     if (newSession) {
-      setActiveSessionId(newSession.id);
+      router.push(`/chat/${newSession.id}`);
     }
-  }, [createSession]);
+  }, [createSession, router]);
 
   const handleDeleteSession = useCallback(
     async (id: string) => {
-      const success = await deleteSession(id);
-      if (success && activeSessionId === id) {
-        // Select another session or null
+      await deleteSession(id);
+      // If we're viewing the deleted session, navigate away
+      if (pathname?.startsWith(`/chat/${id}`)) {
         const remaining = sessions.filter((s) => s.id !== id);
-        setActiveSessionId(remaining.length > 0 ? remaining[0].id : null);
+        router.push(remaining.length > 0 ? `/chat/${remaining[0].id}` : "/dashboard");
       }
     },
-    [deleteSession, activeSessionId, sessions]
+    [deleteSession, pathname, sessions, router]
   );
-
-  const handleSelectSession = useCallback((id: string) => {
-    setActiveSessionId(id);
-  }, []);
 
   const handlePinSession = useCallback(
     async (id: string) => {
@@ -131,9 +108,6 @@ export default function MainLayout({
     [sessions, pinSession]
   );
 
-  const router = useRouter();
-  const pathname = usePathname();
-
   // Global keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -141,13 +115,10 @@ export default function MainLayout({
       if ((e.metaKey || e.ctrlKey) && e.key === "n") {
         e.preventDefault();
         handleNewChat();
-        if (pathname !== "/") {
-          router.push("/");
-        }
       }
 
       // Escape → Focus prompt input (only on chat page)
-      if (e.key === "Escape" && pathname === "/") {
+      if (e.key === "Escape" && pathname?.startsWith("/chat/")) {
         const textarea = document.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
         if (textarea && document.activeElement !== textarea) {
           e.preventDefault();
@@ -160,14 +131,12 @@ export default function MainLayout({
   }, [handleNewChat, pathname, router]);
 
   const contextValue: MainContextType = {
-    activeSessionId,
     selectedModel: resolvedModel,
     availableProviders,
     settings,
     models,
     getModelConfig,
     sidebarCollapsed,
-    setActiveSessionId,
     setSelectedModel,
     setSidebarCollapsed,
     handleNewChat,
@@ -181,8 +150,6 @@ export default function MainLayout({
             {/* Sidebar */}
             <Sidebar
               sessions={sessions}
-              activeSessionId={activeSessionId}
-              onSelectSession={handleSelectSession}
               onNewChat={handleNewChat}
               onDeleteSession={handleDeleteSession}
               onPinSession={handlePinSession}
