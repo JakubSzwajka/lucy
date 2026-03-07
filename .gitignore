@@ -55,6 +55,9 @@ next-env.d.ts
 # Agent runtime data
 .agents-data/
 
+# Lucy config (user-specific; commit lucy.config.example.json instead)
+lucy.config.json
+
 # IDE / Editor
 .vscode/
 .idea/

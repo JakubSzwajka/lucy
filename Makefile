@@ -5,8 +5,9 @@
 sinclude .env
 export
 
-IMAGE := lucy-gateway
-PORT  := 3080
+IMAGE       := lucy-gateway
+PORT        := 3080
+LUCY_CONFIG ?=
 
 # ----------------------------------------------------------------------------
 # Guard macros
@@ -49,6 +50,7 @@ docker-run:
 	docker run --rm -p $(PORT):$(PORT) \
 		-e OPENROUTER_API_KEY \
 		-e PORT=$(PORT) \
+		$(if $(LUCY_CONFIG),-v $(abspath $(LUCY_CONFIG)):/app/lucy.config.json:ro) \
 		$(IMAGE)
 
 ## deploy — set secrets and deploy to Railway (requires railway CLI + OPENROUTER_API_KEY)

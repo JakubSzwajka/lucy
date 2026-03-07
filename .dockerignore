@@ -4,7 +4,6 @@
 
 # Unused workspace packages
 .legacy
-agents-memory
 agents-webui
 agents-landing-page
 

@@ -5,6 +5,7 @@ export {
 export { createFileAdapters } from "./adapters/index.js";
 export { OpenRouterModelProvider } from "./adapters/openrouter-model-provider.js";
 export { resolveDataDir } from "./adapters/resolve-data-dir.js";
+export { loadConfig } from "./config/load-config.js";
 export {
   bootstrapAgentRuntime,
   createConfiguredRuntime,
@@ -12,6 +13,7 @@ export {
 export { resolveRuntimePlugins } from "./plugins/registry.js";
 
 // Re-export types
+export type { LucyConfig } from "./config/types.js";
 export type {
   Agent,
   AgentConfig,

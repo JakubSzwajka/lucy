@@ -1,12 +1,11 @@
-import { AgentRuntime, createFileAdapters } from "agents-runtime";
 import { Hono } from "hono";
 
-import { DATA_DIR } from "../config.js";
+import { getRuntime } from "../runtime.js";
 
 const sessions = new Hono();
-const runtime = new AgentRuntime(createFileAdapters(DATA_DIR));
 
 sessions.post("/sessions", async (c) => {
+  const runtime = getRuntime();
   const body = await c.req.json<{
     agentConfigId?: string;
     modelId?: string;
@@ -17,11 +16,13 @@ sessions.post("/sessions", async (c) => {
 });
 
 sessions.get("/sessions", async (c) => {
+  const runtime = getRuntime();
   const result = await runtime.listSessions();
   return c.json({ sessions: result });
 });
 
 sessions.get("/sessions/:id", async (c) => {
+  const runtime = getRuntime();
   const id = c.req.param("id");
   const result = await runtime.getSession(id);
   if (!result) return c.json({ error: "Session not found" }, 404);
@@ -37,6 +38,7 @@ sessions.get("/sessions/:id", async (c) => {
 });
 
 sessions.get("/sessions/:id/items", async (c) => {
+  const runtime = getRuntime();
   const id = c.req.param("id");
   const items = await runtime.getSessionItems(id);
   if (!items) return c.json({ error: "Session not found" }, 404);

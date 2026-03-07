@@ -1,0 +1,16 @@
+services:
+  gateway:
+    build: .
+    ports:
+      - "${PORT:-3080}:${PORT:-3080}"
+    environment:
+      - PORT=${PORT:-3080}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - AGENTS_DATA_DIR=/data
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    volumes:
+      - ~/.agents-data:/data
+      - ./lucy.config.json:/app/lucy.config.json:ro
+
+volumes:
+  agents-data:

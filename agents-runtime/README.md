@@ -8,6 +8,7 @@ Standalone AI agent execution engine using the Vercel AI SDK. Runs agents in str
 - `bootstrapAgentRuntime(...)` - primary bootstrap entrypoint; builds an `AgentRuntime` from runtime config, deps, and an installed plugin registry
 - `createConfiguredRuntime(...)` - compatibility alias for `bootstrapAgentRuntime(...)`
 - `resolveRuntimePlugins(...)` - resolves enabled plugin ids from runtime config against an installed plugin registry
+- `loadConfig(path?)` - loads `lucy.config.json` (or `LUCY_CONFIG_PATH`) into a typed `LucyConfig`
 - `cancelAgent(agentId)` - aborts a running non-streaming agent
 - `createFileAdapters(dataDir?)` - file-backed implementations of the runtime ports
 - `resolveDataDir(dataDir?)` - resolves the runtime data directory
@@ -58,6 +59,7 @@ Owns session lifecycle, context assembly, model execution, step persistence, can
 
 - [Runtime internals](./src/runtime/README.md) - session helpers, context assembly, and execution flow
 - [Plugin system](./src/plugins/README.md) - registry resolution, bootstrap, and lifecycle hook orchestration
+- [Config loading](./src/config/) - `lucy.config.json` loader and `LucyConfig` type
 - [Type domains](./src/types/README.md) - split type surface for domain, runtime, and plugin contracts
 - [Adapters](./src/adapters/README.md) - file-based port implementations and OpenRouter provider
 - [agents-memory](../agents-memory/README.md) - proof plugin package implementing the runtime contract

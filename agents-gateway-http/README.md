@@ -28,6 +28,7 @@ PORT=4000 npm start  # custom port
 |---------|---------|-------------|
 | `PORT` | `3080` | Server listen port |
 | `AGENTS_DATA_DIR` | `~/.agents-data` | File-based storage root (shared with agents-runtime) |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
 
 ## Responsibility Boundary
 
@@ -36,4 +37,5 @@ Owns HTTP routing, request validation, and response shaping. All session lifecyc
 ## Read Next
 
 - [agents-runtime](../agents-runtime/README.md) - standalone runtime this gateway wraps
+- [agents-webui](../agents-webui/README.md) - React chat UI that consumes this gateway
 - [e2e test script](./scripts/e2e-test.sh) - curl-based integration tests

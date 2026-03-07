@@ -1,13 +1,11 @@
-import { AgentRuntime, createFileAdapters } from "agents-runtime";
 import { Hono } from "hono";
 
-import { DATA_DIR } from "../config.js";
+import { getRuntime } from "../runtime.js";
 
 const chat = new Hono();
 
-const runtime = new AgentRuntime(createFileAdapters(DATA_DIR));
-
 chat.post("/chat", async (c) => {
+  const runtime = getRuntime();
   const body = await c.req.json<{
     sessionId?: string;
     message?: string;
