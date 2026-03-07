@@ -1,0 +1,37 @@
+# Version control
+.git
+.gitignore
+
+# Unused workspace packages
+.legacy
+agents-memory
+agents-webui
+agents-landing-page
+
+# Build artifacts and deps (installed inside container)
+node_modules
+dist
+*.tsbuildinfo
+
+# Runtime data
+.agents-data
+
+# Documentation
+docs
+*.md
+
+# Environment and secrets
+.env*
+!.env.example
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Misc
+.husky
+.turbo
+coverage
+.playwright
