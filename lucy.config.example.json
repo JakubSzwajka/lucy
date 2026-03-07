@@ -2,14 +2,7 @@
   "agents-runtime": {
     "plugins": {
       "enabled": ["memory"],
-      "configById": {
-        "memory": {
-          "initialMemory": {
-            "content": "You have a persistent memory system. Use it to remember user preferences.",
-            "title": "Memory"
-          }
-        }
-      }
+      "configById": {}
     }
   }
 }

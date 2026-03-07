@@ -54,6 +54,12 @@ export function createMemoryPlugin(options: MemoryPluginOptions = {}): MemoryPlu
 
   return {
     id: options.id ?? DEFAULT_PLUGIN_ID,
+    onInit: async () => {
+      console.log("🧠 Memory plugin initialized");
+    },
+    onDestroy: async () => {
+      console.log("🧠 Memory plugin destroyed");
+    },
     async onRunComplete(input) {
       rememberObservedRun(context, input);
 

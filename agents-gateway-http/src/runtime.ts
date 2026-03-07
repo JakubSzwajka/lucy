@@ -25,3 +25,9 @@ export function getRuntime(): AgentRuntime {
   }
   return runtime;
 }
+
+export async function destroyRuntime(): Promise<void> {
+  if (!runtime) return;
+  await runtime.destroy();
+  runtime = null;
+}
