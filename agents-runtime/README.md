@@ -4,7 +4,7 @@ Standalone AI agent execution engine using the Vercel AI SDK. Runs agents in str
 
 ## Public API
 
-- `AgentRuntime` — main class; `prepareContext()` builds chat context, `run()` executes an agent turn
+- `AgentRuntime` — main class; `createSession()`, `getSession()`, `listSessions()`, `getSessionItems()`, `sendMessage()` for session lifecycle; `prepareContext()` + `run()` for low-level agent execution
 - `cancelAgent(agentId)` — aborts a running non-streaming agent
 - `resolveDataDir(dataDir?)` — resolves data directory: explicit arg > `AGENTS_DATA_DIR` env var > `~/.agents-data`
 - `createFileAdapters(dataDir?)` — creates file-based implementations of all port interfaces (uses `resolveDataDir` internally)
@@ -12,34 +12,31 @@ Standalone AI agent execution engine using the Vercel AI SDK. Runs agents in str
 
 ### Port Interfaces (implement to bring your own storage)
 
-- `AgentStore` — read/update agent state
+- `AgentStore` — create/read/update agent state
 - `ItemStore` — read/append conversation items (messages, tool calls, results, reasoning)
-- `ConfigStore` — read agent configs and system prompts
+- `ConfigStore` — create/read agent configs and system prompts
 - `ModelProvider` — resolve model IDs to AI SDK `LanguageModel` instances
 - `IdentityProvider` — supply identity documents for context enrichment
-- `SessionStore` — session lifecycle (touch)
+- `SessionStore` — create/read/list/touch sessions
 
 ### Types
 
-`Agent`, `Item`, `ModelMessage`, `ChatContext`, `RunOptions`, `RunResult`, `RuntimeDeps`, `AgentConfig`, `AgentConfigWithTools`, `ModelConfig`, `SystemPrompt`, `IdentityDocument`, and related union/item types.
+`Agent`, `Session`, `Item`, `ModelMessage`, `ChatContext`, `RunOptions`, `RunResult`, `RuntimeDeps`, `AgentConfig`, `AgentConfigWithTools`, `ModelConfig`, `SystemPrompt`, `IdentityDocument`, and related union/item types.
 
 ## Use It Like This
 
 ```ts
-import { AgentRuntime, createFileAdapters } from "agents-runtime";
+import { AgentRuntime } from "agents-runtime";
 
 const runtime = new AgentRuntime(); // uses file adapters + OpenRouter by default
 
-const result = await runtime.run("agent-1", "user-1", messages, {
-  sessionId: "session-1",
-  streaming: false,
-  maxTurns: 5,
-});
+const { sessionId } = await runtime.createSession({ systemPrompt: "You are helpful." });
+const { response } = await runtime.sendMessage(sessionId, "Hello!");
 ```
 
 ## Responsibility Boundary
 
-Owns agent execution loop (context preparation, model calls, step persistence, cancellation). Delegates storage to port implementations and model resolution to `ModelProvider`. Does **not** own tool registration — tools are passed via `ChatContext`.
+Owns session lifecycle (create, query, list) and agent execution loop (context preparation, model calls, step persistence, cancellation). Delegates storage to port implementations and model resolution to `ModelProvider`. Does **not** own tool registration — tools are passed via `ChatContext`.
 
 ## Read Next
 

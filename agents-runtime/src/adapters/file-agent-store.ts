@@ -6,6 +6,13 @@ import type { Agent, AgentUpdate } from "../types.js";
 export class FileAgentStore implements AgentStore {
   constructor(private dataDir: string = ".agents-data") {}
 
+  async create(agent: Agent): Promise<Agent> {
+    const filePath = join(this.dataDir, "agents", `${agent.id}.json`);
+    await mkdir(join(this.dataDir, "agents"), { recursive: true });
+    await writeFile(filePath, JSON.stringify(agent, null, 2), "utf-8");
+    return agent;
+  }
+
   async getById(agentId: string): Promise<Agent | null> {
     const filePath = join(this.dataDir, "agents", `${agentId}.json`);
     try {

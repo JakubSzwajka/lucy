@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ConfigStore } from "../ports.js";
 import type { AgentConfigWithTools, SystemPrompt } from "../types.js";
@@ -24,5 +24,21 @@ export class FileConfigStore implements ConfigStore {
     } catch {
       return null;
     }
+  }
+
+  async createAgentConfig(config: AgentConfigWithTools): Promise<AgentConfigWithTools> {
+    const dir = join(this.dataDir, "config", "agents");
+    await mkdir(dir, { recursive: true });
+    const filePath = join(dir, `${config.id}.json`);
+    await writeFile(filePath, JSON.stringify(config, null, 2), "utf-8");
+    return config;
+  }
+
+  async createSystemPrompt(prompt: SystemPrompt): Promise<SystemPrompt> {
+    const dir = join(this.dataDir, "config", "prompts");
+    await mkdir(dir, { recursive: true });
+    const filePath = join(dir, `${prompt.id}.json`);
+    await writeFile(filePath, JSON.stringify(prompt, null, 2), "utf-8");
+    return prompt;
   }
 }

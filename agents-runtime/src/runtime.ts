@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { streamText, generateText, type CoreMessage, type ToolSet } from "ai";
 import type { LanguageModelV1ProviderMetadata } from "@ai-sdk/provider";
-import type { RuntimeDeps, ChatContext, Agent, AgentConfigWithTools, RunOptions, RunResult, ModelMessage, MessageItem } from "./types.js";
+import type { RuntimeDeps, ChatContext, Agent, AgentConfigWithTools, Item, MessageItem, ModelMessage, RunOptions, RunResult, Session, SystemPrompt } from "./types.js";
 import { EnvironmentContextService } from "./environment-context.js";
 import { createFileAdapters } from "./adapters/index.js";
 import { OpenRouterModelProvider } from "./adapters/openrouter-model-provider.js";
@@ -44,6 +45,139 @@ export class AgentRuntime {
       models: deps?.models ?? new OpenRouterModelProvider(),
       identity: deps?.identity ?? fileAdapters.identity,
       sessions: deps?.sessions ?? fileAdapters.sessions,
+    };
+  }
+
+  async createSession(options: {
+    agentConfigId?: string;
+    modelId?: string;
+    systemPrompt?: string;
+  }): Promise<{ sessionId: string; agentId: string }> {
+    const sessionId = randomUUID();
+    const agentId = randomUUID();
+
+    let configId: string;
+
+    if (options.agentConfigId) {
+      configId = options.agentConfigId;
+    } else {
+      configId = randomUUID();
+
+      let systemPromptId: string | null = null;
+      if (options.systemPrompt) {
+        const now = new Date();
+        const prompt: SystemPrompt = {
+          id: randomUUID(),
+          name: "Session Prompt",
+          content: options.systemPrompt,
+          createdAt: now,
+          updatedAt: now,
+        };
+        const created = await this.deps.config.createSystemPrompt(prompt);
+        systemPromptId = created.id;
+      }
+
+      const now = new Date();
+      await this.deps.config.createAgentConfig({
+        id: configId,
+        userId: "default",
+        name: "Default Agent",
+        description: null,
+        systemPromptId,
+        defaultModelId: options.modelId ?? null,
+        maxTurns: 25,
+        icon: null,
+        color: null,
+        isDefault: true,
+        tools: [],
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    const agent: Agent = {
+      id: agentId,
+      sessionId,
+      agentConfigId: configId,
+      name: "Agent",
+      status: "pending",
+      turnCount: 0,
+      createdAt: new Date(),
+    };
+    await this.deps.agents.create(agent);
+
+    await this.deps.sessions.create({ id: sessionId, agentId });
+
+    return { sessionId, agentId };
+  }
+
+  async getSession(sessionId: string): Promise<{ session: Session; agent: Agent } | null> {
+    const session = await this.deps.sessions.get(sessionId);
+    if (!session) return null;
+
+    const agent = await this.deps.agents.getById(session.agentId);
+    if (!agent) return null;
+
+    return { session, agent };
+  }
+
+  async listSessions(): Promise<Array<{
+    id: string;
+    agentId: string;
+    updatedAt: string;
+    agent: { status: string; turnCount: number };
+  }>> {
+    const sessions = await this.deps.sessions.list();
+    const result: Array<{
+      id: string;
+      agentId: string;
+      updatedAt: string;
+      agent: { status: string; turnCount: number };
+    }> = [];
+
+    for (const session of sessions) {
+      const agent = await this.deps.agents.getById(session.agentId);
+      if (!agent) continue;
+
+      result.push({
+        id: session.id,
+        agentId: session.agentId,
+        updatedAt: session.updatedAt,
+        agent: { status: agent.status, turnCount: agent.turnCount },
+      });
+    }
+
+    return result;
+  }
+
+  async getSessionItems(sessionId: string): Promise<Item[] | null> {
+    const session = await this.deps.sessions.get(sessionId);
+    if (!session) return null;
+    return this.deps.items.getByAgentId(session.agentId);
+  }
+
+  async sendMessage(
+    sessionId: string,
+    message: string,
+    options?: { modelId?: string },
+  ): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }> {
+    const session = await this.deps.sessions.get(sessionId);
+    if (!session) throw new Error("Session not found");
+
+    const { agentId } = session;
+    await this.deps.items.createMessage(agentId, { role: "user", content: message });
+
+    const result = await this.run(agentId, "default", [], {
+      sessionId,
+      streaming: false,
+      modelId: options?.modelId,
+    });
+
+    if (result.streaming) throw new Error("Unexpected streaming result");
+    return {
+      response: result.result,
+      agentId,
+      reachedMaxTurns: result.reachedMaxTurns,
     };
   }
 

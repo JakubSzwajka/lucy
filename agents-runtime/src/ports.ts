@@ -3,6 +3,7 @@ import type {
   Agent,
   AgentUpdate,
   Item,
+  Session,
   MessageItem,
   ToolCallItem,
   ToolResultItem,
@@ -15,6 +16,7 @@ import type {
 
 /** Reads and updates agent state */
 export interface AgentStore {
+  create(agent: Agent): Promise<Agent>;
   getById(agentId: string): Promise<Agent | null>;
   update(agentId: string, update: AgentUpdate): Promise<void>;
 }
@@ -42,6 +44,8 @@ export interface ItemStore {
 export interface ConfigStore {
   getAgentConfig(configId: string): Promise<AgentConfigWithTools | null>;
   getSystemPrompt(promptId: string): Promise<SystemPrompt | null>;
+  createAgentConfig(config: AgentConfigWithTools): Promise<AgentConfigWithTools>;
+  createSystemPrompt(prompt: SystemPrompt): Promise<SystemPrompt>;
 }
 
 /** Resolves models to AI SDK instances */
@@ -61,5 +65,8 @@ export interface IdentityProvider {
 
 /** Session lifecycle operations */
 export interface SessionStore {
+  create(session: { id: string; agentId: string }): Promise<void>;
+  get(sessionId: string): Promise<Session | null>;
+  list(): Promise<Session[]>;
   touch(sessionId: string): Promise<void>;
 }

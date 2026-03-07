@@ -24,6 +24,7 @@ export type {
   AgentConfigWithTools,
   SystemPrompt,
   IdentityDocument,
+  Session,
 } from "./types.js";
 
 export type {

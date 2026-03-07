@@ -7,7 +7,9 @@ Lightweight REST gateway that exposes the `agents-runtime` execution loop over H
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/sessions` | Create a session + root agent (optional `agentConfigId`, `modelId`, `systemPrompt`) |
+| `GET` | `/sessions` | List all sessions with agent status |
 | `GET` | `/sessions/:id` | Read session and agent status |
+| `GET` | `/sessions/:id/items` | Read conversation history for a session |
 | `POST` | `/chat` | Send a message and get a synchronous response (`sessionId`, `message`, optional `modelId`) |
 | `GET` | `/health` | Liveness check |
 
@@ -29,7 +31,7 @@ PORT=4000 npm start  # custom port
 
 ## Responsibility Boundary
 
-Owns HTTP routing, request validation, and response shaping. Delegates all agent execution and persistence to `agents-runtime` via `AgentRuntime` + `createFileAdapters`.
+Owns HTTP routing, request validation, and response shaping. All session lifecycle and agent execution is delegated to `AgentRuntime` — route handlers are thin shells (~5 lines each).
 
 ## Read Next
 

@@ -10,20 +10,20 @@ last-updated: 2026-03-07
 
 ## Task List
 
-- [ ] **1. Add `create` method to `AgentStore` port and `FileAgentStore`** — extend the port with agent creation
-- [ ] **2. Add write methods to `ConfigStore` port and `FileConfigStore`** — support creating agent configs and system prompts
-- [ ] **3. Add `create`, `get`, `list` methods to `SessionStore` port and `FileSessionStore`** — full session lifecycle in the port
-- [ ] **4. Add `createSession` to `AgentRuntime`** — orchestrate session + agent + config creation
-- [ ] **5. Add `getSession` and `listSessions` to `AgentRuntime`** — query operations
-- [ ] **6. Add `sendMessage` to `AgentRuntime`** — consolidate user message append + run
-- [ ] **7. Re-export new types from runtime index** — ensure new port method types are available to consumers
-- [ ] **8. Rewrite gateway session routes to use runtime methods** — thin HTTP shell `[blocked by: 4, 5]`
-- [ ] **9. Rewrite gateway chat route to use `sendMessage`** — thin HTTP shell `[blocked by: 6]`
+- [x] **1. Add `create` method to `AgentStore` port and `FileAgentStore`** — extend the port with agent creation
+- [x] **2. Add write methods to `ConfigStore` port and `FileConfigStore`** — support creating agent configs and system prompts
+- [x] **3. Add `create`, `get`, `list` methods to `SessionStore` port and `FileSessionStore`** — full session lifecycle in the port
+- [x] **4. Add `createSession` to `AgentRuntime`** — orchestrate session + agent + config creation
+- [x] **5. Add `getSession` and `listSessions` to `AgentRuntime`** — query operations
+- [x] **6. Add `sendMessage` to `AgentRuntime`** — consolidate user message append + run
+- [x] **7. Re-export new types from runtime index** — ensure new port method types are available to consumers
+- [x] **8. Rewrite gateway session routes to use runtime methods** — thin HTTP shell `[blocked by: 4, 5]`
+- [x] **9. Rewrite gateway chat route to use `sendMessage`** — thin HTTP shell `[blocked by: 6]`
 
 ---
 
 ### 1. Add `create` method to `AgentStore` port and `FileAgentStore`
-<!-- status: pending -->
+<!-- status: done -->
 
 Add a `create(agent: Agent): Promise<Agent>` method to the `AgentStore` interface. Implement it in `FileAgentStore` — write the agent JSON to `agents/{agentId}.json`, creating the directory if needed. The gateway currently does this inline with `writeFile` in the sessions route; this extracts that into the proper adapter.
 
@@ -34,7 +34,7 @@ Add a `create(agent: Agent): Promise<Agent>` method to the `AgentStore` interfac
 ---
 
 ### 2. Add write methods to `ConfigStore` port and `FileConfigStore`
-<!-- status: pending -->
+<!-- status: done -->
 
 Add `createAgentConfig(config: AgentConfigWithTools): Promise<AgentConfigWithTools>` and `createSystemPrompt(prompt: SystemPrompt): Promise<SystemPrompt>` to the `ConfigStore` interface. Implement in `FileConfigStore` — write to `config/agents/{id}.json` and `config/prompts/{id}.json` respectively. These mirror the inline `writeFile` calls in the gateway's `POST /sessions` handler.
 
@@ -45,7 +45,7 @@ Add `createAgentConfig(config: AgentConfigWithTools): Promise<AgentConfigWithToo
 ---
 
 ### 3. Add `create`, `get`, `list` methods to `SessionStore` port and `FileSessionStore`
-<!-- status: pending -->
+<!-- status: done -->
 
 Extend `SessionStore` with: `create(session: { id: string; agentId: string }): Promise<void>`, `get(sessionId: string): Promise<Session | null>`, and `list(): Promise<Session[]>`. Define a `Session` type in `types.ts` (`{ id: string; agentId: string; updatedAt: string }`). Implement in `FileSessionStore` — `create` writes `sessions/{id}/session.json`, `get` reads it, `list` scans the sessions directory. The gateway currently does all of this with raw `readdir`/`readFile`.
 
@@ -56,7 +56,7 @@ Extend `SessionStore` with: `create(session: { id: string; agentId: string }): P
 ---
 
 ### 4. Add `createSession` to `AgentRuntime`
-<!-- status: pending -->
+<!-- status: done -->
 
 Add a `createSession(options: { agentConfigId?: string; modelId?: string; systemPrompt?: string }): Promise<{ sessionId: string; agentId: string }>` method to `AgentRuntime`. This orchestrates: generate IDs, optionally create a default `AgentConfigWithTools` and `SystemPrompt` via `ConfigStore`, create an `Agent` via `AgentStore`, create a session via `SessionStore`. This is a direct extraction of the logic currently in the gateway's `POST /sessions` handler.
 
@@ -67,7 +67,7 @@ Add a `createSession(options: { agentConfigId?: string; modelId?: string; system
 ---
 
 ### 5. Add `getSession` and `listSessions` to `AgentRuntime`
-<!-- status: pending -->
+<!-- status: done -->
 
 Add `getSession(sessionId: string): Promise<{ session: Session; agent: Agent } | null>` and `listSessions(): Promise<Array<{ id: string; agentId: string; updatedAt: string; agent: { status: string; turnCount: number } }>>` to `AgentRuntime`. These compose `SessionStore.get/list` with `AgentStore.getById` to return the joined view the gateway currently assembles inline.
 
@@ -78,7 +78,7 @@ Add `getSession(sessionId: string): Promise<{ session: Session; agent: Agent } |
 ---
 
 ### 6. Add `sendMessage` to `AgentRuntime`
-<!-- status: pending -->
+<!-- status: done -->
 
 Add `sendMessage(sessionId: string, message: string, options?: { modelId?: string }): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }>` to `AgentRuntime`. This consolidates the current `POST /chat` pattern: resolve session to get `agentId`, append user message via `ItemStore.createMessage`, call `this.run()` in non-streaming mode, return the result. The gateway currently does this across ~20 lines; this makes it a single call.
 
@@ -89,7 +89,7 @@ Add `sendMessage(sessionId: string, message: string, options?: { modelId?: strin
 ---
 
 ### 7. Re-export new types from runtime index
-<!-- status: pending -->
+<!-- status: done -->
 
 Add the new `Session` type to the re-exports in the runtime's `index.ts`. Ensure consumers can import `Session` and the updated port types (`AgentStore`, `ConfigStore`, `SessionStore`) with the new methods.
 
@@ -100,7 +100,7 @@ Add the new `Session` type to the re-exports in the runtime's `index.ts`. Ensure
 ---
 
 ### 8. Rewrite gateway session routes to use runtime methods
-<!-- status: pending -->
+<!-- status: done -->
 
 Replace the body of `POST /sessions`, `GET /sessions`, `GET /sessions/:id`, and `GET /sessions/:id/items` in the gateway with calls to `AgentRuntime.createSession()`, `listSessions()`, `getSession()`, and item retrieval. Each handler should be ~5 lines: parse request, call runtime, return JSON. Remove all direct `fs` imports (`mkdir`, `readdir`, `readFile`, `writeFile`) and path construction from this file.
 
@@ -111,7 +111,7 @@ Replace the body of `POST /sessions`, `GET /sessions`, `GET /sessions/:id`, and 
 ---
 
 ### 9. Rewrite gateway chat route to use `sendMessage`
-<!-- status: pending -->
+<!-- status: done -->
 
 Replace the `POST /chat` handler body with a call to `AgentRuntime.sendMessage()`. The handler becomes: validate input, call `runtime.sendMessage(sessionId, message, { modelId })`, return the result as JSON. Remove the direct `readFile` for session lookup and manual `createMessage` + `run` calls.
 
