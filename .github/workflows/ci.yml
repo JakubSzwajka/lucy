@@ -7,26 +7,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
@@ -40,66 +21,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type check
-        run: npx tsc --noEmit
+      - name: Type check agents-runtime
+        run: npm run typecheck --workspace=agents-runtime
 
-  deploy:
-    name: Deploy to Railway
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [lint, typecheck]
-    runs-on: ubuntu-latest
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      SERVICE: lucy-backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
-
-      - name: Set environment variables
-        run: |
-          railway variable set \
-            DATABASE_PROVIDER=postgres \
-            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
-            LANGFUSE_PUBLIC_KEY="${{ secrets.LANGFUSE_PUBLIC_KEY }}" \
-            LANGFUSE_SECRET_KEY="${{ secrets.LANGFUSE_SECRET_KEY }}" \
-            LANGFUSE_BASE_URL="${{ secrets.LANGFUSE_BASE_URL }}" \
-            CORS_ORIGINS="*" \
-            --service $SERVICE
-
-      - name: Deploy
-        run: railway up --service $SERVICE
-
-  tag:
-    name: Create CalVer Tag
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [deploy]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate CalVer tag
-        id: version
-        run: |
-          DATE_TAG="v$(date -u +'%Y.%m.%d')"
-          EXISTING=$(git tag -l "${DATE_TAG}*" | sort -V | tail -1)
-          if [ -z "$EXISTING" ]; then
-            VERSION="$DATE_TAG"
-          elif [ "$EXISTING" = "$DATE_TAG" ]; then
-            VERSION="${DATE_TAG}.1"
-          else
-            SUFFIX=$(echo "$EXISTING" | sed "s/${DATE_TAG}\.//")
-            NEXT=$((SUFFIX + 1))
-            VERSION="${DATE_TAG}.${NEXT}"
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push tag
-        run: |
-          git tag "${{ steps.version.outputs.version }}"
-          git push origin "${{ steps.version.outputs.version }}"
+      - name: Type check agents-gateway-http
+        run: cd agents-gateway-http && npx tsc --noEmit

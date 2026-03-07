@@ -1,44 +1,40 @@
 # Lucy - Development Guidelines
 
+> The `.legacy/` directory contains the original Next.js application kept as a reference for module patterns (services, db, auth, tools, memory). It is not actively developed.
+
 ## Architecture Overview
 
-Lucy is an **AI assistant** running as a **Next.js web application** with JWT auth, multi-user support, and PostgreSQL storage.
-
-## Documentation Architecture (Lego Rule)
-
-**Start here when exploring the codebase:**
-- `docs/data-flows.md` — end-to-end request flows (chat, session creation, delegation, config resolution)
-- `src/lib/README.md` — backend module graph entry point
-- `src/app/api/README.md` — API route index
-- `docs/DOCUMENTATION-TEMPLATE.md` — template for new module READMEs
-
-Each module directory should have a short `README.md` documenting only its own contract (purpose, public API, usage). Use the hierarchy as a navigation graph: API routes -> services -> capabilities/integrations -> storage.
+Lucy is a **multi-package workspace** for agent infrastructure. Active packages extract core agent capabilities (runtime loop, HTTP gateway) into standalone, framework-agnostic modules. The original Next.js app is preserved in `.legacy/` as a reference implementation.
 
 ```
-lucy-nextjs/
-├── src/
-│   ├── app/                 # Pages + API routes (auth-protected, multi-user)
-│   │   ├── (main)/          # Authenticated app pages
-│   │   ├── api/             # REST API
-│   │   ├── login/           # Login page
-│   │   └── register/        # Register page
-│   ├── components/          # React components
-│   ├── hooks/               # Custom hooks
-│   ├── lib/
-│   │   ├── server/          # Backend: services, db, auth, AI, tools, memory
-│   │   └── client/          # Browser: API client, query helpers, utilities
-│   └── types/               # TypeScript types
-├── public/                  # Static assets
-├── docs/                    # Documentation
-├── next.config.js
-├── drizzle.config.ts
-├── tsconfig.json
-├── package.json
+lucy/
+├── agents-runtime/          # Standalone agent execution loop
+├── agents-gateway-http/     # REST gateway for agent runtime (Hono)
+├── .legacy/                 # Reference Next.js app (archived)
+│   ├── src/                 # Full Next.js app source
+│   ├── package.json         # Next.js dependencies
+│   └── ...config files
+├── docs/                    # Shared documentation
+├── package.json             # Workspace root
 ├── CLAUDE.md
 └── README.md
 ```
 
 ## Commands
+
+### Workspace root
+
+| Command | Description |
+|---------|-------------|
+| `npm install` | Install all workspace dependencies |
+| `npm run typecheck --workspace=agents-runtime` | Typecheck runtime package |
+| `npm run typecheck --workspace=agents-gateway-http` | Typecheck gateway package |
+
+### Legacy app
+
+```bash
+cd .legacy && npm install && npm run dev   # Starts on port 3009
+```
 
 | Command | Description |
 |---------|-------------|
@@ -48,31 +44,46 @@ lucy-nextjs/
 | `npm run db:push` | Push schema to PostgreSQL |
 | `npm run db:studio` | Open Drizzle Studio |
 
-## Development Workflow
+## TypeScript
 
-### Before First Run
-```bash
-npm install
-cp .env.example .env.local   # Fill in JWT_SECRET + API keys
-npm run db:push              # Initialize database schema
-npm run dev                  # Starts on port 3009
-```
+- Enable strict mode in `tsconfig.json`
+- Define explicit types for API responses, props, and state
+- Use `satisfies` operator for type-safe object literals
+- Prefer interfaces for public APIs, types for unions/intersections
+- Never use `any`; use `unknown` and narrow with type guards
 
-## Project Structure Conventions
+## Security
 
-### Source Code (`src/`)
-- Use `@/` path alias for imports (resolves to `src/`)
+- API keys stored in `.env` (never commit to git)
+- JWT auth (Bearer token) on all routes except health/openapi (`.legacy/`)
+- CORS middleware with configurable allowed origins
+- bcrypt password hashing, rate limiting on auth endpoints
+
+## Error Handling
+
+- Log errors with contextual information
+- Show user-friendly error messages; never expose stack traces
+
+## Code Quality
+
+- Keep modules small; extract logic into focused utilities
+- Write self-documenting code; add comments only for non-obvious logic
+
+---
+
+## Legacy App Reference (`.legacy/`)
+
+The sections below document the archived Next.js app for reference when extracting patterns.
+
+### Source Code (`.legacy/src/`)
+
+- `@/` path alias resolves to `src/`
 - Organize by feature/domain, not by file type
-- Keep components close to where they're used
-
-### Components
 - Default to Server Components; use `'use client'` only when necessary
-- Extract client interactivity into small leaf components
-- Co-locate component, styles, and tests in the same directory
-- Use named exports for components
 
 ### API Routes
-All API routes live in `src/app/api/` with JWT auth + userId scoping.
+
+All routes in `.legacy/src/app/api/` with JWT auth + userId scoping.
 
 | Route | Description |
 |-------|-------------|
@@ -99,71 +110,19 @@ All API routes live in `src/app/api/` with JWT auth + userId scoping.
 | `/api/health` | DB connectivity check |
 
 ### Database
-- PostgreSQL via `DATABASE_URL` env, schema in `src/lib/server/db/schema.ts`
 
-**Schema:**
-- `users` - User accounts
-- `sessions` - User-facing conversation container (has rootAgentId, userId)
-- `agents` - Runtime instances with parent-child hierarchy (parentId, sourceCallId)
-- `items` - Polymorphic entries per agent (message | tool_call | tool_result | reasoning)
-- `system_prompts` - Reusable system prompts
-- `settings` - App-wide settings (per-user)
-- `plans` / `plan_steps` - Multi-step plan tracking
-- `mcp_servers` - MCP server configuration
-- `integrations` - Third-party integration config
+PostgreSQL via `DATABASE_URL` env, schema in `.legacy/src/lib/server/db/schema.ts`.
 
-## TypeScript
+**Schema:** `users`, `sessions`, `agents`, `items` (message | tool_call | tool_result | reasoning), `system_prompts`, `settings`, `plans` / `plan_steps`, `mcp_servers`, `integrations`.
 
-- Enable strict mode in `tsconfig.json`
-- Define explicit types for API responses, props, and state
-- Use `satisfies` operator for type-safe object literals
-- Prefer interfaces for public APIs, types for unions/intersections
-- Never use `any`; use `unknown` and narrow with type guards
-
-Single `tsconfig.json` at root with `@/*` → `./src/*` path alias.
-
-## Error Handling
-
-- Implement `error.tsx` at appropriate route segments
-- Use `notFound()` for 404 scenarios
-- Log errors with contextual information
-- Show user-friendly error messages; never expose stack traces
-
-## Security
-
-- API keys stored in `.env` (never commit to git)
-- JWT auth (Bearer token) on all routes except health/openapi
-- CORS middleware with configurable allowed origins
-- bcrypt password hashing, rate limiting on auth endpoints
-
-## State Management
-
-- Prefer URL state (`useSearchParams`, `usePathname`) for shareable state
-- Use React Context sparingly; prefer Server Components data flow
-- Keep client state minimal and close to where it's used
-
-## Typography Rules
+### Typography Rules
 
 Two fonts, two layers:
 
 1. **Inter (Sans Serif)** — The Human Layer: communication, structural UI, natural language.
-   - Chat message bubbles, sidebar navigation, button labels, headers.
-   - Use: default `font-sans` (no class needed, it's the body default).
+   - Use: default `font-sans` (body default).
 
 2. **JetBrains Mono (Monospace)** — The Machine Layer: data, code, system status, precision elements.
-   - Code blocks, timestamps, metadata labels (WAITING, MEMORY, CTX: 8.9K), keyboard shortcuts.
-   - Use: `font-mono` class or `.mono`/`.label`/`.label-dark`/`.label-sm` utility classes from globals.css.
+   - Use: `font-mono` class or `.mono`/`.label`/`.label-dark`/`.label-sm` from globals.css.
 
 **Rule of thumb:** If you are *reading* it (like a story), it's Inter. If you are *parsing* it (like data), it's JetBrains Mono.
-
-## Code Quality
-
-- Run `npm run lint` and fix all warnings before committing
-- Keep components under 200 lines; extract logic into hooks or utilities
-- Write self-documenting code; add comments only for non-obvious logic
-
-## Build & Deployment
-
-- `npm run build` produces standalone Next.js output
-- Deploy to Railway (or any Node.js host) with Postgres
-- Set `DATABASE_URL` + `JWT_SECRET` in env

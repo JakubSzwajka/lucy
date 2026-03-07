@@ -18,6 +18,7 @@ node_modules
 
 # production
 /build
+dist/
 
 # misc
 .DS_Store
@@ -50,6 +51,9 @@ next-env.d.ts
 
 # Agent memory storage
 /memory
+
+# Agent runtime data
+.agents-data/
 
 # IDE / Editor
 .vscode/
