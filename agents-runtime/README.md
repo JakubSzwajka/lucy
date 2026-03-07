@@ -51,6 +51,27 @@ const runtime = bootstrapAgentRuntime({
 
 Only plugin ids listed in `config.plugins.enabled` are resolved. Missing ids fail fast during bootstrap. This keeps plugin selection in runtime configuration rather than transport-level wiring. The workspace smoke test covers both the baseline no-plugin runtime path and the configured memory-plugin path end to end.
 
+## Data Model
+
+```
+User (string id, currently always "default")
+ └── AgentConfig (reusable template: system prompt, model, tools, maxTurns)
+       └── Session ──1:1── Agent
+             │                 └── execution state (status, turnCount, timing)
+             └── Items[]  (append-only conversation log)
+                   ├── message      (role: user | assistant | system)
+                   ├── tool_call    (callId, toolName, args, status)
+                   ├── tool_result  (callId, output | error)
+                   └── reasoning    (thinking content + summary)
+```
+
+**Key relationships:**
+
+- **Session : Agent is always 1:1** — `createSession()` creates both atomically. Agent is the execution handle; Session is the addressable entry point.
+- **AgentConfig is the reusable part** — defines personality (system prompt, model, tool set). Many sessions can share one config.
+- **Items are keyed by agentId** — since Session:Agent is 1:1, `sessionId` and `agentId` are interchangeable for lookups.
+- **User is single-tenant** — hardcoded `"default"`, no user store. All queries implicitly belong to one user.
+
 ## Responsibility Boundary
 
 Owns session lifecycle, context assembly, model execution, step persistence, cancellation, and runtime plugin resolution. Delegates storage to port implementations, model resolution to `ModelProvider`, and plugin behavior to installed runtime plugins. It does not own transport-specific tool wiring.

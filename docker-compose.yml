@@ -8,6 +8,7 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - AGENTS_DATA_DIR=/data
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN}
     volumes:
       - ~/.agents-data:/data
       - ./lucy.config.json:/app/lucy.config.json:ro

@@ -10,6 +10,7 @@ COPY package.json package-lock.json ./
 COPY agents-runtime/package.json agents-runtime/package.json
 COPY agents-gateway-http/package.json agents-gateway-http/package.json
 COPY agents-memory/package.json agents-memory/package.json
+COPY agents-plugin-whatsapp/package.json agents-plugin-whatsapp/package.json
 
 # Install all dependencies (including devDeps — tsx is needed at runtime)
 RUN npm ci
@@ -49,6 +50,10 @@ COPY --from=build /app/agents-runtime/dist/ agents-runtime/dist/
 # Copy agents-memory package with compiled output
 COPY --from=deps /app/agents-memory/package.json agents-memory/package.json
 COPY --from=build /app/agents-memory/dist/ agents-memory/dist/
+
+# Copy agents-plugin-whatsapp package with source (runs via tsx)
+COPY --from=deps /app/agents-plugin-whatsapp/package.json agents-plugin-whatsapp/package.json
+COPY agents-plugin-whatsapp/src/ agents-plugin-whatsapp/src/
 
 # Copy agents-gateway-http package with source (runs via tsx)
 COPY --from=deps /app/agents-gateway-http/package.json agents-gateway-http/package.json

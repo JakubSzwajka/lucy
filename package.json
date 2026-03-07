@@ -10,6 +10,7 @@
     "agents-memory",
     "agents-gateway-http",
     "agents-webui",
-    "agents-landing-page"
+    "agents-landing-page",
+    "agents-plugin-whatsapp"
   ]
 }
