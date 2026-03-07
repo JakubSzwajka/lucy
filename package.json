@@ -2,6 +2,7 @@
   "name": "lucy-backend",
   "version": "0.1.0",
   "private": true,
+  "workspaces": ["agents-runtime", "agents-gateway-http"],
   "scripts": {
     "dev": "next dev -p 3009",
     "build": "next build",
