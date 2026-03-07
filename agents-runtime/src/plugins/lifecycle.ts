@@ -7,6 +7,26 @@ import type {
   RuntimePluginSystemPromptSection,
 } from "../types.js";
 
+export async function initPlugins(
+  resolvedPlugins: ResolvedRuntimePlugin[],
+  deps: RuntimeDeps,
+): Promise<void> {
+  for (const resolvedPlugin of resolvedPlugins) {
+    await resolvedPlugin.plugin.onInit?.({
+      deps,
+      pluginConfig: resolvedPlugin.config,
+    });
+  }
+}
+
+export async function destroyPlugins(
+  resolvedPlugins: ResolvedRuntimePlugin[],
+): Promise<void> {
+  for (const resolvedPlugin of resolvedPlugins) {
+    await resolvedPlugin.plugin.onDestroy?.();
+  }
+}
+
 export async function preparePluginContext(input: {
   agent: Agent;
   modelConfig: ChatContext["modelConfig"];

@@ -205,7 +205,7 @@ async function seedUserMessages(dataDir: string) {
   }
 }
 
-function createBaselineRuntime(dataDir: string) {
+async function createBaselineRuntime(dataDir: string) {
   const fileAdapters = createFileAdapters(dataDir);
 
   return bootstrapAgentRuntime({
@@ -216,7 +216,7 @@ function createBaselineRuntime(dataDir: string) {
   });
 }
 
-function createSmokeTestRuntime(dataDir: string, observedRuns: string[]) {
+async function createSmokeTestRuntime(dataDir: string, observedRuns: string[]) {
   const fileAdapters = createFileAdapters(dataDir);
 
   return createConfiguredRuntime({
@@ -270,13 +270,13 @@ async function withSeededData<T>(dataDir: string, run: () => Promise<T>): Promis
 async function runScenario(
   dataDir: string,
   scenarioName: string,
-  runtimeFactory: () => ReturnType<typeof bootstrapAgentRuntime>,
+  runtimeFactory: () => Promise<Awaited<ReturnType<typeof bootstrapAgentRuntime>>>,
   assertResult: (result: string, fixture: (typeof RUNTIME_FIXTURES)[number]) => void,
 ) {
   console.log(`\n${scenarioName}`);
 
   await withSeededData(dataDir, async () => {
-    const runtime = runtimeFactory();
+    const runtime = await runtimeFactory();
 
     for (const fixture of RUNTIME_FIXTURES) {
       const result = await runtime.run(

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createFileAdapters } from "../adapters/index.js";
 import { OpenRouterModelProvider } from "../adapters/openrouter-model-provider.js";
+import { destroyPlugins, initPlugins } from "../plugins/lifecycle.js";
 import { prepareRuntimeContext } from "./context.js";
 import {
   runNonStreamingAgent,
@@ -79,6 +80,14 @@ export class AgentRuntime {
     };
     this.resolvedPlugins = init.resolvedPlugins ?? [];
     this.runtimeConfig = init.config ?? {};
+  }
+
+  async init(): Promise<void> {
+    await initPlugins(this.resolvedPlugins, this.deps);
+  }
+
+  async destroy(): Promise<void> {
+    await destroyPlugins(this.resolvedPlugins);
   }
 
   async createSession(options: {

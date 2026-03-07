@@ -2,11 +2,17 @@ import type {
   Agent,
   ModelConfig,
 } from "./domain.js";
+import type { RuntimeDeps } from "./runtime.js";
 
 export interface RuntimePluginSystemPromptSection {
   content: string;
   key: string;
   title?: string;
+}
+
+export interface RuntimePluginInitInput<TConfig = unknown> {
+  deps: RuntimeDeps;
+  pluginConfig: TConfig;
 }
 
 export interface RuntimePluginPrepareContextInput<TConfig = unknown> {
@@ -39,6 +45,19 @@ export interface RuntimePluginRunCompleteInput<TConfig = unknown> {
 
 export interface RuntimePlugin<TConfig = unknown> {
   id: string;
+  /**
+   * Invoked once when the runtime is bootstrapped. Use this to set up
+   * background work such as cron jobs or timers. Called sequentially in
+   * resolved plugin order; failures are fatal.
+   */
+  onInit?: (
+    input: RuntimePluginInitInput<TConfig>,
+  ) => Promise<void> | void;
+  /**
+   * Invoked when the runtime is shutting down. Use this to clean up
+   * resources created in onInit (clear timers, close connections, etc.).
+   */
+  onDestroy?: () => Promise<void> | void;
   /**
    * Invoked after a run reaches a terminal outcome. Hooks execute in the
    * resolved plugin order from runtime config, and failures are treated as

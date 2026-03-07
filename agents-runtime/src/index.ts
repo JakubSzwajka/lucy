@@ -36,6 +36,7 @@ export type {
   RuntimePlugin,
   RuntimePluginConfig,
   RuntimePluginRegistry,
+  RuntimePluginInitInput,
   RuntimePluginPrepareContextInput,
   RuntimePluginPrepareContextResult,
   RuntimePluginRunCompleteInput,
