@@ -2,9 +2,14 @@
   "name": "lucy",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "smoke:configured-runtime": "npx tsx agents-runtime/scripts/smoke-test.ts"
+  },
   "workspaces": [
     "agents-runtime",
+    "agents-memory",
     "agents-gateway-http",
-    "agents-webui"
+    "agents-webui",
+    "agents-landing-page"
   ]
 }
