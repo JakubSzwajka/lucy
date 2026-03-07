@@ -30,7 +30,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Starting gateway server (port=$PORT, data=$TEST_DATA_DIR)..."
-DATA_DIR="$TEST_DATA_DIR" PORT="$PORT" npx tsx "$PROJECT_DIR/src/index.ts" &
+AGENTS_DATA_DIR="$TEST_DATA_DIR" PORT="$PORT" npx tsx "$PROJECT_DIR/src/index.ts" &
 SERVER_PID=$!
 
 # Wait for server to be ready

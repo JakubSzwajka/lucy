@@ -6,7 +6,8 @@ Standalone AI agent execution engine using the Vercel AI SDK. Runs agents in str
 
 - `AgentRuntime` — main class; `prepareContext()` builds chat context, `run()` executes an agent turn
 - `cancelAgent(agentId)` — aborts a running non-streaming agent
-- `createFileAdapters(dataDir?)` — creates file-based implementations of all port interfaces
+- `resolveDataDir(dataDir?)` — resolves data directory: explicit arg > `AGENTS_DATA_DIR` env var > `~/.agents-data`
+- `createFileAdapters(dataDir?)` — creates file-based implementations of all port interfaces (uses `resolveDataDir` internally)
 - `OpenRouterModelProvider` — `ModelProvider` implementation using the OpenRouter API
 
 ### Port Interfaces (implement to bring your own storage)

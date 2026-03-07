@@ -1,1 +1,3 @@
-export const DATA_DIR = process.env.DATA_DIR ?? ".agents-data";
+import { resolveDataDir } from "agents-runtime";
+
+export const DATA_DIR = resolveDataDir();

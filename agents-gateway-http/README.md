@@ -25,7 +25,7 @@ PORT=4000 npm start  # custom port
 | Env var | Default | Description |
 |---------|---------|-------------|
 | `PORT` | `3080` | Server listen port |
-| `DATA_DIR` | `.agents-data` | File-based storage root |
+| `AGENTS_DATA_DIR` | `~/.agents-data` | File-based storage root (shared with agents-runtime) |
 
 ## Responsibility Boundary
 

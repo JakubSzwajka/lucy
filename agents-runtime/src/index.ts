@@ -1,6 +1,7 @@
 export { AgentRuntime, cancelAgent } from "./runtime.js";
 export { createFileAdapters } from "./adapters/index.js";
 export { OpenRouterModelProvider } from "./adapters/openrouter-model-provider.js";
+export { resolveDataDir } from "./adapters/resolve-data-dir.js";
 
 // Re-export types
 export type {

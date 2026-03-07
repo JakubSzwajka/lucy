@@ -10,16 +10,16 @@ last-updated: 2026-03-07
 
 ## Task List
 
-- [ ] **1. Add resolveDataDir utility to agents-runtime** — centralize path resolution logic
-- [ ] **2. Update createFileAdapters to use resolveDataDir** — wire new default into adapter factory
-- [ ] **3. Update AgentRuntime constructor** — pass resolved dataDir to fallback adapters
-- [ ] **4. Update agents-gateway-http to use AGENTS_DATA_DIR** — switch from gateway-local DATA_DIR to shared env var
-- [ ] **5. Update documentation and smoke tests** — reflect new env var and default path `[blocked by: 1, 2, 3, 4]`
+- [x] **1. Add resolveDataDir utility to agents-runtime** — centralize path resolution logic
+- [x] **2. Update createFileAdapters to use resolveDataDir** — wire new default into adapter factory
+- [x] **3. Update AgentRuntime constructor** — pass resolved dataDir to fallback adapters
+- [x] **4. Update agents-gateway-http to use AGENTS_DATA_DIR** — switch from gateway-local DATA_DIR to shared env var
+- [x] **5. Update documentation and smoke tests** — reflect new env var and default path `[blocked by: 1, 2, 3, 4]`
 
 ---
 
 ### 1. Add resolveDataDir utility to agents-runtime
-<!-- status: pending -->
+<!-- status: done -->
 
 Create a `resolveDataDir` function in `agents-runtime/src/adapters/resolve-data-dir.ts` that implements the resolution chain: if an explicit `dataDir` string is provided, use it; otherwise read `AGENTS_DATA_DIR` env var; otherwise default to `~/.agents-data` (using `os.homedir()`). Export it from the adapters index and the package root.
 
@@ -30,7 +30,7 @@ Create a `resolveDataDir` function in `agents-runtime/src/adapters/resolve-data-
 ---
 
 ### 2. Update createFileAdapters to use resolveDataDir
-<!-- status: pending -->
+<!-- status: done -->
 
 Change the `createFileAdapters` default from hardcoded `".agents-data"` to `resolveDataDir()`. The function signature stays the same (`dataDir?: string`) but now the undefined case resolves through the standard chain instead of a CWD-relative default.
 
@@ -41,7 +41,7 @@ Change the `createFileAdapters` default from hardcoded `".agents-data"` to `reso
 ---
 
 ### 3. Update AgentRuntime constructor
-<!-- status: pending -->
+<!-- status: done -->
 
 The `AgentRuntime` constructor currently calls `createFileAdapters()` with no args as a fallback. After task 2, this automatically uses `resolveDataDir()`. No code change needed if task 2 is done correctly — but verify the constructor still works when consumers pass explicit adapter overrides (gateway-http passes its own adapters).
 
@@ -52,7 +52,7 @@ The `AgentRuntime` constructor currently calls `createFileAdapters()` with no ar
 ---
 
 ### 4. Update agents-gateway-http to use AGENTS_DATA_DIR
-<!-- status: pending -->
+<!-- status: done -->
 
 Replace the gateway's `DATA_DIR` config (`process.env.DATA_DIR ?? ".agents-data"`) with importing `resolveDataDir` from agents-runtime. This removes the gateway's independent path resolution and aligns it with the shared contract. Update all `DATA_DIR` usages in session and chat routes to use the resolved value.
 
@@ -63,7 +63,7 @@ Replace the gateway's `DATA_DIR` config (`process.env.DATA_DIR ?? ".agents-data"
 ---
 
 ### 5. Update documentation and smoke tests
-<!-- status: pending -->
+<!-- status: done -->
 
 Update README files for both packages to document `AGENTS_DATA_DIR` and the new default `~/.agents-data`. Update the e2e test script to use `AGENTS_DATA_DIR` instead of `DATA_DIR`. Update the smoke test if it references the old default.
 

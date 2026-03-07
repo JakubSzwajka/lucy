@@ -4,7 +4,8 @@ File-based implementations of the runtime port interfaces, plus an OpenRouter mo
 
 ## Public API
 
-- `createFileAdapters(dataDir?)` — factory returning all file-based stores (`agents`, `items`, `config`, `sessions`, `identity`)
+- `resolveDataDir(dataDir?)` — resolves data directory: explicit arg > `AGENTS_DATA_DIR` env var > `~/.agents-data`
+- `createFileAdapters(dataDir?)` — factory returning all file-based stores (`agents`, `items`, `config`, `sessions`, `identity`); uses `resolveDataDir` internally
 - `FileAgentStore` — JSON-file `AgentStore`
 - `FileItemStore` — JSONL-file `ItemStore`
 - `FileConfigStore` — JSON-file `ConfigStore`
