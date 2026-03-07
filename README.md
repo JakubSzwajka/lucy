@@ -10,6 +10,8 @@ lucy/
 │   └── README.md
 ├── agents-gateway-http/     # REST gateway for agent runtime (Hono)
 │   └── README.md
+├── agents-landing-page/     # Astro landing page for GitHub Pages
+│   └── README.md
 ├── agents-webui/            # Browser-based chat UI (Vite + React)
 ├── .legacy/                 # Archived Next.js app (reference only)
 ├── docs/
@@ -29,6 +31,7 @@ lucy/
 | Package | Description | Status |
 |---------|-------------|--------|
 | [`agents-runtime`](agents-runtime/) | Standalone agent execution loop with file-based adapters | Active |
+| [`agents-landing-page`](agents-landing-page/) | Static Astro landing page for GitHub Pages | Active |
 | [`agents-gateway-http`](agents-gateway-http/) | REST gateway for the agent runtime (Hono) | Active |
 | [`agents-webui`](agents-webui/) | Browser-based chat UI for interacting with agents | Active |
 

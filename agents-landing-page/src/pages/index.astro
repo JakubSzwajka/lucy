@@ -1,0 +1,78 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Lucy | Agent Infrastructure"
+  description="A simple Astro landing page for Lucy, shipped as a separate module and ready for GitHub Pages."
+>
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">Lucy / GitHub Pages landing page</div>
+      <h1>Infrastructure for teams building serious agents.</h1>
+      <p class="lede">
+        Lucy packages runtime orchestration, memory, gateway APIs, and a web UI into one repository.
+        This Astro module is a lightweight front door for the project, deployed separately on GitHub Pages.
+      </p>
+
+      <div class="actions">
+        <a class="button button-primary" href="https://github.com/JakubSzwajka/lucy" target="_blank" rel="noreferrer">
+          View Repository
+        </a>
+        <a class="button button-secondary" href="#modules">Explore Modules</a>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <div class="mini-label">What ships in this repo</div>
+        <div class="stat">
+          <strong>4 active modules</strong>
+          <span>Runtime, memory, HTTP gateway, and Web UI with this landing page living beside them.</span>
+        </div>
+        <div class="stat">
+          <strong>Static deploy</strong>
+          <span>Astro builds to plain files, which makes GitHub Pages deployment simple and cheap.</span>
+        </div>
+      </div>
+
+      <div class="grid" id="modules">
+        <article class="card">
+          <h2>Agents Runtime</h2>
+          <p>Execution loop and adapters for running autonomous agent workflows.</p>
+        </article>
+        <article class="card">
+          <h2>Agents Memory</h2>
+          <p>Memory-focused package evolving separately from the core runtime.</p>
+        </article>
+        <article class="card">
+          <h2>Gateway HTTP</h2>
+          <p>REST surface for exposing the runtime over a straightforward API.</p>
+        </article>
+        <article class="card">
+          <h2>Web UI</h2>
+          <p>Browser client for interacting with the agent system from a dedicated interface.</p>
+        </article>
+      </div>
+
+      <div class="panel">
+        <div class="mini-label">Deployment model</div>
+        <h2>Separate module, separate workflow</h2>
+        <p>
+          The landing page is isolated in <code>agents-landing-page/</code> and deploys from its own GitHub
+          Actions workflow without coupling to the application packages.
+        </p>
+        <ul>
+          <li>Builds as static output with Astro.</li>
+          <li>Publishes only when the landing-page module or workflow changes.</li>
+          <li>Uses the repository name as the GitHub Pages base path.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Lucy landing page module built with Astro.</span>
+    <span>Adjust copy, links, and branding before the first public release.</span>
+  </footer>
+</BaseLayout>
