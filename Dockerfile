@@ -59,8 +59,9 @@ COPY agents-plugin-whatsapp/src/ agents-plugin-whatsapp/src/
 COPY --from=deps /app/agents-gateway-http/package.json agents-gateway-http/package.json
 COPY agents-gateway-http/src/ agents-gateway-http/src/
 
-# Write empty default config (can be overridden via volume mount)
-RUN echo '{}' > lucy.config.json
+# Copy config if present in build context, otherwise create empty default
+COPY lucy.config.jso[n] ./
+RUN test -f lucy.config.json || echo '{}' > lucy.config.json
 
 EXPOSE 3080
 

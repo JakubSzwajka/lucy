@@ -57,15 +57,23 @@ docker-run:
 deploy:
 	$(call require-cmd,railway,https://docs.railway.app/guides/cli)
 	$(check-env-KEY)
-	@echo "Setting Railway secrets..."
-	railway variables set OPENROUTER_API_KEY=$$OPENROUTER_API_KEY
+	@echo "Setting Railway variables..."
+	railway variables set \
+		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
+		WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN \
+		AGENTS_DATA_DIR=/data \
+		CORS_ORIGIN=$${CORS_ORIGIN:-*}
 	@echo "Deploying to Railway..."
-	railway up
+	railway up --no-gitignore
 
 ## deploy-secrets — set Railway secrets only (no deploy)
 deploy-secrets:
 	$(call require-cmd,railway,https://docs.railway.app/guides/cli)
 	$(check-env-KEY)
-	@echo "Setting Railway secrets..."
-	railway variables set OPENROUTER_API_KEY=$$OPENROUTER_API_KEY
-	@echo "Secrets set."
+	@echo "Setting Railway variables..."
+	railway variables set \
+		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
+		WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN \
+		AGENTS_DATA_DIR=/data \
+		CORS_ORIGIN=$${CORS_ORIGIN:-*}
+	@echo "Variables set."
