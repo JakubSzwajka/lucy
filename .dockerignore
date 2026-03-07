@@ -5,7 +5,6 @@
 # Unused workspace packages
 .legacy
 agents-webui
-agents-landing-page
 
 # Build artifacts and deps (installed inside container)
 node_modules

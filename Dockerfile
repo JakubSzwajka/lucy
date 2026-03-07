@@ -11,6 +11,7 @@ COPY agents-runtime/package.json agents-runtime/package.json
 COPY agents-gateway-http/package.json agents-gateway-http/package.json
 COPY agents-memory/package.json agents-memory/package.json
 COPY agents-plugin-whatsapp/package.json agents-plugin-whatsapp/package.json
+COPY agents-landing-page/package.json agents-landing-page/package.json
 
 # Install all dependencies (including devDeps — tsx is needed at runtime)
 RUN npm ci
@@ -30,6 +31,13 @@ COPY agents-memory/tsconfig.json agents-memory/tsconfig.json
 
 # Compile TypeScript to dist/
 RUN npm run build --workspace=agents-runtime && npm run build --workspace=agents-memory
+
+# Build landing page static files
+COPY agents-landing-page/public/ agents-landing-page/public/
+COPY agents-landing-page/src/ agents-landing-page/src/
+COPY agents-landing-page/astro.config.mjs agents-landing-page/astro.config.mjs
+COPY agents-landing-page/tsconfig.jso[n] agents-landing-page/
+RUN npm run build --workspace=agents-landing-page
 
 # Stage 3: Production image
 FROM node:24-slim AS runtime
@@ -58,6 +66,10 @@ COPY agents-plugin-whatsapp/src/ agents-plugin-whatsapp/src/
 # Copy agents-gateway-http package with source (runs via tsx)
 COPY --from=deps /app/agents-gateway-http/package.json agents-gateway-http/package.json
 COPY agents-gateway-http/src/ agents-gateway-http/src/
+
+# Copy landing page static build output
+COPY --from=deps /app/agents-landing-page/package.json agents-landing-page/package.json
+COPY --from=build /app/agents-landing-page/dist/ agents-landing-page/dist/
 
 # Copy config if present in build context, otherwise create empty default
 COPY lucy.config.jso[n] ./
