@@ -4,6 +4,7 @@
   "private": true,
   "workspaces": [
     "agents-runtime",
-    "agents-gateway-http"
+    "agents-gateway-http",
+    "agents-webui"
   ]
 }

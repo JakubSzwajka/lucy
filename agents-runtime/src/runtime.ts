@@ -62,10 +62,8 @@ export class AgentRuntime {
       agentConfig = await this.deps.config.getAgentConfig(agent.agentConfigId);
     }
 
-    const effectiveModelId = modelId || agent.model || agentConfig?.defaultModelId;
-    if (!effectiveModelId) {
-      throw new Error("No model ID provided");
-    }
+    const DEFAULT_MODEL = process.env.DEFAULT_MODEL ?? "anthropic/claude-sonnet-4.6";
+    const effectiveModelId = modelId || agent.model || agentConfig?.defaultModelId || DEFAULT_MODEL;
 
     const modelConfig = await this.deps.models.getModelConfig(effectiveModelId);
     if (!modelConfig) {

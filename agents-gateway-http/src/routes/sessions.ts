@@ -1,8 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import type { Agent, AgentConfigWithTools, SystemPrompt } from "agents-runtime";
+import { createFileAdapters } from "agents-runtime";
 import { Hono } from "hono";
 
 import { DATA_DIR } from "../config.js";
@@ -78,6 +79,42 @@ sessions.post("/sessions", async (c) => {
   return c.json({ sessionId, agentId }, 201);
 });
 
+sessions.get("/sessions", async (c) => {
+  const sessionsDir = join(DATA_DIR, "sessions");
+
+  let entries: string[];
+  try {
+    entries = await readdir(sessionsDir);
+  } catch {
+    return c.json({ sessions: [] });
+  }
+
+  const results: { id: string; agentId: string; updatedAt: string; agent: { status: string; turnCount: number } }[] = [];
+
+  for (const entry of entries) {
+    try {
+      const sessionRaw = await readFile(join(sessionsDir, entry, "session.json"), "utf-8");
+      const session = JSON.parse(sessionRaw);
+
+      const agentRaw = await readFile(join(DATA_DIR, "agents", `${session.agentId}.json`), "utf-8");
+      const agent = JSON.parse(agentRaw);
+
+      results.push({
+        id: session.id,
+        agentId: session.agentId,
+        updatedAt: session.updatedAt,
+        agent: { status: agent.status, turnCount: agent.turnCount },
+      });
+    } catch {
+      // Skip corrupt or incomplete sessions
+    }
+  }
+
+  results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+  return c.json({ sessions: results });
+});
+
 sessions.get("/sessions/:id", async (c) => {
   const id = c.req.param("id");
   const sessionPath = join(DATA_DIR, "sessions", id, "session.json");
@@ -94,6 +131,23 @@ sessions.get("/sessions/:id", async (c) => {
       session: { id: session.id, updatedAt: session.updatedAt },
       agent: { id: agent.id, status: agent.status, turnCount: agent.turnCount, ...(agent.result !== undefined && { result: agent.result }) },
     });
+  } catch {
+    return c.json({ error: "Session not found" }, 404);
+  }
+});
+
+sessions.get("/sessions/:id/items", async (c) => {
+  const id = c.req.param("id");
+  const sessionPath = join(DATA_DIR, "sessions", id, "session.json");
+
+  try {
+    const sessionRaw = await readFile(sessionPath, "utf-8");
+    const session = JSON.parse(sessionRaw);
+
+    const adapters = createFileAdapters(DATA_DIR);
+    const items = await adapters.items.getByAgentId(session.agentId);
+
+    return c.json({ items });
   } catch {
     return c.json({ error: "Session not found" }, 404);
   }
