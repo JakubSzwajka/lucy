@@ -41,3 +41,9 @@ Suggested note format (not enforced):
 ### [Decision] Process-local state — acknowledged, not solved
 - **Decision:** `activeAbortControllers`, reflection mutex, and MCP client pool are known single-instance limitations. Not addressed in this PRD.
 - **Rationale:** Solving these requires distributed coordination (Redis, DB-backed locks, etc.) which is a separate concern from the architectural extraction.
+
+### [Decision] File-based storage as default — no Postgres in runtime
+- **Decision:** The runtime ships with built-in file-based adapters (JSON for entities, JSONL for items). No database dependency. Postgres adapters live in the gateway.
+- **Rationale:** Makes the runtime truly standalone — deployable anywhere with just a filesystem. Gateway wiring (Postgres adapters, monorepo setup) is a separate PRD: `wire-gateway-to-runtime`.
+- **Storage layout:** `.agents-data/` with `config/`, `sessions/<id>/agents/`, `sessions/<id>/items/`, `identity/` subdirectories.
+- **Watch out:** JSONL item store needs care for `updateToolCallStatus` (read-modify-write on the whole file). No file locking for concurrent access — acceptable for single-instance tracer bullet.

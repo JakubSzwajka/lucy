@@ -4,31 +4,33 @@ generated: 2026-03-07
 last-updated: 2026-03-07
 ---
 
-# Tasks: Extract Agent Runtime and Gateways
+# Tasks: Extract Agent Runtime
 
-> Summary: Extract the agent execution engine from the Next.js app into a standalone `agents-runtime` package at the repo root. The current app becomes the first gateway consumer. Conversation-only scope — no tools or plugins.
+> Summary: Create the `agents-runtime` standalone package with file-based storage, execution loop, and a smoke test proving it works without any gateway or database.
 
 ## Task List
 
-- [ ] **1. Scaffold `agents-runtime` package** — create directory, package.json, tsconfig, and empty entry point
-- [ ] **2. Set up monorepo workspaces** — configure root package.json for workspace resolution between packages
-- [ ] **3. Define port interfaces** — create the runtime's dependency contracts (AgentStore, ItemStore, ConfigStore, ModelProvider, IdentityProvider, SessionStore)
-- [ ] **4. Define runtime types** — extract runtime-specific types (RunOptions, RunResult, ModelMessage, ChatContext) into the runtime package
-- [ ] **5. Extract message history utilities** — move `itemsToModelMessages`, `itemsToFullModelMessages`, `applySlidingWindow`, `stripImageParts`, `prependSystemPrompt` into the runtime
-- [ ] **6. Extract step persistence** — move `persistStepContent` into the runtime, parameterized by `ItemStore` port instead of importing `getItemService()` `[blocked by: 3, 4]`
-- [ ] **7. Extract environment context service** — move `EnvironmentContextService` into the runtime as a pure utility `[blocked by: 4]`
-- [ ] **8. Extract context assembly** — move `prepareChat`, `resolveSystemPrompt`, `loadAgentWithConfig`, `buildToolFilter` into the runtime as `AgentRuntime.prepareContext()` `[blocked by: 3, 4, 5, 7]`
-- [ ] **9. Extract execution loop** — move `runAgent` (streaming + non-streaming paths) into `AgentRuntime.run()` `[blocked by: 3, 4, 5, 6, 8]`
-- [ ] **10. Create Postgres-backed port adapters in the gateway** — wrap existing services (AgentService, ItemService, etc.) to implement runtime port interfaces `[blocked by: 3]`
-- [ ] **11. Rewire ChatService as gateway adapter** — make ChatService construct AgentRuntime with Postgres adapters and delegate `runAgent()` calls to it `[blocked by: 9, 10]`
-- [ ] **12. Verify zero behavior change** — run the app, confirm chat works end-to-end with the new runtime boundary in place `[blocked by: 11]`
+- [x] **1. Scaffold `agents-runtime` package** — create directory, package.json, tsconfig, and empty entry point
+- [x] **2. Define port interfaces** — create the runtime's dependency contracts (AgentStore, ItemStore, ConfigStore, ModelProvider, IdentityProvider, SessionStore)
+- [x] **3. Define runtime types** — runtime-specific types and minimal domain types, independent of the gateway
+- [x] **4. Implement file-based AgentStore** — JSON files for agent state `[blocked by: 2, 3]`
+- [x] **5. Implement file-based ItemStore** — JSONL append-only files for conversation items `[blocked by: 2, 3]`
+- [x] **6. Implement file-based ConfigStore** — JSON files for agent configs and system prompts `[blocked by: 2, 3]`
+- [x] **7. Implement file-based SessionStore and IdentityProvider** — JSON files for session metadata and identity documents `[blocked by: 2, 3]`
+- [x] **8. Implement default ModelProvider** — OpenRouter model provider as built-in default `[blocked by: 2, 3]`
+- [x] **9. Extract message history utilities** — move message reconstruction and sliding window into the runtime `[blocked by: 3]`
+- [x] **10. Extract step persistence** — move `persistStepContent` into the runtime, parameterized by `ItemStore` port `[blocked by: 2, 3]`
+- [x] **11. Extract environment context service** — move date/time context injection into the runtime `[blocked by: 3]`
+- [x] **12. Extract context assembly** — move `prepareChat` and prompt resolution into `AgentRuntime.prepareContext()` `[blocked by: 2, 3, 9, 11]`
+- [x] **13. Extract execution loop** — move `runAgent` into `AgentRuntime.run()` with defaulting constructor `[blocked by: 4, 5, 6, 7, 8, 9, 10, 12]`
+- [x] **14. Verify runtime standalone** — smoke test proving a conversation round-trip works with file adapters only `[blocked by: 13]`
 
 ---
 
 ### 1. Scaffold `agents-runtime` package
-<!-- status: pending -->
+<!-- status: done -->
 
-Create `agents-runtime/` at repo root with a minimal package setup. The package.json should declare `ai` (Vercel AI SDK) and `zod` as dependencies since the runtime uses `streamText`, `generateText`, and Zod schemas. Use TypeScript with its own `tsconfig.json` that extends a shared base. Entry point should export an empty placeholder.
+Create `agents-runtime/` at repo root with a minimal package setup. The `package.json` should declare `ai` (Vercel AI SDK), `@openrouter/ai-sdk-provider`, and `zod` as dependencies. Use TypeScript with its own `tsconfig.json`. Entry point should export an empty placeholder. No `@/` path alias — runtime uses relative imports only. This package must have zero imports from the Next.js app.
 
 **Files:** `agents-runtime/package.json`, `agents-runtime/tsconfig.json`, `agents-runtime/src/index.ts`
 **Depends on:** —
@@ -36,121 +38,143 @@ Create `agents-runtime/` at repo root with a minimal package setup. The package.
 
 ---
 
-### 2. Set up monorepo workspaces
-<!-- status: pending -->
+### 2. Define port interfaces
+<!-- status: done -->
 
-Add `"workspaces"` field to the root `package.json` listing `agents-runtime` (and the current app root). Create a `tsconfig.base.json` at repo root with shared compiler options. Update `agents-runtime/tsconfig.json` to extend the base. The current app's `tsconfig.json` should also extend the base but keep its Next.js-specific settings. After this, `npm install` at root should link workspace packages.
-
-**Files:** `package.json`, `tsconfig.base.json`, `agents-runtime/tsconfig.json`, `tsconfig.json`
-**Depends on:** 1
-**Validates:** `npm install` at root resolves workspaces; `agents-runtime` can be imported from the main app via package name
-
----
-
-### 3. Define port interfaces
-<!-- status: pending -->
-
-Create `agents-runtime/src/ports.ts` with the six port interfaces the runtime depends on: `AgentStore`, `ItemStore`, `ConfigStore`, `ModelProvider`, `IdentityProvider`, `SessionStore`. These must use only types defined within the runtime package or from `ai` SDK — no imports from `@/types` or `src/lib/server/`. This means duplicating or re-defining the minimal type surface (Agent, Item, AgentUpdate, ModelConfig, etc.) that ports need.
+Create `agents-runtime/src/ports.ts` with the six port interfaces: `AgentStore`, `ItemStore`, `ConfigStore`, `ModelProvider`, `IdentityProvider`, `SessionStore`. These reference only the runtime's own domain types (defined in task 3). No imports from `@/types` or `src/lib/server/`.
 
 **Files:** `agents-runtime/src/ports.ts`
 **Depends on:** 1
-**Validates:** `npx tsc --noEmit` in `agents-runtime` passes; no import from `src/` or `@/`
+**Validates:** `npx tsc --noEmit` passes; zero external imports beyond `ai` SDK
 
 ---
 
-### 4. Define runtime types
-<!-- status: pending -->
+### 3. Define runtime types
+<!-- status: done -->
 
-Create `agents-runtime/src/types.ts` with the runtime's own type definitions. Extract and adapt from the current `src/lib/server/chat/types.ts`: `RunOptions`, `RunResult`, `ModelMessage`, `ModelMessageContent`, `ChatContext`. Also define the minimal domain types the runtime needs (Agent shape, Item shape, ModelConfig shape, AgentConfigWithTools shape) — these are the "runtime view" of domain objects, independent of the gateway's full type definitions. Export a `RuntimeDeps` interface bundling all ports.
+Create `agents-runtime/src/types.ts` with the runtime's own type definitions. Extract and adapt from `src/lib/server/chat/types.ts`: `RunOptions`, `RunResult`, `ModelMessage`, `ModelMessageContent`, `ChatContext`. Define the minimal domain types the runtime needs: Agent, Item union (MessageItem, ToolCallItem, ToolResultItem, ReasoningItem), ModelConfig, AgentConfigWithTools, AgentUpdate, ToolCallStatus. Export `RuntimeDeps` bundling all ports. These are the runtime's own types — not re-exports of gateway types.
 
 **Files:** `agents-runtime/src/types.ts`
-**Depends on:** 1, 3
-**Validates:** Types compile with no `@/` imports; `RuntimeDeps` references all six ports
+**Depends on:** 1, 2
+**Validates:** Types compile standalone; `RuntimeDeps` references all six ports
 
 ---
 
-### 5. Extract message history utilities
-<!-- status: pending -->
+### 4. Implement file-based AgentStore
+<!-- status: done -->
 
-Move the pure transformation functions from `ChatService` into `agents-runtime/src/messages.ts`: `itemsToModelMessages`, `itemsToFullModelMessages`, `applySlidingWindow`, `stripImageParts`, `prependSystemPrompt`. These are stateless functions that convert stored items into model-ready message arrays. They should use the runtime's own Item and ModelMessage types. Currently these are private methods on ChatService — extract them as standalone exported functions.
+Create `agents-runtime/src/adapters/file-agent-store.ts` implementing `AgentStore`. Stores each agent as a JSON file at `<dataDir>/sessions/<sessionId>/agents/<agentId>.json`. `getById` reads and parses the file (returns null if not found). `update` reads, merges update fields, writes back. The `dataDir` is configurable via constructor (defaults to `.agents-data`).
+
+**Files:** `agents-runtime/src/adapters/file-agent-store.ts`
+**Depends on:** 2, 3
+**Validates:** Can write an agent JSON, read it back, update fields; file appears at expected path
+
+---
+
+### 5. Implement file-based ItemStore
+<!-- status: done -->
+
+Create `agents-runtime/src/adapters/file-item-store.ts` implementing `ItemStore`. Uses JSONL (one JSON object per line) at `<dataDir>/sessions/<sessionId>/items/<agentId>.jsonl`. `getByAgentId` reads all lines. `create`/`createMessage`/`createToolCall`/`createToolResult` append a line with auto-incrementing `sequence` and generated `id`. `updateToolCallStatus` reads the file, finds the matching item, rewrites.
+
+**Files:** `agents-runtime/src/adapters/file-item-store.ts`
+**Depends on:** 2, 3
+**Validates:** Can append items, read them back in order; JSONL is human-readable; sequences increment
+
+---
+
+### 6. Implement file-based ConfigStore
+<!-- status: done -->
+
+Create `agents-runtime/src/adapters/file-config-store.ts` implementing `ConfigStore`. Agent configs at `<dataDir>/config/agents/<configId>.json`, system prompts at `<dataDir>/config/prompts/<promptId>.json`. Read-only lookups — returns null if file doesn't exist.
+
+**Files:** `agents-runtime/src/adapters/file-config-store.ts`
+**Depends on:** 2, 3
+**Validates:** Can read a pre-written config JSON; returns null for missing files
+
+---
+
+### 7. Implement file-based SessionStore and IdentityProvider
+<!-- status: done -->
+
+Create `agents-runtime/src/adapters/file-session-store.ts` (`touch` updates `updatedAt` in `sessions/<sid>/session.json`). Create `agents-runtime/src/adapters/file-identity-provider.ts` (`getActive` reads `identity/<userId>.json`). Create `agents-runtime/src/adapters/index.ts` barrel exporting all adapters and a `createFileAdapters(dataDir?)` factory that returns a complete `RuntimeDeps` object.
+
+**Files:** `agents-runtime/src/adapters/file-session-store.ts`, `agents-runtime/src/adapters/file-identity-provider.ts`, `agents-runtime/src/adapters/index.ts`
+**Depends on:** 2, 3
+**Validates:** `createFileAdapters()` returns an object satisfying `RuntimeDeps` (minus `models`); all adapters compile
+
+---
+
+### 8. Implement default ModelProvider
+<!-- status: done -->
+
+Create `agents-runtime/src/adapters/openrouter-model-provider.ts` implementing `ModelProvider`. Move logic from `src/lib/server/ai/providers.ts` and `src/lib/server/ai/models.ts`. Reads `OPENROUTER_API_KEY` from environment. Include in `createFileAdapters()` as the default `models` port.
+
+**Files:** `agents-runtime/src/adapters/openrouter-model-provider.ts`
+**Depends on:** 2, 3
+**Validates:** Given `OPENROUTER_API_KEY`, `getModelConfig()` returns a valid config; `getLanguageModel()` returns an AI SDK model
+
+---
+
+### 9. Extract message history utilities
+<!-- status: done -->
+
+Move the pure transformation functions from `ChatService` into `agents-runtime/src/messages.ts`: `itemsToModelMessages`, `itemsToFullModelMessages`, `applySlidingWindow`, `stripImageParts`, `prependSystemPrompt`. Stateless functions using the runtime's own Item and ModelMessage types.
 
 **Files:** `agents-runtime/src/messages.ts`, (reference: `src/lib/server/chat/chat.service.ts` lines 460-621)
-**Depends on:** 4
-**Validates:** Functions compile against runtime types; no dependency on ChatService or gateway imports
+**Depends on:** 3
+**Validates:** Functions compile against runtime types; no gateway imports
 
 ---
 
-### 6. Extract step persistence
-<!-- status: pending -->
+### 10. Extract step persistence
+<!-- status: done -->
 
-Move `persistStepContent` from `src/lib/server/chat/step-persistence.service.ts` into `agents-runtime/src/step-persistence.ts`. Change the function signature to accept an `ItemStore` port as its first argument instead of calling `getItemService()` internally. The helper functions (`insertItem`, `saveToolCall`, `saveToolResult`, `updateToolCallStatus`) become closures or inline calls on the passed-in `ItemStore`. The content part types (`TextPart`, `ReasoningPart`, `ToolCallPart`, etc.) move into the runtime's types.
+Move `persistStepContent` into `agents-runtime/src/step-persistence.ts`. Accept `ItemStore` port as first argument instead of importing `getItemService()`. Content part types (`TextPart`, `ReasoningPart`, `ToolCallPart`, etc.) move into runtime types.
 
 **Files:** `agents-runtime/src/step-persistence.ts`, (reference: `src/lib/server/chat/step-persistence.service.ts`)
-**Depends on:** 3, 4
-**Validates:** Function compiles with `ItemStore` parameter; no import from `src/lib/server/sessions`
+**Depends on:** 2, 3
+**Validates:** Function compiles with `ItemStore` parameter; no import from `src/`
 
 ---
 
-### 7. Extract environment context service
-<!-- status: pending -->
+### 11. Extract environment context service
+<!-- status: done -->
 
-Move `EnvironmentContextService` from `src/lib/server/chat/environment-context.service.ts` into `agents-runtime/src/environment-context.ts`. This is a pure utility (generates date/time context string) with zero external dependencies. Copy as-is.
+Move `EnvironmentContextService` into `agents-runtime/src/environment-context.ts`. Pure utility with zero external dependencies — copy as-is.
 
 **Files:** `agents-runtime/src/environment-context.ts`, (reference: `src/lib/server/chat/environment-context.service.ts`)
-**Depends on:** 4
+**Depends on:** 3
 **Validates:** Compiles standalone; `buildContext()` returns a string with current date/time
 
 ---
 
-### 8. Extract context assembly
-<!-- status: pending -->
+### 12. Extract context assembly
+<!-- status: done -->
 
-Create `agents-runtime/src/context.ts` (or integrate into `runtime.ts`) containing the logic currently in `ChatService.prepareChat()`, `resolveSystemPrompt()`, `loadAgentWithConfig()`, and `buildToolFilter()`. This assembles the full execution context: loads agent + config via `ConfigStore` port, resolves model via `ModelProvider` port, composes system prompt, injects environment context and identity document. For the tracer bullet (no tools), the `tools` field in the returned context should be an empty object `{}`. The `buildToolFilter` logic moves here but is effectively a no-op until the plugin system is added.
+Create context assembly in `agents-runtime/src/runtime.ts` with logic from `ChatService.prepareChat()`, `resolveSystemPrompt()`, `loadAgentWithConfig()`. Loads agent + config via ports, resolves model, composes system prompt, injects environment and identity context. Tools field is empty `{}` (no tool system yet).
 
-**Files:** `agents-runtime/src/context.ts` or `agents-runtime/src/runtime.ts`
-**Depends on:** 3, 4, 5, 7
-**Validates:** Given mock port implementations, `prepareContext()` returns a valid `ChatContext` with system prompt, model, and empty tools
+**Files:** `agents-runtime/src/runtime.ts`
+**Depends on:** 2, 3, 9, 11
+**Validates:** Given file adapters with seed data, `prepareContext()` returns a valid context with system prompt, model, and empty tools
 
 ---
 
-### 9. Extract execution loop
-<!-- status: pending -->
+### 13. Extract execution loop
+<!-- status: done -->
 
-Create the `AgentRuntime` class in `agents-runtime/src/runtime.ts` with a `run()` method that contains the logic from `ChatService.runAgent()`. The class takes `RuntimeDeps` in its constructor. The `run()` method handles both streaming (`streamText`) and non-streaming (`generateText` multi-turn loop) paths, calls `prepareContext()` for setup, uses `ItemStore` for persistence, and manages abort controllers. Tracing (Langfuse) calls should be **removed** from the runtime — they'll be re-added as a port or middleware later. The `onFinish` callback for auto-reflection should be replaced with an optional `onFinish` hook in `RunOptions` that the gateway can use.
+Create `AgentRuntime` class in `agents-runtime/src/runtime.ts` with `run()` method. Constructor takes optional `Partial<RuntimeDeps>` — missing ports default to file-based adapters via `createFileAdapters()`. Handles streaming and non-streaming paths, manages abort controllers. Langfuse tracing **removed** — `onFinish` hook in `RunOptions` replaces auto-reflection. Export from `agents-runtime/src/index.ts`.
 
 **Files:** `agents-runtime/src/runtime.ts`, `agents-runtime/src/index.ts`
-**Depends on:** 3, 4, 5, 6, 8
-**Validates:** `AgentRuntime` class compiles; `run()` accepts `RunOptions` and returns `RunResult`; public API exported from `index.ts`
+**Depends on:** 4, 5, 6, 7, 8, 9, 10, 12
+**Validates:** `new AgentRuntime()` works with zero args; `run()` compiles; public API exported
 
 ---
 
-### 10. Create Postgres-backed port adapters in the gateway
-<!-- status: pending -->
+### 14. Verify runtime standalone
+<!-- status: done -->
 
-Create `src/lib/server/chat/runtime-adapters.ts` (or similar) that wraps the existing singleton services into runtime port implementations. Each adapter is a thin object literal or class that delegates to the corresponding service: `getAgentService()` → `AgentStore`, `getItemService()` → `ItemStore`, `getAgentConfigService()` + `getSystemPromptService()` → `ConfigStore`, model functions → `ModelProvider`, `getIdentityService()` → `IdentityProvider`, `getSessionService()` → `SessionStore`. This is pure wiring — no logic changes.
+Write `agents-runtime/scripts/smoke-test.ts` that: creates an `AgentRuntime()` with defaults, seeds config + agent + session via file adapters, calls `runtime.run()` in non-streaming mode, checks items were written to JSONL. Proves the runtime works without Next.js, Postgres, or any gateway. Run with `npx tsx scripts/smoke-test.ts`.
 
-**Files:** `src/lib/server/chat/runtime-adapters.ts`
-**Depends on:** 3
-**Validates:** Each adapter object satisfies its corresponding port interface (TypeScript compiles)
-
----
-
-### 11. Rewire ChatService as gateway adapter
-<!-- status: pending -->
-
-Modify `ChatService` so its `runAgent()` method constructs an `AgentRuntime` (using adapters from task 10) and delegates to `runtime.run()`. Remove the moved code (execution loop, context assembly, message history, step persistence, environment context) from `chat.service.ts`. Keep `executeTurn()`, `persistUserMessage()`, `touchSession()`, `resolveToolsForAgent()` — these are gateway concerns. The `cancelAgent()` function stays in the gateway for now. Update `src/lib/server/chat/index.ts` exports if needed. Remove `step-persistence.service.ts` and `environment-context.service.ts` from the gateway (they now live in the runtime).
-
-**Files:** `src/lib/server/chat/chat.service.ts`, `src/lib/server/chat/index.ts`
-**Depends on:** 9, 10
-**Validates:** `ChatService.runAgent()` delegates to `AgentRuntime.run()`; removed files no longer exist in `src/lib/server/chat/`
-
----
-
-### 12. Verify zero behavior change
-<!-- status: pending -->
-
-Run `npm run build` to confirm the full app compiles. Start the dev server (`npm run dev`) and verify that chat works end-to-end: send a message, receive a streamed response, confirm items are persisted to the database. Check that delegation (non-streaming sub-agent execution) still works if the tool system is wired through the gateway. This is a manual smoke test — the boundary is invisible to the user.
-
-**Files:** —
-**Depends on:** 11
-**Validates:** `npm run build` succeeds; chat streaming works in browser; messages persist in DB; no console errors
+**Files:** `agents-runtime/scripts/smoke-test.ts`
+**Depends on:** 13
+**Validates:** Script runs successfully; `.agents-data/` populated; agent response printed
