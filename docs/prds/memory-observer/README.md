@@ -1,5 +1,5 @@
 ---
-status: draft
+status: in-progress
 date: 2026-03-07
 author: kuba
 gh-issue: null

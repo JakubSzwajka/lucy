@@ -111,7 +111,6 @@ export function createMemoryPlugin(options: MemoryPluginOptions = {}): MemoryPlu
       console.log("[memory] destroyed");
     },
     async onRunComplete(input) {
-      console.log("[memory] onRunComplete", input);
       rememberObservedRun(context, input);
 
       try {
@@ -124,39 +123,35 @@ export function createMemoryPlugin(options: MemoryPluginOptions = {}): MemoryPlu
 
       // Run memory observation pipeline if configured
       if (dataDir && observerConfig && runtimeDeps) {
-        // Fire-and-forget — don't block the runtime
-        console.log("[memory] running observer pipeline");
-        runObserverPipeline(runtimeDeps, dataDir, input.agent.id, observerConfig).catch((err) => {
-          console.error("[memory] observer failed:", err);
-        });
-        console.log("[memory] observer pipeline completed");
+        console.log(`[memory] run complete, triggering observer for agent ${input.agent.id}`);
+        try {
+          await runObserverPipeline(runtimeDeps, dataDir, input.agent.id, observerConfig);
+        } catch (err) {
+          console.error(`[memory] observer pipeline failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      } else {
+        console.log("[memory] run complete (observer not configured)");
       }
     },
     async prepareContext(input) {
-      console.log("[memory] prepareContext", input);
       let memory: MemoryContextRecord | null = null;
 
       if (dataDir) {
         memory = await readMemoryFromDisk(dataDir);
       }
 
-      console.log("[memory] memory", memory);
-
       if (!memory) {
-        console.log("[memory] resolving memory context");
         memory = await resolveMemoryContext(input.pluginConfig, input);
       }
-
-      console.log("[memory] memory context resolved", memory);
 
       context.memory = memory;
 
       if (!memory) {
-        console.log("[memory] no memory found");
+        console.log("[memory] no memory available");
         return;
       }
 
-      console.log("[memory] returning system prompt sections", [toSystemPromptSection(memory)]);
+      console.log(`[memory] injecting memory (${memory.content.length} chars)`);
 
       return {
         systemPromptSections: [toSystemPromptSection(memory)],

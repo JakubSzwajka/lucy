@@ -22,51 +22,53 @@ export async function observe(
   const cursor = await readCursor(dataDir);
   const lastProcessed = cursor.agents[agentId] ?? 0;
 
-  // Read items JSONL directly from disk (flat layout: items.jsonl)
   const itemsPath = join(dataDir, "items.jsonl");
-  let lines: string[];
+  let allItems: Item[];
   try {
     const raw = await readFile(itemsPath, "utf-8");
-    lines = raw.split("\n").filter((l) => l.trim().length > 0);
+    allItems = raw
+      .split("\n")
+      .filter((l) => l.trim().length > 0)
+      .map((line) => JSON.parse(line));
   } catch {
-    return; // no items file yet
+    return;
   }
 
-  if (lines.length <= lastProcessed) return; // nothing new
+  const agentItems = allItems.filter((item) => item.agentId === agentId);
+  const totalForAgent = agentItems.length;
 
-  // Parse new items
-  const newItems: Item[] = lines
-    .slice(lastProcessed)
-    .map((line) => JSON.parse(line));
+  if (totalForAgent <= lastProcessed) {
+    console.log(`[memory] no new items for agent ${agentId}`);
+    return;
+  }
 
-  if (newItems.length === 0) return;
+  const newItems = agentItems.slice(lastProcessed);
 
-  // Format transcript
   const transcript = formatTranscript(newItems);
   if (!transcript.trim()) {
-    // Only system messages or empty — advance cursor anyway
-    cursor.agents[agentId] = lines.length;
+    console.log(`[memory] no extractable content for agent ${agentId}`);
+    cursor.agents[agentId] = totalForAgent;
     await writeCursor(dataDir, cursor);
     return;
   }
 
-  // Extract observations via LLM
   const { text } = await generateText({
     model,
     system: EXTRACTION_PROMPT,
     prompt: transcript,
   });
 
-  // Parse and validate
   const extracted = parseExtractionResponse(text, agentId);
 
-  // Filter out discards, store the rest
   const toStore = extracted.filter((o) => o.gate !== "discard");
   if (toStore.length > 0) {
     await appendObservations(dataDir, toStore);
   }
 
-  // Advance cursor only after successful extraction
-  cursor.agents[agentId] = lines.length;
+  console.log(
+    `[memory] observed ${newItems.length} new items for agent ${agentId}, extracted ${toStore.length} observations`,
+  );
+
+  cursor.agents[agentId] = totalForAgent;
   await writeCursor(dataDir, cursor);
 }

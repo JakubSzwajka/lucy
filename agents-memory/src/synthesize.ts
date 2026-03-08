@@ -51,7 +51,10 @@ export async function synthesizeMemory(
   const observations = await readObservations(dataDir);
   const allowed = observations.filter((o) => o.gate === "allow");
 
-  if (allowed.length === 0) return;
+  if (allowed.length === 0) {
+    console.log("[memory] no observations to synthesize");
+    return;
+  }
 
   const limit = maxFacts ?? DEFAULT_MAX_FACTS;
   const pruned = pruneObservations(allowed, limit);
@@ -72,4 +75,5 @@ export async function synthesizeMemory(
   const filePath = join(dataDir, MEMORY_MD_PATH);
   await mkdir(dirname(filePath), { recursive: true });
   await writeFile(filePath, text.trim() + "\n", "utf-8");
+  console.log(`[memory] synthesized memory.md (${pruned.length} facts)`);
 }
