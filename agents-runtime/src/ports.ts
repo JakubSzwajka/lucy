@@ -3,7 +3,6 @@ import type {
   Agent,
   AgentUpdate,
   Item,
-  Session,
   MessageItem,
   ToolCallItem,
   ToolResultItem,
@@ -61,12 +60,4 @@ export interface ModelProvider {
 /** Provides identity documents for context enrichment */
 export interface IdentityProvider {
   getActive(userId: string): Promise<IdentityDocument | null>;
-}
-
-/** Session lifecycle operations */
-export interface SessionStore {
-  create(session: { id: string; agentId: string }): Promise<void>;
-  get(sessionId: string): Promise<Session | null>;
-  list(): Promise<Session[]>;
-  touch(sessionId: string): Promise<void>;
 }

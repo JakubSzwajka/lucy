@@ -12,7 +12,7 @@ export interface GatewayPlugin<TConfig = unknown> {
   /**
    * Invoked once when the gateway is bootstrapped. Use this to register
    * routes on the Hono app and capture the runtime reference for calling
-   * sendMessage/createSession. Called sequentially in resolved plugin
+   * sendMessage. Called sequentially in resolved plugin
    * order; failures are fatal.
    */
   onInit?: (

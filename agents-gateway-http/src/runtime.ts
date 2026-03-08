@@ -19,7 +19,7 @@ export async function initRuntime(): Promise<{ runtime: AgentRuntime; config: Lu
   runtime = await bootstrapAgentRuntime({
     config: lucyConfig["agents-runtime"],
     deps: createFileAdapters(DATA_DIR),
-    pluginRegistry: buildPluginRegistry(),
+    pluginRegistry: buildPluginRegistry(lucyConfig),
   });
 
   return { runtime, config: lucyConfig };

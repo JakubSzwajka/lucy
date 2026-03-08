@@ -1,32 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getSessionItems, sendMessage } from "@/api/client";
+import { getHistory, sendMessage } from "@/api/client";
 import type { Item, MessageItem } from "@/api/types";
 import { ChatInput } from "@/components/ChatInput";
 import { MessageList } from "@/components/MessageList";
 
-interface ChatPanelProps {
-  sessionId: string;
-  onMessageSent?: () => void;
-}
-
-export function ChatPanel({ sessionId, onMessageSent }: ChatPanelProps) {
+export function ChatPanel() {
   const [items, setItems] = useState<Item[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchItems = useCallback(async () => {
     try {
-      const res = await getSessionItems(sessionId);
+      const res = await getHistory();
       setItems(res.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load messages");
     }
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
-    setItems([]);
-    setError(null);
     fetchItems();
   }, [fetchItems]);
 
@@ -46,9 +39,8 @@ export function ChatPanel({ sessionId, onMessageSent }: ChatPanelProps) {
     setError(null);
 
     try {
-      await sendMessage(sessionId, message);
+      await sendMessage(message);
       await fetchItems();
-      onMessageSent?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
       setItems((prev) => prev.filter((i) => i.id !== optimisticItem.id));

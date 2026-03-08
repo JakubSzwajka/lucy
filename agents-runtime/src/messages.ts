@@ -11,7 +11,6 @@ type FullModelMessage = {
 /**
  * Build model messages from items (streaming mode).
  * Only includes user/assistant message items. Tool calls/results are handled by streamText internally.
- * Prepends ISO timestamps for LLM context.
  */
 export function itemsToModelMessages(allItems: Item[]): ModelMessage[] {
   const messages: ModelMessage[] = [];
@@ -21,26 +20,18 @@ export function itemsToModelMessages(allItems: Item[]): ModelMessage[] {
     if (item.role === "system") continue;
 
     const role = item.role as "user" | "assistant";
-    const timestamp = item.createdAt ? `[${new Date(item.createdAt).toISOString()}] ` : "";
 
     if (item.contentParts) {
       try {
         const parts: { type: string; text?: string; url?: string; mediaType?: string }[] = JSON.parse(item.contentParts);
         const contentParts: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = [];
-        let addedTimestamp = false;
 
         for (const part of parts) {
           if (part.type === "text" && part.text) {
-            const prefix = !addedTimestamp ? timestamp : "";
-            contentParts.push({ type: "text", text: `${prefix}${part.text}` });
-            addedTimestamp = true;
+            contentParts.push({ type: "text", text: part.text });
           } else if (part.type === "file" && part.url) {
             contentParts.push({ type: "image", image: new URL(part.url) });
           }
-        }
-
-        if (!addedTimestamp && timestamp) {
-          contentParts.unshift({ type: "text", text: timestamp.trim() });
         }
 
         if (contentParts.length > 0) {
@@ -52,7 +43,7 @@ export function itemsToModelMessages(allItems: Item[]): ModelMessage[] {
       }
     }
 
-    messages.push({ role, content: `${timestamp}${item.content}` });
+    messages.push({ role, content: item.content });
   }
 
   return messages;
@@ -74,8 +65,7 @@ export function itemsToFullModelMessages(allItems: Item[]): FullModelMessage[] {
     if (item.type === "message") {
       if (item.role === "system") { i++; continue; }
       const role = item.role as "user" | "assistant";
-      const timestamp = item.createdAt ? `[${new Date(item.createdAt).toISOString()}] ` : "";
-      messages.push({ role, content: `${timestamp}${item.content}` });
+      messages.push({ role, content: item.content });
       i++;
     } else if (item.type === "tool_call") {
       const toolCallParts: Array<{ type: "tool-call"; toolCallId: string; toolName: string; input: Record<string, unknown> }> = [];

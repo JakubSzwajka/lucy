@@ -28,7 +28,7 @@ endef
 # Targets
 # ----------------------------------------------------------------------------
 
-.PHONY: help docker-build docker-run deploy deploy-secrets
+.PHONY: help up down logs docker-build docker-run deploy deploy-secrets
 
 ## help — show this help (default)
 help:
@@ -37,6 +37,20 @@ help:
 	@echo ""
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/^## /  /'
 	@echo ""
+
+## up — start gateway + webui via docker-compose (dev mode)
+up:
+	$(check-env-KEY)
+	@echo "Starting all services..."
+	docker compose up --build
+	@echo ""
+	@echo "  Gateway: http://localhost:$(PORT)"
+	@echo "  WebUI:   http://localhost:$${WEBUI_PORT:-5173}"
+	@echo ""
+
+## down — stop all docker-compose services
+down:
+	docker compose down
 
 ## docker-build — build the lucy-gateway Docker image
 docker-build:

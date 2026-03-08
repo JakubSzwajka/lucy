@@ -1,60 +1,4 @@
 // ---------------------------------------------------------------------------
-// Request types
-// ---------------------------------------------------------------------------
-
-export interface CreateSessionRequest {
-  agentConfigId?: string;
-  modelId?: string;
-  systemPrompt?: string;
-}
-
-export interface SendMessageRequest {
-  sessionId: string;
-  message: string;
-  modelId?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Response types
-// ---------------------------------------------------------------------------
-
-export interface HealthResponse {
-  ok: true;
-}
-
-export interface CreateSessionResponse {
-  sessionId: string;
-  agentId: string;
-}
-
-export interface SessionSummary {
-  id: string;
-  agentId: string;
-  updatedAt: string;
-  agent: {
-    status: string;
-    turnCount: number;
-  };
-}
-
-export interface SessionListResponse {
-  sessions: SessionSummary[];
-}
-
-export interface SessionDetailResponse {
-  session: {
-    id: string;
-    updatedAt: string;
-  };
-  agent: {
-    id: string;
-    status: string;
-    turnCount: number;
-    result?: string;
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Items (discriminated union)
 // ---------------------------------------------------------------------------
 
@@ -95,8 +39,13 @@ export interface ReasoningItem extends ItemBase {
 
 export type Item = MessageItem | ReasoningItem | ToolCallItem | ToolResultItem;
 
-export interface ItemsResponse {
+// ---------------------------------------------------------------------------
+// API responses
+// ---------------------------------------------------------------------------
+
+export interface HistoryResponse {
   items: Item[];
+  compactionSummary: string | null;
 }
 
 export interface ChatResponse {

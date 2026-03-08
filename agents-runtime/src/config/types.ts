@@ -8,7 +8,11 @@ export interface LucyConfig {
     };
     [key: string]: unknown;
   };
-  "agents-memory"?: Record<string, unknown>;
+  "agents-memory"?: {
+    modelId?: string;
+    maxFacts?: number;
+    [key: string]: unknown;
+  };
   "agents-runtime"?: RuntimeConfig;
   [key: string]: unknown;
 }

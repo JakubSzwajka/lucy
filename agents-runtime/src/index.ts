@@ -32,6 +32,7 @@ export type {
   ReasoningItem,
   ResolvedRuntimePlugin,
   RunOptions,
+  CompactionConfig,
   RunResult,
   RuntimeDeps,
   RuntimeConfig,
@@ -45,7 +46,6 @@ export type {
   RuntimePluginRunSummary,
   RuntimePluginSystemPromptSection,
   RuntimePluginsConfig,
-  Session,
   SystemPrompt,
   ToolCallItem,
   ToolResultItem,
@@ -57,5 +57,4 @@ export type {
   IdentityProvider,
   ItemStore,
   ModelProvider,
-  SessionStore,
 } from "./ports.js";

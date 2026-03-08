@@ -1,10 +1,8 @@
 import type { GatewayPlugin, GatewayPluginInitInput } from "agents-gateway-http/types";
-import { resolveDataDir } from "agents-runtime";
 
 import type { WhatsAppPluginConfig } from "./config.js";
 import { DedupCache } from "./dedup-cache.js";
 import { registerWebhookRoutes } from "./routes/webhook.js";
-import { PhoneSessionStore } from "./session-store.js";
 import { WhatsAppClient } from "./whatsapp-client.js";
 
 export type { WhatsAppPluginConfig } from "./config.js";
@@ -34,11 +32,9 @@ export function createWhatsAppPlugin(): GatewayPlugin<WhatsAppPluginConfig> {
       config = pluginConfig;
 
       const client = new WhatsAppClient({ phoneNumberId: config.phoneNumberId, apiToken: token });
-      const sessionStore = new PhoneSessionStore(runtime, resolveDataDir());
-      await sessionStore.load();
       const dedup = new DedupCache();
 
-      const deps = { client, config, dedup, runtime, sessionStore };
+      const deps = { client, config, dedup, runtime };
       registerWebhookRoutes(app, config, deps);
 
       console.log("WhatsApp plugin initialized");

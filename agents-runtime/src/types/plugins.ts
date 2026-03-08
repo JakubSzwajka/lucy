@@ -39,7 +39,6 @@ export interface RuntimePluginRunCompleteInput<TConfig = unknown> {
   agent: Agent;
   pluginConfig: TConfig;
   run: RuntimePluginRunSummary;
-  sessionId: string;
   userId: string;
 }
 
@@ -89,6 +88,12 @@ export interface RuntimePluginsConfig {
   enabled: string[];
 }
 
+export interface CompactionConfig {
+  summarizationModel?: string;
+  windowSize?: number;
+}
+
 export interface RuntimeConfig {
+  compaction?: CompactionConfig;
   plugins?: RuntimePluginsConfig;
 }

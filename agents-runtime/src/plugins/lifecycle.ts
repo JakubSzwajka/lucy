@@ -76,7 +76,6 @@ export async function runOnRunCompleteHooks(input: {
   deps: RuntimeDeps;
   resolvedPlugins: ResolvedRuntimePlugin[];
   run: RuntimePluginRunSummary;
-  sessionId: string;
   userId: string;
 }): Promise<void> {
   if (input.resolvedPlugins.length === 0) {
@@ -93,7 +92,6 @@ export async function runOnRunCompleteHooks(input: {
       agent,
       pluginConfig: resolvedPlugin.config,
       run: input.run,
-      sessionId: input.sessionId,
       userId: input.userId,
     });
   }

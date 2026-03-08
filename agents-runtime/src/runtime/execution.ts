@@ -39,7 +39,6 @@ async function finalizeRun(params: {
   onFinish?: () => Promise<void>;
   resolvedPlugins: ResolvedRuntimePlugin[];
   run: RuntimePluginRunSummary;
-  sessionId: string;
   userId: string;
 }): Promise<void> {
   const {
@@ -49,7 +48,6 @@ async function finalizeRun(params: {
     onFinish,
     resolvedPlugins,
     run,
-    sessionId,
     userId,
   } = params;
 
@@ -74,7 +72,6 @@ async function finalizeRun(params: {
       deps,
       resolvedPlugins,
       run,
-      sessionId,
       userId,
     });
     if (onFinish) {
@@ -98,7 +95,6 @@ export function runStreamingAgent(params: {
   messages: ModelMessage[];
   onFinish?: () => Promise<void>;
   resolvedPlugins: ResolvedRuntimePlugin[];
-  sessionId: string;
   userId: string;
 }): Extract<RunResult, { streaming: true }> {
   const {
@@ -108,7 +104,6 @@ export function runStreamingAgent(params: {
     messages,
     onFinish,
     resolvedPlugins,
-    sessionId,
     userId,
   } = params;
 
@@ -165,7 +160,6 @@ export function runStreamingAgent(params: {
           output: text || undefined,
           status: "completed",
         },
-        sessionId,
         userId,
       });
     },
@@ -182,7 +176,6 @@ export async function runNonStreamingAgent(params: {
   maxTurns: number;
   onFinish?: () => Promise<void>;
   resolvedPlugins: ResolvedRuntimePlugin[];
-  sessionId: string;
   userId: string;
 }): Promise<Extract<RunResult, { streaming: false }>> {
   const {
@@ -193,7 +186,6 @@ export async function runNonStreamingAgent(params: {
     maxTurns,
     onFinish,
     resolvedPlugins,
-    sessionId,
     userId,
   } = params;
 
@@ -294,7 +286,6 @@ export async function runNonStreamingAgent(params: {
     onFinish,
     resolvedPlugins,
     run: runSummary,
-    sessionId,
     userId,
   });
 

@@ -2,7 +2,6 @@ export type AgentStatus = "pending" | "running" | "waiting" | "completed" | "fai
 
 export interface Agent {
   id: string;
-  sessionId: string;
   agentConfigId: string;
   name: string;
   task?: string | null;
@@ -27,12 +26,6 @@ export interface AgentUpdate {
   turnCount?: number;
   startedAt?: Date;
   completedAt?: Date;
-}
-
-export interface Session {
-  id: string;
-  agentId: string;
-  updatedAt: string;
 }
 
 export type ItemType = "message" | "tool_call" | "tool_result" | "reasoning";

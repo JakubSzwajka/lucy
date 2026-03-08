@@ -1,3 +1,10 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import type { RuntimeDeps } from "agents-runtime";
+
+import { observe } from "./observe.js";
+import { synthesizeMemory } from "./synthesize.js";
 import type {
   MemoryContextRecord,
   MemoryPlugin,
@@ -8,6 +15,7 @@ import type {
   MemoryPluginRunCompleteInput,
   MemoryPluginSystemPromptSectionShape,
 } from "./types.js";
+import { MEMORY_MD_PATH } from "./types.js";
 
 const DEFAULT_PLUGIN_ID = "memory";
 const DEFAULT_SECTION_KEY = "memory";
@@ -43,18 +51,60 @@ function rememberObservedRun(
   context.latestRun = {
     agentId: input.agent.id,
     output: input.run.output,
-    sessionId: input.sessionId,
     status: input.run.status,
     userId: input.userId,
   };
 }
 
+async function readMemoryFromDisk(
+  dataDir: string,
+): Promise<MemoryContextRecord | null> {
+  try {
+    const filePath = join(dataDir, MEMORY_MD_PATH);
+    const content = await readFile(filePath, "utf-8");
+    const trimmed = content.trim();
+
+    if (!trimmed) {
+      return null;
+    }
+
+    return { content: trimmed, title: DEFAULT_SECTION_TITLE };
+  } catch {
+    return null;
+  }
+}
+
+async function runObserverPipeline(
+  deps: RuntimeDeps,
+  dataDir: string,
+  agentId: string,
+  config: { modelId: string; maxFacts?: number },
+): Promise<void> {
+  const modelConfig = await deps.models.getModelConfig(config.modelId);
+  if (!modelConfig) {
+    console.warn(`🧠 Memory observer: model not found: ${config.modelId}`);
+    return;
+  }
+
+  const model = deps.models.getLanguageModel(modelConfig);
+
+  // Step 1: Extract observations from new conversation items
+  await observe(dataDir, agentId, model);
+
+  // Step 2: Synthesize memory.md from all observations
+  await synthesizeMemory(dataDir, model, config.maxFacts);
+}
+
 export function createMemoryPlugin(options: MemoryPluginOptions = {}): MemoryPlugin {
   const context: MemoryPluginContext = {};
+  const dataDir = options.dataDir;
+  const observerConfig = options.observer;
+  let runtimeDeps: RuntimeDeps | null = null;
 
   return {
     id: options.id ?? DEFAULT_PLUGIN_ID,
-    onInit: async () => {
+    onInit: async (input) => {
+      runtimeDeps = input.deps;
       console.log("🧠 Memory plugin initialized");
     },
     onDestroy: async () => {
@@ -69,9 +119,26 @@ export function createMemoryPlugin(options: MemoryPluginOptions = {}): MemoryPlu
         // Runtime hook failures currently abort execution globally. Keep the
         // scaffolded observer best-effort so memory stays additive-only.
       }
+
+      // Run memory observation pipeline if configured
+      if (dataDir && observerConfig && runtimeDeps) {
+        // Fire-and-forget — don't block the runtime
+        runObserverPipeline(runtimeDeps, dataDir, input.agent.id, observerConfig).catch((err) => {
+          console.error("🧠 Memory observer failed:", err);
+        });
+      }
     },
     async prepareContext(input) {
-      const memory = await resolveMemoryContext(input.pluginConfig, input);
+      let memory: MemoryContextRecord | null = null;
+
+      if (dataDir) {
+        memory = await readMemoryFromDisk(dataDir);
+      }
+
+      if (!memory) {
+        memory = await resolveMemoryContext(input.pluginConfig, input);
+      }
+
       context.memory = memory;
 
       if (!memory) {

@@ -1,8 +1,14 @@
 {
   "agents-runtime": {
+    "compaction": {
+      "windowSize": 50
+    },
     "plugins": {
       "enabled": ["memory"],
       "configById": {}
     }
+  },
+  "agents-memory": {
+    "modelId": "openai/gpt-4o-mini"
   }
 }

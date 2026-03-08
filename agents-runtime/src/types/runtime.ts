@@ -4,12 +4,11 @@ import type {
   ToolSet,
 } from "ai";
 import type {
+  AgentStore,
   ConfigStore,
   IdentityProvider,
   ItemStore,
   ModelProvider,
-  SessionStore,
-  AgentStore,
 } from "../ports.js";
 import type {
   Agent,
@@ -42,7 +41,6 @@ export interface ChatContext {
 }
 
 export type RunOptions = {
-  sessionId: string;
   modelId?: string;
   thinkingEnabled?: boolean;
   onFinish?: () => Promise<void>;
@@ -61,5 +59,4 @@ export interface RuntimeDeps {
   config: ConfigStore;
   models: ModelProvider;
   identity: IdentityProvider;
-  sessions: SessionStore;
 }

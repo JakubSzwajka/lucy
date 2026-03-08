@@ -13,5 +13,20 @@ services:
       - ~/.agents-data:/data
       - ./lucy.config.json:/app/lucy.config.json:ro
 
+  webui:
+    image: node:24-slim
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "${WEBUI_PORT:-5173}:5173"
+    environment:
+      - VITE_API_URL=http://localhost:${PORT:-3080}
+    volumes:
+      - ./agents-webui:/app
+      - webui-node-modules:/app/node_modules
+    depends_on:
+      - gateway
+
 volumes:
   agents-data:
+  webui-node-modules:
