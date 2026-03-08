@@ -4,7 +4,6 @@
 
 # Unused workspace packages
 .legacy
-agents-webui
 
 # Build artifacts and deps (installed inside container)
 node_modules

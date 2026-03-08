@@ -1,7 +1,7 @@
 import type { ChatResponse, HistoryResponse, ModelsResponse } from "./types";
 
 const BASE_URL: string =
-  import.meta.env.VITE_API_URL ?? "http://localhost:3080";
+  import.meta.env.VITE_API_URL ?? "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, init);
@@ -21,14 +21,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function getHistory(): Promise<HistoryResponse> {
-  return request<HistoryResponse>("/chat/history");
+  return request<HistoryResponse>("/api/chat/history");
 }
 
 export function sendMessage(
   message: string,
   options?: { modelId?: string; thinkingEnabled?: boolean },
 ): Promise<ChatResponse> {
-  return request<ChatResponse>("/chat", {
+  return request<ChatResponse>("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, ...options }),
@@ -36,5 +36,5 @@ export function sendMessage(
 }
 
 export function getModels(): Promise<ModelsResponse> {
-  return request<ModelsResponse>("/models");
+  return request<ModelsResponse>("/api/models");
 }

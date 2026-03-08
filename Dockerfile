@@ -12,6 +12,7 @@ COPY agents-gateway-http/package.json agents-gateway-http/
 COPY agents-memory/package.json agents-memory/
 COPY agents-plugin-whatsapp/package.json agents-plugin-whatsapp/
 COPY agents-landing-page/package.json agents-landing-page/
+COPY agents-webui/package.json agents-webui/
 
 RUN npm ci
 
@@ -24,12 +25,14 @@ WORKDIR /app
 COPY agents-runtime/ agents-runtime/
 COPY agents-memory/ agents-memory/
 COPY agents-landing-page/ agents-landing-page/
+COPY agents-webui/ agents-webui/
 COPY docs/prds/ docs/prds/
 
 # Compile TypeScript packages and build static assets
 RUN npm run build --workspace=agents-runtime \
  && npm run build --workspace=agents-memory \
- && npm run build --workspace=agents-landing-page
+ && npm run build --workspace=agents-landing-page \
+ && npm run build --workspace=agents-webui
 
 # Stage 3: Production image
 FROM node:24-slim AS runtime
@@ -58,6 +61,10 @@ COPY agents-gateway-http/src/ agents-gateway-http/src/
 # Landing page (static build)
 COPY --from=deps /app/agents-landing-page/package.json agents-landing-page/package.json
 COPY --from=build /app/agents-landing-page/dist/ agents-landing-page/dist/
+
+# WebUI (static build, served by gateway at /chat)
+COPY --from=deps /app/agents-webui/package.json agents-webui/package.json
+COPY --from=build /app/agents-webui/dist/ agents-webui/dist/
 
 # Config and prompt (optional files)
 COPY lucy.config.jso[n] ./
