@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import type { Item, ToolResultItem } from "@/api/types";
 import { MessageBubble } from "@/components/MessageBubble";
+import { ReasoningBlock } from "@/components/ReasoningBlock";
 import { ToolCallBlock } from "@/components/ToolCallBlock";
 
 interface MessageListProps {
@@ -41,8 +42,9 @@ export function MessageList({ items }: MessageListProps) {
                 />
               );
             case "tool_result":
-            case "reasoning":
               return null;
+            case "reasoning":
+              return <ReasoningBlock key={item.id} item={item} />;
             default:
               return null;
           }

@@ -219,27 +219,37 @@ export async function runNonStreamingAgent(params: {
         providerOptions: context.providerOptions as LanguageModelV1ProviderMetadata,
       });
 
-      if (result.text) {
-        await deps.items.createMessage(agentId, { role: "assistant", content: result.text });
-      }
-
       if (result.steps) {
         for (const step of result.steps) {
+          const contentParts: ContentPart[] = [];
+          if (step.reasoning) {
+            contentParts.push({ type: "reasoning", text: step.reasoning });
+          }
+          if (step.text) {
+            contentParts.push({ type: "text", text: step.text });
+          }
           for (const tc of step.toolCalls) {
-            await deps.items.createToolCall(agentId, {
-              callId: tc.toolCallId,
-              toolArgs: (tc.args as Record<string, unknown> | undefined) ?? null,
+            contentParts.push({
+              type: "tool-call",
+              input: (tc.args ?? {}) as Record<string, unknown>,
+              toolCallId: tc.toolCallId,
               toolName: tc.toolName,
-              toolStatus: "completed",
             });
           }
           for (const tr of step.toolResults as RuntimeToolResult[]) {
-            await deps.items.createToolResult(agentId, {
-              callId: tr.toolCallId,
-              toolOutput: typeof tr.result === "string" ? tr.result : JSON.stringify(tr.result),
+            contentParts.push({
+              type: "tool-result",
+              output: tr.result,
+              toolCallId: tr.toolCallId,
+              toolName: tr.toolName,
             });
           }
+          if (contentParts.length > 0) {
+            await persistStepContent(deps.items, agentId, contentParts);
+          }
         }
+      } else if (result.text) {
+        await deps.items.createMessage(agentId, { role: "assistant", content: result.text });
       }
 
       await deps.agents.update(agentId, { turnCount: turn + 1 });

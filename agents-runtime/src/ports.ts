@@ -50,6 +50,7 @@ export interface ConfigStore {
 /** Resolves models to AI SDK instances */
 export interface ModelProvider {
   getModelConfig(modelId: string): Promise<ModelConfig | undefined>;
+  listModels(): Promise<ModelConfig[]>;
   getLanguageModel(config: ModelConfig): LanguageModel;
   buildProviderOptions(
     config: ModelConfig,

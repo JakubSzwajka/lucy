@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 
+import { setGatewayConfig } from "./gateway-config.js";
 import { destroyGatewayPlugins, initGatewayPlugins } from "./gateway-plugins/lifecycle.js";
 import { buildGatewayPluginRegistry } from "./gateway-plugins/plugins.js";
 import { resolveGatewayPlugins } from "./gateway-plugins/registry.js";
@@ -12,6 +13,10 @@ const port = Number(process.env.PORT ?? 3080);
 const { runtime, config } = await initRuntime();
 
 const gatewayConfig = config["agents-gateway-http"];
+if (gatewayConfig) {
+  setGatewayConfig(gatewayConfig);
+}
+
 const gatewayPlugins: ResolvedGatewayPlugin[] = resolveGatewayPlugins(
   gatewayConfig?.plugins as GatewayPluginsConfig | undefined,
   buildGatewayPluginRegistry(),

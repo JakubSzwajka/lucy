@@ -27,6 +27,10 @@ export class OpenRouterModelProvider implements ModelProvider {
     return models.find((m) => m.id === modelId);
   }
 
+  async listModels(): Promise<ModelConfig[]> {
+    return this.fetchModels();
+  }
+
   getLanguageModel(config: ModelConfig): LanguageModel {
     return this.openrouter.chat(config.modelId);
   }
@@ -36,7 +40,7 @@ export class OpenRouterModelProvider implements ModelProvider {
     thinkingEnabled: boolean,
   ): unknown {
     if (!config.supportsReasoning || !thinkingEnabled) return undefined;
-    return { openai: { reasoningEffort: "medium" as const } };
+    return { openrouter: { reasoning: { effort: "medium" as const } } };
   }
 
   private async fetchModels(): Promise<ModelConfig[]> {

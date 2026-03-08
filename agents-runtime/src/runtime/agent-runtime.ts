@@ -13,6 +13,7 @@ import type {
   AgentRuntimeOptions,
   ChatContext,
   Item,
+  ModelConfig,
   ModelMessage,
   ResolvedRuntimePlugin,
   RunOptions,
@@ -96,7 +97,7 @@ export class AgentRuntime {
 
   async sendMessage(
     message: string,
-    options?: { modelId?: string },
+    options?: { modelId?: string; thinkingEnabled?: boolean },
   ): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }> {
     const agentId = await this.ensureAgent();
     await this.deps.items.createMessage(agentId, { role: "user", content: message });
@@ -104,6 +105,7 @@ export class AgentRuntime {
     const result = await this.run(agentId, "default", [], {
       streaming: false,
       modelId: options?.modelId,
+      thinkingEnabled: options?.thinkingEnabled,
     });
 
     if (result.streaming) throw new Error("Unexpected streaming result");
@@ -143,6 +145,10 @@ export class AgentRuntime {
     const items = await this.deps.items.getByAgentId(agentId);
     const state = await this.compaction.getState();
     return { items, compactionSummary: state?.summary ?? null };
+  }
+
+  async getModels(): Promise<ModelConfig[]> {
+    return this.deps.models.listModels();
   }
 
   private async ensureAgent(): Promise<string> {
