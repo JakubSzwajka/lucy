@@ -76,16 +76,10 @@ export interface RuntimePlugin<TConfig = unknown> {
 }
 
 export type RuntimePluginConfig = Record<string, unknown>;
-export type RuntimePluginRegistry = Record<string, RuntimePlugin>;
 
 export interface ResolvedRuntimePlugin<TConfig = RuntimePluginConfig> {
   config: TConfig;
   plugin: RuntimePlugin<TConfig>;
-}
-
-export interface RuntimePluginsConfig {
-  configById?: Record<string, RuntimePluginConfig | undefined>;
-  enabled: string[];
 }
 
 export interface CompactionConfig {
@@ -95,5 +89,77 @@ export interface CompactionConfig {
 
 export interface RuntimeConfig {
   compaction?: CompactionConfig;
-  plugins?: RuntimePluginsConfig;
 }
+
+// ---------------------------------------------------------------------------
+// Gateway plugin types (framework-agnostic)
+// ---------------------------------------------------------------------------
+
+export interface GatewayPluginInitInput<
+  TConfig = unknown,
+  TApp = unknown,
+  TRuntime = unknown,
+> {
+  app: TApp;
+  pluginConfig: TConfig;
+  runtime: TRuntime;
+}
+
+export interface GatewayPlugin<TConfig = unknown> {
+  id: string;
+  /**
+   * Invoked once when the gateway is bootstrapped. Use this to register
+   * routes on the app instance and capture the runtime reference. Called
+   * sequentially in resolved plugin order; failures are fatal.
+   */
+  onInit?: (
+    input: GatewayPluginInitInput<TConfig>,
+  ) => Promise<void> | void;
+  /**
+   * Invoked when the gateway is shutting down. Use this to clean up
+   * resources created in onInit (clear timers, close connections, etc.).
+   */
+  onDestroy?: () => Promise<void> | void;
+}
+
+export type GatewayPluginConfig = Record<string, unknown>;
+
+export interface ResolvedGatewayPlugin<TConfig = GatewayPluginConfig> {
+  config: TConfig;
+  plugin: GatewayPlugin<TConfig>;
+}
+
+// ---------------------------------------------------------------------------
+// Plugin manifest types (package-level declarations)
+// ---------------------------------------------------------------------------
+
+export type PluginType = "runtime" | "gateway" | "both";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- manifest return types are type-erased; the loader doesn't know the plugin's internal config type
+export interface RuntimePluginManifest<TConfig = unknown> {
+  id: string;
+  type: "runtime";
+  create: (config: TConfig) => RuntimePlugin<any>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface GatewayPluginManifest<TConfig = unknown> {
+  id: string;
+  type: "gateway";
+  create: (config: TConfig) => GatewayPlugin<any>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface DualPluginManifest<TConfig = unknown> {
+  id: string;
+  type: "both";
+  create: (config: TConfig) => {
+    runtime: RuntimePlugin<any>;
+    gateway: GatewayPlugin<any>;
+  };
+}
+
+export type PluginManifest<TConfig = unknown> =
+  | RuntimePluginManifest<TConfig>
+  | GatewayPluginManifest<TConfig>
+  | DualPluginManifest<TConfig>;

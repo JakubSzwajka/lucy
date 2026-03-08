@@ -1,18 +1,16 @@
 import type { RuntimeConfig } from "../types/plugins.js";
 
+export interface PluginEntry {
+  config?: Record<string, unknown>;
+  package: string;
+}
+
 export interface LucyConfig {
   "agents-gateway-http"?: {
-    plugins?: {
-      enabled: string[];
-      configById?: Record<string, Record<string, unknown> | undefined>;
-    };
-    [key: string]: unknown;
-  };
-  "agents-memory"?: {
-    modelId?: string;
-    maxFacts?: number;
+    allowedModels?: string[];
     [key: string]: unknown;
   };
   "agents-runtime"?: RuntimeConfig;
+  plugins?: PluginEntry[];
   [key: string]: unknown;
 }

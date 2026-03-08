@@ -5,7 +5,7 @@ import type { LucyConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = "lucy.config.json";
 
-const KNOWN_KEYS = ["agents-runtime", "agents-memory", "agents-gateway-http"];
+const KNOWN_KEYS = ["agents-runtime"];
 
 export async function loadConfig(path?: string): Promise<LucyConfig> {
   const configPath =
@@ -38,6 +38,10 @@ export async function loadConfig(path?: string): Promise<LucyConfig> {
     ) {
       throw new Error(`Config key "${key}" must be an object in: ${configPath}`);
     }
+  }
+
+  if (config.plugins !== undefined && !Array.isArray(config.plugins)) {
+    throw new Error(`Config key "plugins" must be an array in: ${configPath}`);
   }
 
   return config as LucyConfig;

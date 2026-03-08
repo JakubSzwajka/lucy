@@ -6,14 +6,11 @@ export { createFileAdapters } from "./adapters/index.js";
 export { OpenRouterModelProvider } from "./adapters/openrouter-model-provider.js";
 export { resolveDataDir } from "./adapters/resolve-data-dir.js";
 export { loadConfig } from "./config/load-config.js";
-export {
-  bootstrapAgentRuntime,
-  createConfiguredRuntime,
-} from "./plugins/bootstrap.js";
-export { resolveRuntimePlugins } from "./plugins/registry.js";
+export { loadPlugins } from "./plugins/loader.js";
 
 // Re-export types
-export type { LucyConfig } from "./config/types.js";
+export type { LucyConfig, PluginEntry } from "./config/types.js";
+export type { LoadedPlugins } from "./plugins/loader.js";
 export type {
   Agent,
   AgentConfig,
@@ -21,31 +18,37 @@ export type {
   AgentConfigWithTools,
   AgentRuntimeOptions,
   AgentUpdate,
-  BootstrapAgentRuntimeOptions,
   ChatContext,
+  CompactionConfig,
+  DualPluginManifest,
+  GatewayPlugin,
+  GatewayPluginConfig,
+  GatewayPluginInitInput,
+  GatewayPluginManifest,
   IdentityDocument,
   Item,
   MessageItem,
   ModelConfig,
   ModelMessage,
   ModelMessageContent,
+  PluginManifest,
+  PluginType,
   ReasoningItem,
+  ResolvedGatewayPlugin,
   ResolvedRuntimePlugin,
   RunOptions,
-  CompactionConfig,
   RunResult,
-  RuntimeDeps,
   RuntimeConfig,
+  RuntimeDeps,
   RuntimePlugin,
   RuntimePluginConfig,
-  RuntimePluginRegistry,
   RuntimePluginInitInput,
+  RuntimePluginManifest,
   RuntimePluginPrepareContextInput,
   RuntimePluginPrepareContextResult,
   RuntimePluginRunCompleteInput,
   RuntimePluginRunSummary,
   RuntimePluginSystemPromptSection,
-  RuntimePluginsConfig,
   ToolCallItem,
   ToolResultItem,
 } from "./types.js";

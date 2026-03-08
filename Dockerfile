@@ -3,41 +3,32 @@ FROM node:24-slim AS deps
 
 WORKDIR /app
 
-# Copy root workspace config and lockfile
 COPY package.json package-lock.json ./
 
-# Copy package.json for the workspace packages we need
-COPY agents-runtime/package.json agents-runtime/package.json
-COPY agents-gateway-http/package.json agents-gateway-http/package.json
-COPY agents-memory/package.json agents-memory/package.json
-COPY agents-plugin-whatsapp/package.json agents-plugin-whatsapp/package.json
-COPY agents-landing-page/package.json agents-landing-page/package.json
+# Copy all workspace package.json files for npm ci
+# When adding a new package, add its package.json here
+COPY agents-runtime/package.json agents-runtime/
+COPY agents-gateway-http/package.json agents-gateway-http/
+COPY agents-memory/package.json agents-memory/
+COPY agents-plugin-whatsapp/package.json agents-plugin-whatsapp/
+COPY agents-landing-page/package.json agents-landing-page/
 
-# Install all dependencies (including devDeps — tsx is needed at runtime)
 RUN npm ci
 
-# Stage 2: Build agents-runtime
+# Stage 2: Build compiled packages
 FROM deps AS build
 
 WORKDIR /app
 
-# Copy runtime source and config for compilation
-COPY agents-runtime/src/ agents-runtime/src/
-COPY agents-runtime/tsconfig.json agents-runtime/tsconfig.json
+# Copy entire workspace directories for compilation
+COPY agents-runtime/ agents-runtime/
+COPY agents-memory/ agents-memory/
+COPY agents-landing-page/ agents-landing-page/
 
-# Copy memory source and config for compilation
-COPY agents-memory/src/ agents-memory/src/
-COPY agents-memory/tsconfig.json agents-memory/tsconfig.json
-
-# Compile TypeScript to dist/
-RUN npm run build --workspace=agents-runtime && npm run build --workspace=agents-memory
-
-# Build landing page static files
-COPY agents-landing-page/public/ agents-landing-page/public/
-COPY agents-landing-page/src/ agents-landing-page/src/
-COPY agents-landing-page/astro.config.mjs agents-landing-page/astro.config.mjs
-COPY agents-landing-page/tsconfig.jso[n] agents-landing-page/
-RUN npm run build --workspace=agents-landing-page
+# Compile TypeScript packages and build static assets
+RUN npm run build --workspace=agents-runtime \
+ && npm run build --workspace=agents-memory \
+ && npm run build --workspace=agents-landing-page
 
 # Stage 3: Production image
 FROM node:24-slim AS runtime
@@ -45,37 +36,31 @@ FROM node:24-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Copy root workspace config
 COPY package.json package-lock.json ./
-
-# Copy installed node_modules (includes tsx and all workspace deps)
 COPY --from=deps /app/node_modules/ node_modules/
 
-# Copy agents-runtime package with compiled output
+# Compiled packages: package.json + dist/
 COPY --from=deps /app/agents-runtime/package.json agents-runtime/package.json
 COPY --from=build /app/agents-runtime/dist/ agents-runtime/dist/
-
-# Copy agents-memory package with compiled output
 COPY --from=deps /app/agents-memory/package.json agents-memory/package.json
 COPY --from=build /app/agents-memory/dist/ agents-memory/dist/
 
-# Copy agents-plugin-whatsapp package with source (runs via tsx)
+# Plugin packages (run via tsx): package.json + src/
+# Adding a new plugin only requires adding lines here
 COPY --from=deps /app/agents-plugin-whatsapp/package.json agents-plugin-whatsapp/package.json
 COPY agents-plugin-whatsapp/src/ agents-plugin-whatsapp/src/
 
-# Copy agents-gateway-http package with source (runs via tsx)
+# Gateway (entrypoint, runs via tsx)
 COPY --from=deps /app/agents-gateway-http/package.json agents-gateway-http/package.json
 COPY agents-gateway-http/src/ agents-gateway-http/src/
 
-# Copy landing page static build output
+# Landing page (static build)
 COPY --from=deps /app/agents-landing-page/package.json agents-landing-page/package.json
 COPY --from=build /app/agents-landing-page/dist/ agents-landing-page/dist/
 
-# Copy config if present in build context, otherwise create empty default
+# Config and prompt (optional files)
 COPY lucy.config.jso[n] ./
 RUN test -f lucy.config.json || echo '{}' > lucy.config.json
-
-# Copy prompt file if present in build context, otherwise skip
 COPY prompt.m[d] ./
 
 EXPOSE 3080

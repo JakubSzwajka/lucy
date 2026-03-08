@@ -6,7 +6,7 @@ import type { LanguageModel } from "ai";
 
 import { MEMORY_PLUGIN_ID, createMemoryPlugin } from "../../agents-memory/src/index.ts";
 import {
-  bootstrapAgentRuntime,
+  AgentRuntime,
   createFileAdapters,
   type ModelConfig,
   type ModelProvider,
@@ -167,12 +167,13 @@ async function main() {
     // Scenario 1: Baseline
     console.log("\n1. Baseline runtime without plugins");
     await withCleanDir(BASELINE_DATA_DIR, async () => {
-      const runtime = await bootstrapAgentRuntime({
+      const runtime = new AgentRuntime({
         deps: {
           ...createFileAdapters(BASELINE_DATA_DIR),
           models: new MockModelProvider(),
         },
       });
+      await runtime.init();
 
       const result = await runtime.sendMessage("Hello");
       if (!result.response.includes("mock assistant")) {
@@ -193,24 +194,21 @@ async function main() {
     // Scenario 2: Memory observer
     console.log("\n2. Runtime with memory observer");
     await withCleanDir(OBSERVER_DATA_DIR, async () => {
-      const runtime = await bootstrapAgentRuntime({
-        config: {
-          plugins: {
-            configById: { [MEMORY_PLUGIN_ID]: {} },
-            enabled: [MEMORY_PLUGIN_ID],
-          },
-        },
+      const memoryPlugin = createMemoryPlugin({
+        dataDir: OBSERVER_DATA_DIR,
+        observer: { modelId: "mock-model" },
+      });
+
+      const runtime = new AgentRuntime({
         deps: {
           ...createFileAdapters(OBSERVER_DATA_DIR),
           models: new MockModelProvider(),
         },
-        pluginRegistry: {
-          [MEMORY_PLUGIN_ID]: createMemoryPlugin({
-            dataDir: OBSERVER_DATA_DIR,
-            observer: { modelId: "mock-model" },
-          }),
-        },
+        resolvedPlugins: [
+          { config: {}, plugin: memoryPlugin },
+        ],
       });
+      await runtime.init();
 
       // Send a message with memorable facts
       const result1 = await runtime.sendMessage(

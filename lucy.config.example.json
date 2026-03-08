@@ -1,14 +1,26 @@
 {
+  "plugins": [
+    {
+      "package": "agents-memory",
+      "config": {
+        "modelId": "openai/gpt-4o-mini"
+      }
+    },
+    {
+      "package": "agents-plugin-whatsapp",
+      "config": {
+        "phoneNumberId": "YOUR_PHONE_NUMBER_ID",
+        "verifyToken": "YOUR_VERIFY_TOKEN",
+        "allowedNumbers": ["1234567890"]
+      }
+    }
+  ],
   "agents-runtime": {
     "compaction": {
       "windowSize": 50
-    },
-    "plugins": {
-      "enabled": ["memory"],
-      "configById": {}
     }
   },
-  "agents-memory": {
-    "modelId": "openai/gpt-4o-mini"
+  "agents-gateway-http": {
+    "allowedModels": ["anthropic/*", "openai/*"]
   }
 }

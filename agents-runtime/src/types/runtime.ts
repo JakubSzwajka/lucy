@@ -23,12 +23,6 @@ export interface AgentRuntimeOptions {
   deps?: Partial<RuntimeDeps>;
 }
 
-export interface BootstrapAgentRuntimeOptions {
-  config?: RuntimeConfig;
-  deps?: Partial<RuntimeDeps>;
-  pluginRegistry?: import("./plugins.js").RuntimePluginRegistry;
-}
-
 export interface ChatContext {
   agent: Agent;
   languageModel: LanguageModel;
