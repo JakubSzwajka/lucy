@@ -43,9 +43,19 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         position: relative;
         overflow: hidden;
+      }
+
+      .system-flow {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        opacity: 0.72;
+        pointer-events: none;
       }
 
       /* grid texture */
@@ -97,19 +107,20 @@
 
       .content {
         position: relative;
+        z-index: 2;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 2.5rem;
-        padding: 2rem;
+        gap: 1.5rem;
+        padding: 3rem 2rem 1.5rem;
       }
 
       .logo {
-        width: 140px;
-        height: 140px;
+        width: 80px;
+        height: 80px;
         filter: drop-shadow(0 0 60px rgba(200, 230, 74, 0.35))
                drop-shadow(0 0 120px rgba(200, 230, 74, 0.12));
-        animation: float 6s ease-in-out infinite;
+        animation: none;
       }
 
       @keyframes float {
@@ -171,6 +182,7 @@
 
       footer {
         position: absolute;
+        z-index: 2;
         bottom: 2rem;
         display: flex;
         flex-direction: column;
@@ -196,23 +208,329 @@
     </style>
   </head>
   <body>
+    <canvas class="system-flow" aria-hidden="true"></canvas>
     <div class="glow-primary"></div>
     <div class="glow-secondary"></div>
     <div class="content">
       <img src="/logo.png" alt="Lucy" class="logo" />
       <div class="headline">
         <h1 class="name">lucy</h1>
-        <p class="subtitle">your AI assistant</p>
       </div>
       <div class="chips">
-        <span class="chip">runtime</span>
-        <span class="chip">memory</span>
-        <span class="chip">gateway</span>
-        <span class="chip">plugins</span>
+        <span class="chip">interactions</span>
+        <span class="chip">observations</span>
+        <span class="chip">reflections</span>
       </div>
     </div>
     <footer>
       <span>built by <a href="https://github.com/JakubSzwajka" target="_blank" rel="noreferrer">jakub szwajka</a></span>
     </footer>
+    <script>
+      const canvas = document.querySelector(".system-flow");
+      const ctx = canvas?.getContext("2d");
+
+      if (canvas instanceof HTMLCanvasElement && ctx) {
+        const colors = {
+          core:        { fill: "rgba(200, 230, 74, 0.95)", dim: "rgba(200, 230, 74, 0.06)", stroke: "rgba(200, 230, 74, 0.22)" },
+          interaction: { fill: "rgba(104, 162, 255, 0.70)", dim: "rgba(104, 162, 255, 0.06)", stroke: "rgba(104, 162, 255, 0.22)", edge: "rgba(104, 162, 255, 0.18)" },
+          observation: { fill: "rgba(122, 214, 197, 0.70)", dim: "rgba(122, 214, 197, 0.06)", stroke: "rgba(122, 214, 197, 0.22)", edge: "rgba(122, 214, 197, 0.18)" },
+          reflection:  { fill: "rgba(200, 230, 74, 0.60)",  dim: "rgba(200, 230, 74, 0.05)",  stroke: "rgba(200, 230, 74, 0.22)", edge: "rgba(200, 230, 74, 0.16)" },
+          text: "rgba(214, 223, 236, 0.44)",
+          textBright: "rgba(214, 223, 236, 0.68)",
+          particle: "rgba(255, 255, 255, 0.65)",
+        };
+
+        // The three channels
+        const channels = [
+          { key: "interaction", label: "interactions", subtitle: "communicate" },
+          { key: "observation", label: "observations", subtitle: "perceive" },
+          { key: "reflection",  label: "reflections",  subtitle: "understand" },
+        ];
+
+        let W = 0, H = 0, dpr = 1, frame = 0, animId = 0;
+        let agent = { x: 0, y: 0, r: 0 };
+        let nodes = [];
+        let edges = [];
+        let particles = [];
+
+        function rebuildScene() {
+          W = window.innerWidth;
+          H = window.innerHeight;
+          dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+          canvas.width = Math.floor(W * dpr);
+          canvas.height = Math.floor(H * dpr);
+          canvas.style.width = `${W}px`;
+          canvas.style.height = `${H}px`;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          const cx = W * 0.5;
+          const cy = H * 0.55;
+          const scale = Math.min(W, H);
+
+          // Agent — generous size
+          agent = { x: cx, y: cy, r: Math.max(18, scale * 0.024) };
+
+          // Three channel nodes in a triangle around the agent
+          // Spread them wide — interactions left, observations right, reflections bottom
+          const spread = Math.max(160, scale * 0.28);
+          const nodeR = Math.max(10, scale * 0.014);
+
+          nodes = [
+            { // interactions — top-left
+              ...channels[0],
+              x: cx - spread * 0.92,
+              y: cy - spread * 0.36,
+              r: nodeR,
+              colors: colors.interaction,
+            },
+            { // observations — top-right
+              ...channels[1],
+              x: cx + spread * 0.92,
+              y: cy - spread * 0.36,
+              r: nodeR,
+              colors: colors.observation,
+            },
+            { // reflections — bottom
+              ...channels[2],
+              x: cx,
+              y: cy + spread * 0.72,
+              r: nodeR,
+              colors: colors.reflection,
+            },
+          ];
+
+          // Edges: each channel ↔ agent (bidirectional feel via two particle streams)
+          edges = nodes.map((n) => ({
+            from: n,
+            to: agent,
+            colors: n.colors,
+          }));
+
+          // Multiple particles per edge for richness
+          particles = [];
+          edges.forEach((edge, ei) => {
+            const count = 3;
+            for (let i = 0; i < count; i++) {
+              particles.push({
+                edgeIndex: ei,
+                offset: i / count,
+                speed: 0.08 + Math.random() * 0.04,
+                toAgent: true,
+              });
+              particles.push({
+                edgeIndex: ei,
+                offset: (i + 0.5) / count,
+                speed: 0.06 + Math.random() * 0.03,
+                toAgent: false,
+              });
+            }
+          });
+        }
+
+        // Quadratic bezier with a control point offset perpendicular to the line
+        function getControlPoint(from, to, bend) {
+          const mx = (from.x + to.x) / 2;
+          const my = (from.y + to.y) / 2;
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          return { x: mx - dy * bend, y: my + dx * bend };
+        }
+
+        function quadPoint(from, cp, to, t) {
+          const u = 1 - t;
+          return {
+            x: u * u * from.x + 2 * u * t * cp.x + t * t * to.x,
+            y: u * u * from.y + 2 * u * t * cp.y + t * t * to.y,
+          };
+        }
+
+        function drawEdgeLine(from, to, cp, color, alpha, lineWidth) {
+          ctx.beginPath();
+          ctx.moveTo(from.x, from.y);
+          ctx.quadraticCurveTo(cp.x, cp.y, to.x, to.y);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = lineWidth;
+          ctx.globalAlpha = alpha;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
+        function drawChannelNode(node, t) {
+          const pulse = 1 + Math.sin(t * 0.0004 + node.x * 0.01) * 0.06;
+          const r = node.r * pulse;
+
+          // Outer glow
+          const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 4);
+          grad.addColorStop(0, node.colors.dim);
+          grad.addColorStop(1, "transparent");
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r * 4, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Ring
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r + 5, 0, Math.PI * 2);
+          ctx.strokeStyle = node.colors.stroke;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          // Solid dot
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = node.colors.fill;
+          ctx.fill();
+
+          // Label
+          ctx.font = '12px "JetBrains Mono", monospace';
+          ctx.textAlign = "center";
+          ctx.fillStyle = colors.textBright;
+          ctx.fillText(node.label, node.x, node.y + r + 22);
+
+          // Subtitle
+          ctx.font = '10px "Inter", sans-serif';
+          ctx.fillStyle = colors.text;
+          ctx.fillText(node.subtitle, node.x, node.y + r + 38);
+        }
+
+        function render(timestamp) {
+          frame = timestamp;
+          ctx.clearRect(0, 0, W, H);
+
+          // Subtle vertical drift for the whole scene
+          const drift = Math.sin(frame * 0.00005) * 4;
+
+          // Draw edges (curved lines between channels and agent)
+          edges.forEach((edge, i) => {
+            const bend = 0.12 * (i % 2 === 0 ? 1 : -1);
+            const cp = getControlPoint(edge.from, edge.to, bend);
+            const alpha = 0.28 + Math.sin(frame * 0.0003 + i * 2) * 0.08;
+            drawEdgeLine(edge.from, edge.to, cp, edge.colors.edge, alpha, 1.2);
+          });
+
+          // Also draw faint lines between the three channel nodes (the triangle)
+          for (let i = 0; i < nodes.length; i++) {
+            const j = (i + 1) % nodes.length;
+            const a = nodes[i], b = nodes[j];
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = "rgba(214, 223, 236, 0.04)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 12]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+
+          // Particles
+          particles.forEach((p) => {
+            const edge = edges[p.edgeIndex];
+            const bend = 0.12 * (p.edgeIndex % 2 === 0 ? 1 : -1);
+            const cp = getControlPoint(edge.from, edge.to, bend);
+
+            p.offset = (p.offset + p.speed * 0.016) % 1;
+            const t = p.toAgent ? p.offset : 1 - p.offset;
+            const pt = quadPoint(edge.from, cp, edge.to, t);
+
+            // Particle brightness peaks in the middle of its journey
+            const brightness = 0.3 + Math.sin(t * Math.PI) * 0.5;
+
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
+            ctx.fillStyle = colors.particle;
+            ctx.globalAlpha = brightness;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          });
+
+          // Channel nodes
+          nodes.forEach((n) => drawChannelNode(n, frame));
+
+          // The entity at the center — present but unnamed
+          const glow = 1 + Math.sin(frame * 0.00042) * 0.04;
+          const ar = agent.r * glow;
+          const breathe = Math.sin(frame * 0.0006);
+
+          // Outer haze
+          const hazeGrad = ctx.createRadialGradient(agent.x, agent.y, ar * 2, agent.x, agent.y, ar * 8);
+          hazeGrad.addColorStop(0, "rgba(200, 230, 74, 0.06)");
+          hazeGrad.addColorStop(0.5, "rgba(122, 214, 197, 0.03)");
+          hazeGrad.addColorStop(1, "transparent");
+          ctx.beginPath();
+          ctx.arc(agent.x, agent.y, ar * 8, 0, Math.PI * 2);
+          ctx.fillStyle = hazeGrad;
+          ctx.fill();
+
+          // Third ring — faint, slow rotation feel via dashes
+          const r3 = ar * 3.2 + breathe * 2;
+          ctx.beginPath();
+          ctx.arc(agent.x, agent.y, r3, 0, Math.PI * 2);
+          ctx.setLineDash([2, 18]);
+          ctx.lineDashOffset = -frame * 0.008;
+          ctx.strokeStyle = "rgba(122, 214, 197, 0.12)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+
+          // Second ring — gradient stroke via arc segments
+          const r2 = ar * 2.2 + breathe * 1;
+          const segments = 60;
+          for (let s = 0; s < segments; s++) {
+            const a0 = (s / segments) * Math.PI * 2;
+            const a1 = ((s + 1) / segments) * Math.PI * 2;
+            const t = s / segments;
+            // gradient: green → teal → blue → green
+            const r = Math.round(150 + Math.sin(t * Math.PI * 2) * 50);
+            const g = Math.round(210 + Math.sin(t * Math.PI * 2 + 1.5) * 30);
+            const b = Math.round(100 + Math.sin(t * Math.PI * 2 + 3) * 120);
+            const alpha = 0.14 + Math.sin(t * Math.PI * 4 + frame * 0.001) * 0.06;
+            ctx.beginPath();
+            ctx.arc(agent.x, agent.y, r2, a0, a1 + 0.02);
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+
+          // Inner ring — solid with gradient
+          const r1 = ar * 1.5;
+          const ringGrad = ctx.createConicGradient(frame * 0.0003, agent.x, agent.y);
+          ringGrad.addColorStop(0, "rgba(200, 230, 74, 0.30)");
+          ringGrad.addColorStop(0.33, "rgba(104, 162, 255, 0.18)");
+          ringGrad.addColorStop(0.66, "rgba(122, 214, 197, 0.22)");
+          ringGrad.addColorStop(1, "rgba(200, 230, 74, 0.30)");
+          ctx.beginPath();
+          ctx.arc(agent.x, agent.y, r1, 0, Math.PI * 2);
+          ctx.strokeStyle = ringGrad;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Core — radial gradient fill, not flat
+          const coreGrad = ctx.createRadialGradient(
+            agent.x - ar * 0.25, agent.y - ar * 0.25, ar * 0.1,
+            agent.x, agent.y, ar
+          );
+          coreGrad.addColorStop(0, "rgba(230, 250, 140, 0.95)");
+          coreGrad.addColorStop(0.6, "rgba(200, 230, 74, 0.90)");
+          coreGrad.addColorStop(1, "rgba(160, 200, 50, 0.75)");
+          ctx.beginPath();
+          ctx.arc(agent.x, agent.y, ar, 0, Math.PI * 2);
+          ctx.fillStyle = coreGrad;
+          ctx.fill();
+
+          animId = window.requestAnimationFrame(render);
+        }
+
+        rebuildScene();
+        animId = window.requestAnimationFrame(render);
+        window.addEventListener("resize", rebuildScene);
+
+        window.addEventListener("pagehide", () => {
+          window.cancelAnimationFrame(animId);
+          window.removeEventListener("resize", rebuildScene);
+        }, { once: true });
+      }
+    </script>
   </body>
 </html>
