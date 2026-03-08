@@ -28,19 +28,17 @@ export async function handleInboundMessage(
     return;
   }
 
-  console.log(`[whatsapp] processing: from=${from} text="${text}"`);
+  const start = Date.now();
 
   try {
-    console.log(`[whatsapp] sending to runtime...`);
     const result = await deps.runtime.sendMessage(text);
-    console.log(`[whatsapp] runtime responded (${result.response.length} chars)`);
     const chunks = splitMessage(result.response);
     for (const chunk of chunks) {
       await deps.client.sendTextMessage(from, chunk);
     }
-    console.log(`[whatsapp] reply sent (${chunks.length} chunk(s))`);
+    console.log(`[whatsapp] from=${from} ${result.response.length} chars ${chunks.length} chunk(s) ${Date.now() - start}ms`);
   } catch (error) {
-    console.error("[whatsapp] message handling failed:", error);
+    console.error(`[whatsapp] from=${from} failed after ${Date.now() - start}ms:`, error);
     await deps.client.sendTextMessage(from, "Something went wrong, try again.");
   }
 }

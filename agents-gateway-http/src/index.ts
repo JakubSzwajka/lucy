@@ -18,16 +18,16 @@ await initGatewayPlugins(gatewayPlugins, app, runtime);
 
 if (gatewayPlugins.length > 0) {
   console.log(
-    `Gateway plugins loaded: ${gatewayPlugins.map((p) => p.plugin.id).join(", ")}`,
+    `[gateway] plugins loaded: ${gatewayPlugins.map((p) => p.plugin.id).join(", ")}`,
   );
 }
 
 const server = serve({ fetch: app.fetch, port }, () => {
-  console.log(`Gateway listening on http://localhost:${port}`);
+  console.log(`[gateway] listening on http://localhost:${port}`);
 });
 
 async function shutdown() {
-  console.log("Shutting down...");
+  console.log("[gateway] shutting down...");
   server.close();
   await destroyGatewayPlugins(gatewayPlugins);
   await destroyRuntime();

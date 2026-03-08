@@ -133,7 +133,7 @@ export class AgentRuntime {
         },
       );
     } catch (err) {
-      console.error("[compaction] Failed to compact:", err);
+      console.error("[runtime] compaction failed:", err);
     }
 
     return {

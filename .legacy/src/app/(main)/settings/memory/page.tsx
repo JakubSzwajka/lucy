@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, lazy, Suspense } from "react";
+<<<<<<< Updated upstream:.legacy/src/app/(main)/settings/memory/page.tsx
 import { cn } from "@/lib/client/utils";
+=======
+import { cn } from "@/lib/utils";
+>>>>>>> Stashed changes:renderer/src/app/(main)/settings/memory/page.tsx
 import { MemoriesTab } from "@/components/memory/MemoriesTab";
 import { QuestionsTab } from "@/components/memory/QuestionsTab";
 import { IdentityTab } from "@/components/memory/IdentityTab";

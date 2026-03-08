@@ -32,10 +32,10 @@ export class WhatsAppClient {
 
       if (!response.ok) {
         const body = await response.text();
-        console.error(`WhatsApp API error (${response.status}): ${body}`);
+        console.error(`[whatsapp] API error (${response.status}): ${body}`);
       }
     } catch (error) {
-      console.error("WhatsApp API request failed:", error);
+      console.error("[whatsapp] API request failed:", error);
     }
   }
 }

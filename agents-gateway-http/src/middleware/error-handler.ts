@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 
 export function errorHandler(err: Error, c: Context) {
-  console.error(err);
+  console.error("[gateway] unhandled error:", err);
 
   if (err.message.includes("not found") || err.message.includes("Not found")) {
     return c.json({ error: err.message }, 404);

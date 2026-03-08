@@ -68,7 +68,7 @@ export async function loadPlugins(
       gateway.push({ config, plugin: result.gateway });
     }
 
-    console.log(`Plugin loaded: ${m.id} (${m.type}) from ${entry.package}`);
+    console.log(`[plugins] loaded: ${m.id} (${m.type}) from ${entry.package}`);
   }
 
   return { gateway, runtime };

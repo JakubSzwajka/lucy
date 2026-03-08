@@ -59,9 +59,16 @@ cd .legacy && npm install && npm run dev   # Starts on port 3009
 - CORS middleware with configurable allowed origins
 - bcrypt password hashing, rate limiting on auth endpoints
 
+## Logging
+
+- Prefix all logs with `[source]` indicating where they happen: `[gateway]`, `[runtime]`, `[memory]`, `[whatsapp]`, `[plugins]`, etc.
+- Keep logs concise — one summary line per operation, not step-by-step
+- For HTTP requests, log a single line on completion: method, path, status, duration
+- No emoji prefixes — use bracket prefixes only
+
 ## Error Handling
 
-- Log errors with contextual information
+- Log errors with contextual information (prefixed with `[source]`)
 - Show user-friendly error messages; never expose stack traces
 
 ## Code Quality

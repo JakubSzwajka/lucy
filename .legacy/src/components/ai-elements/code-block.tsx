@@ -269,7 +269,11 @@ const CodeBlockBody = memo(
     return (
       <pre
         className={cn(
+<<<<<<< Updated upstream:.legacy/src/components/ai-elements/code-block.tsx
           "dark:!bg-transparent dark:!text-[var(--shiki-dark)] m-0 px-3 py-3 text-sm dark:brightness-125",
+=======
+          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4 text-sm dark:brightness-125",
+>>>>>>> Stashed changes:renderer/src/components/ai-elements/code-block.tsx
           className
         )}
         style={preStyle}

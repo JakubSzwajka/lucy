@@ -39,16 +39,8 @@ export function registerWebhookRoutes(
   app.post("/whatsapp/webhook", async (c) => {
     const body = await c.req.json();
 
-    const hasMessages = body?.entry?.some((e: any) =>
-      e?.changes?.some((c: any) => Array.isArray(c?.value?.messages)),
-    );
-
-    if (hasMessages) {
-      console.log("[whatsapp] inbound message webhook received");
-    }
-
     processWebhook(body, deps).catch((error) => {
-      console.error("[whatsapp] webhook processing error:", error);
+      console.error("[whatsapp] webhook error:", error);
     });
 
     return c.text("OK", 200);
@@ -68,7 +60,6 @@ async function processWebhook(body: WebhookPayload, deps: HandlerDeps): Promise<
       if (!Array.isArray(messages)) continue;
 
       for (const message of messages) {
-        console.log(`[whatsapp] message from=${message.from} type=${message.type} id=${message.id}`);
         if (message.type === "text" && message.text?.body) {
           await handleInboundMessage(
             deps,

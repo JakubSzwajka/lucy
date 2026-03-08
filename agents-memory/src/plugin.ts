@@ -82,7 +82,7 @@ async function runObserverPipeline(
 ): Promise<void> {
   const modelConfig = await deps.models.getModelConfig(config.modelId);
   if (!modelConfig) {
-    console.warn(`🧠 Memory observer: model not found: ${config.modelId}`);
+    console.warn(`[memory] observer: model not found: ${config.modelId}`);
     return;
   }
 
@@ -105,17 +105,19 @@ export function createMemoryPlugin(options: MemoryPluginOptions = {}): MemoryPlu
     id: options.id ?? DEFAULT_PLUGIN_ID,
     onInit: async (input) => {
       runtimeDeps = input.deps;
-      console.log("🧠 Memory plugin initialized");
+      console.log("[memory] initialized");
     },
     onDestroy: async () => {
-      console.log("🧠 Memory plugin destroyed");
+      console.log("[memory] destroyed");
     },
     async onRunComplete(input) {
+      console.log("[memory] onRunComplete", input);
       rememberObservedRun(context, input);
 
       try {
         await input.pluginConfig.onRunObserved?.(input, context);
-      } catch {
+      } catch (err) {
+        console.error("[memory] onRunObserved failed", err);
         // Runtime hook failures currently abort execution globally. Keep the
         // scaffolded observer best-effort so memory stays additive-only.
       }
@@ -123,27 +125,38 @@ export function createMemoryPlugin(options: MemoryPluginOptions = {}): MemoryPlu
       // Run memory observation pipeline if configured
       if (dataDir && observerConfig && runtimeDeps) {
         // Fire-and-forget — don't block the runtime
+        console.log("[memory] running observer pipeline");
         runObserverPipeline(runtimeDeps, dataDir, input.agent.id, observerConfig).catch((err) => {
-          console.error("🧠 Memory observer failed:", err);
+          console.error("[memory] observer failed:", err);
         });
+        console.log("[memory] observer pipeline completed");
       }
     },
     async prepareContext(input) {
+      console.log("[memory] prepareContext", input);
       let memory: MemoryContextRecord | null = null;
 
       if (dataDir) {
         memory = await readMemoryFromDisk(dataDir);
       }
 
+      console.log("[memory] memory", memory);
+
       if (!memory) {
+        console.log("[memory] resolving memory context");
         memory = await resolveMemoryContext(input.pluginConfig, input);
       }
+
+      console.log("[memory] memory context resolved", memory);
 
       context.memory = memory;
 
       if (!memory) {
+        console.log("[memory] no memory found");
         return;
       }
+
+      console.log("[memory] returning system prompt sections", [toSystemPromptSection(memory)]);
 
       return {
         systemPromptSections: [toSystemPromptSection(memory)],

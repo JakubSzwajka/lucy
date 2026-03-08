@@ -1,6 +1,10 @@
 "use client";
 
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+=======
+import { useMemo, useState, useCallback } from "react";
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
 import {
   ReactFlow,
   Background,
@@ -13,9 +17,12 @@ import {
   Position,
   useNodesState,
   useEdgesState,
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
   useReactFlow,
   ReactFlowProvider,
   BackgroundVariant,
+=======
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useMemories } from "@/hooks/useMemories";
@@ -32,6 +39,7 @@ const TYPE_COLORS: Record<MemoryType, string> = {
 };
 
 const TAG_COLOR = "#6b7280";
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
 
 type LayoutMode = "circular" | "force" | "clustered";
 type EdgeType = "straight" | "default" | "smoothstep";
@@ -58,6 +66,10 @@ const DEFAULT_SETTINGS: GraphSettings = {
   bgVariant: "dots",
   nodeScale: 1,
 };
+=======
+const HIGHLIGHT_OPACITY = "ff";
+const DIM_OPACITY = "18";
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
 
 function MemoryNode({ data }: { data: { label: string; type: MemoryType; confidence: number; selected?: boolean; dimmed?: boolean } }) {
   const opacity = data.dimmed ? 0.25 : 1;
@@ -129,6 +141,7 @@ interface GraphData {
   memoryTags: Map<string, string[]>;  // memory ID -> tags
 }
 
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
 // Simple force simulation (runs synchronously for small graphs)
 function forceLayout(
   memories: Memory[],
@@ -276,6 +289,9 @@ function clusteredLayout(
 }
 
 function buildGraph(memories: Memory[], settings: GraphSettings): GraphData {
+=======
+function buildGraph(memories: Memory[]): GraphData {
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const tagCounts = new Map<string, number>();
@@ -296,6 +312,7 @@ function buildGraph(memories: Memory[], settings: GraphSettings): GraphData {
   }
 
   const tagList = Array.from(tagCounts.entries()).sort((a, b) => b[1] - a[1]);
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
   const opacityHex = Math.round((settings.edgeOpacity / 100) * 255).toString(16).padStart(2, "0");
 
   if (settings.layout === "force") {
@@ -407,12 +424,46 @@ function buildGraph(memories: Memory[], settings: GraphSettings): GraphData {
           });
         }
       }
+=======
+  const tagRadius = Math.max(200, tagList.length * 30);
+  const memRadius = tagRadius + 280;
+
+  for (let i = 0; i < tagList.length; i++) {
+    const [tag, count] = tagList[i];
+    const angle = (2 * Math.PI * i) / tagList.length;
+    nodes.push({
+      id: `tag:${tag}`,
+      type: "tag",
+      position: { x: Math.cos(angle) * tagRadius, y: Math.sin(angle) * tagRadius },
+      data: { label: tag, count, selected: false, dimmed: false },
+    });
+  }
+
+  for (let i = 0; i < memories.length; i++) {
+    const mem = memories[i];
+    const angle = (2 * Math.PI * i) / memories.length;
+    nodes.push({
+      id: `mem:${mem.id}`,
+      type: "memory",
+      position: { x: Math.cos(angle) * memRadius, y: Math.sin(angle) * memRadius },
+      data: { label: mem.content, type: mem.type, confidence: mem.confidenceScore, selected: false, dimmed: false },
+    });
+
+    for (const tag of mem.tags ?? []) {
+      edges.push({
+        id: `edge:${mem.id}:${tag}`,
+        source: `mem:${mem.id}`,
+        target: `tag:${tag}`,
+        style: { stroke: `${TYPE_COLORS[mem.type]}40`, strokeWidth: 1.5 },
+      });
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
     }
   }
 
   return { nodes, edges, memoryMap, tagMemories, memoryTags };
 }
 
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
 // Settings panel
 function GraphSettingsMenu({
   settings,
@@ -616,6 +667,8 @@ function GraphSettingsMenu({
   );
 }
 
+=======
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -701,7 +754,11 @@ function MemoryDetail({
           </div>
           <div className="flex justify-between">
             <span>Created</span>
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
             <span className="font-mono">{timeAgo(memory.createdAt)}</span>
+=======
+            <span>{timeAgo(memory.createdAt)}</span>
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
           </div>
           {(memory.tags?.length ?? 0) > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
@@ -764,6 +821,7 @@ function TagDetail({
   );
 }
 
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
 function MemoryGraphInner() {
   const { memories, isLoading, updateMemory, deleteMemory } = useMemories({ limit: 200 });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -780,6 +838,13 @@ function MemoryGraphInner() {
       setTimeout(() => fitView({ padding: 0.3 }), 50);
     }
   }, [settings.layout, fitView]);
+=======
+export function MemoryGraph() {
+  const { memories, isLoading, updateMemory, deleteMemory } = useMemories({ limit: 200 });
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const graphData = useMemo(() => buildGraph(memories), [memories]);
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
 
   // Apply highlighting based on selection
   const highlightedNodes = useMemo(() => {
@@ -863,7 +928,11 @@ function MemoryGraphInner() {
   }, [graphData, selectedNodeId]);
 
   const [nodes, , onNodesChange] = useNodesState(highlightedNodes);
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
   const [_edges, , onEdgesChange] = useEdgesState(highlightedEdges);
+=======
+  const [edges, , onEdgesChange] = useEdgesState(highlightedEdges);
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
 
   // Keep nodes/edges in sync with highlighting changes
   const displayNodes = useMemo(() => {
@@ -913,12 +982,15 @@ function MemoryGraphInner() {
     );
   }
 
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
   const bgVariantMap: Record<string, BackgroundVariant> = {
     dots: BackgroundVariant.Dots,
     lines: BackgroundVariant.Lines,
     cross: BackgroundVariant.Cross,
   };
 
+=======
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
   return (
     <div className="flex-1 w-full h-full relative" style={{ minHeight: 500 }}>
       <ReactFlow
@@ -932,6 +1004,7 @@ function MemoryGraphInner() {
         fitView
         fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
         defaultEdgeOptions={{ type: settings.edgeType }}
         minZoom={0.1}
         maxZoom={2}
@@ -939,14 +1012,24 @@ function MemoryGraphInner() {
         {settings.bgVariant !== "none" && (
           <Background color="#333" gap={24} variant={bgVariantMap[settings.bgVariant]} />
         )}
+=======
+        defaultEdgeOptions={{ type: "straight" }}
+        minZoom={0.1}
+        maxZoom={2}
+      >
+        <Background color="#333" gap={24} />
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
         <Controls
           showInteractive={false}
           className="!bg-background-secondary !border-border !shadow-lg [&>button]:!bg-background [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-background-secondary"
         />
       </ReactFlow>
 
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
       <GraphSettingsMenu settings={settings} onChange={setSettings} />
 
+=======
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx
       {selectedMemory && (
         <MemoryDetail
           memory={selectedMemory}
@@ -966,6 +1049,7 @@ function MemoryGraphInner() {
     </div>
   );
 }
+<<<<<<< Updated upstream:.legacy/src/components/memory/MemoryGraph.tsx
 
 export function MemoryGraph() {
   return (
@@ -974,3 +1058,5 @@ export function MemoryGraph() {
     </ReactFlowProvider>
   );
 }
+=======
+>>>>>>> Stashed changes:renderer/src/components/memory/MemoryGraph.tsx

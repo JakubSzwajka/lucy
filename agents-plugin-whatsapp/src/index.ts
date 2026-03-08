@@ -44,11 +44,11 @@ export function createWhatsAppPlugin(): GatewayPlugin<WhatsAppPluginConfig> {
       const deps = { client, config, dedup, runtime };
       registerWebhookRoutes(app, config, deps);
 
-      console.log("WhatsApp plugin initialized");
+      console.log("[whatsapp] initialized");
     },
 
     onDestroy() {
-      console.log("WhatsApp plugin destroyed");
+      console.log("[whatsapp] destroyed");
     },
   };
 }
