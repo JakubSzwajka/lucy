@@ -75,6 +75,9 @@ COPY --from=build /app/agents-landing-page/dist/ agents-landing-page/dist/
 COPY lucy.config.jso[n] ./
 RUN test -f lucy.config.json || echo '{}' > lucy.config.json
 
+# Copy prompt file if present in build context, otherwise skip
+COPY prompt.m[d] ./
+
 EXPOSE 3080
 
 ENTRYPOINT ["node_modules/.bin/tsx", "agents-gateway-http/src/index.ts"]

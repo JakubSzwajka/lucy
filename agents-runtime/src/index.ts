@@ -46,7 +46,6 @@ export type {
   RuntimePluginRunSummary,
   RuntimePluginSystemPromptSection,
   RuntimePluginsConfig,
-  SystemPrompt,
   ToolCallItem,
   ToolResultItem,
 } from "./types.js";

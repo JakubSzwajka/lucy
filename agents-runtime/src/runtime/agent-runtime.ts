@@ -8,6 +8,7 @@ import {
   runNonStreamingAgent,
   runStreamingAgent,
 } from "./execution.js";
+import { readPromptFile } from "./prompt-file.js";
 import type {
   Agent,
   AgentRuntimeOptions,
@@ -63,6 +64,7 @@ export class AgentRuntime {
   private agentId: string | null = null;
   private compaction: CompactionService;
   private deps: RuntimeDeps;
+  private promptContent: string | null = null;
   private readonly resolvedPlugins: ResolvedRuntimePlugin[];
   private runtimeConfig: RuntimeConfig;
 
@@ -88,6 +90,7 @@ export class AgentRuntime {
   }
 
   async init(): Promise<void> {
+    this.promptContent = readPromptFile();
     await initPlugins(this.resolvedPlugins, this.deps);
   }
 
@@ -169,7 +172,6 @@ export class AgentRuntime {
         userId: "default",
         name: "Default Agent",
         description: null,
-        systemPromptId: null,
         defaultModelId: null,
         maxTurns: 25,
         icon: null,
@@ -203,6 +205,7 @@ export class AgentRuntime {
       agentId,
       deps: this.deps,
       options,
+      promptContent: this.promptContent,
       resolvedPlugins: this.resolvedPlugins,
       userId,
     });

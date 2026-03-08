@@ -20,21 +20,6 @@ function appendPromptSection(
     : section;
 }
 
-async function resolveSystemPrompt(
-  deps: RuntimeDeps,
-  agent: Agent,
-  agentConfig: AgentConfigWithTools | null,
-): Promise<string | null> {
-  if (agent.systemPrompt) {
-    return agent.systemPrompt;
-  }
-  if (agentConfig?.systemPromptId) {
-    const prompt = await deps.config.getSystemPrompt(agentConfig.systemPromptId);
-    if (prompt?.content) return prompt.content;
-  }
-  return null;
-}
-
 async function injectIdentityContext(
   deps: RuntimeDeps,
   systemPrompt: string | null,
@@ -82,10 +67,11 @@ export async function prepareRuntimeContext(params: {
   agentId: string;
   deps: RuntimeDeps;
   options: { modelId?: string; thinkingEnabled?: boolean };
+  promptContent: string | null;
   resolvedPlugins: ResolvedRuntimePlugin[];
   userId: string;
 }): Promise<ChatContext | null> {
-  const { agentId, deps, options, resolvedPlugins, userId } = params;
+  const { agentId, deps, options, promptContent, resolvedPlugins, userId } = params;
   const { modelId, thinkingEnabled = true } = options;
 
   const agent = await deps.agents.getById(agentId);
@@ -105,7 +91,7 @@ export async function prepareRuntimeContext(params: {
   }
 
   const languageModel = deps.models.getLanguageModel(modelConfig);
-  let systemPrompt = await resolveSystemPrompt(deps, agent, agentConfig);
+  let systemPrompt = promptContent;
   systemPrompt = injectEnvironmentContext(systemPrompt);
   systemPrompt = await injectIdentityContext(deps, systemPrompt, userId);
 

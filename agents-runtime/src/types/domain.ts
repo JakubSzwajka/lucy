@@ -5,7 +5,6 @@ export interface Agent {
   agentConfigId: string;
   name: string;
   task?: string | null;
-  systemPrompt?: string | null;
   model?: string | null;
   config?: Record<string, unknown> | null;
   status: AgentStatus;
@@ -80,14 +79,6 @@ export interface ModelConfig {
   maxContextTokens: number;
 }
 
-export interface SystemPrompt {
-  id: string;
-  name: string;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export type AgentConfigToolType = "mcp" | "builtin" | "delegate";
 
 export interface AgentConfigTool {
@@ -104,7 +95,6 @@ export interface AgentConfig {
   userId: string;
   name: string;
   description: string | null;
-  systemPromptId: string | null;
   defaultModelId: string | null;
   maxTurns: number;
   icon: string | null;

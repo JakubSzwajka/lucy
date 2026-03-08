@@ -12,6 +12,7 @@ services:
     volumes:
       - ~/.agents-data:/data
       - ./lucy.config.json:/app/lucy.config.json:ro
+      - ./prompt.md:/app/prompt.md:ro
 
   webui:
     image: node:24-slim

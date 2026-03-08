@@ -9,7 +9,6 @@ import type {
   ToolCallStatus,
   ModelConfig,
   AgentConfigWithTools,
-  SystemPrompt,
   IdentityDocument,
 } from "./types.js";
 
@@ -39,12 +38,10 @@ export interface ItemStore {
   updateToolCallStatus(itemId: string, status: ToolCallStatus): Promise<void>;
 }
 
-/** Reads agent configs and system prompts */
+/** Reads agent configs */
 export interface ConfigStore {
   getAgentConfig(configId: string): Promise<AgentConfigWithTools | null>;
-  getSystemPrompt(promptId: string): Promise<SystemPrompt | null>;
   createAgentConfig(config: AgentConfigWithTools): Promise<AgentConfigWithTools>;
-  createSystemPrompt(prompt: SystemPrompt): Promise<SystemPrompt>;
 }
 
 /** Resolves models to AI SDK instances */
