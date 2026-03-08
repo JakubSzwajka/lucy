@@ -79,7 +79,7 @@ export function ChatPanel() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col min-h-0">
       <MessageList items={items} />
       <div className="border-t border-border px-4 py-2 flex items-center">
         <ModelSelector models={models} value={selectedModelId} onChange={handleModelChange} />
