@@ -34,33 +34,34 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Landing-page palette: dark blue-gray bg + yellow-green accent */
+  --background: hsl(220, 15%, 7%);
+  --foreground: hsl(214, 32%, 91%);
+  --card: hsl(220, 13%, 10%);
+  --card-foreground: hsl(214, 32%, 91%);
+  --popover: hsl(220, 13%, 10%);
+  --popover-foreground: hsl(214, 32%, 91%);
+  --primary: hsl(73, 76%, 59%);
+  --primary-foreground: hsl(220, 15%, 7%);
+  --secondary: hsl(220, 13%, 14%);
+  --secondary-foreground: hsl(214, 32%, 91%);
+  --muted: hsl(220, 13%, 12%);
+  --muted-foreground: hsl(215, 16%, 40%);
+  --accent: hsl(220, 13%, 14%);
+  --accent-foreground: hsl(214, 32%, 91%);
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --sidebar-background: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.985 0 0);
-  --sidebar-primary-foreground: oklch(0.205 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --border: hsl(220, 13%, 14%);
+  --input: hsl(220, 13%, 14%);
+  --ring: hsl(73, 76%, 59%);
+  --sidebar-background: hsl(220, 13%, 10%);
+  --sidebar-foreground: hsl(214, 32%, 91%);
+  --sidebar-primary: hsl(73, 76%, 59%);
+  --sidebar-primary-foreground: hsl(220, 15%, 7%);
+  --sidebar-accent: hsl(220, 13%, 14%);
+  --sidebar-accent-foreground: hsl(214, 32%, 91%);
+  --sidebar-border: hsl(220, 13%, 14%);
+  --sidebar-ring: hsl(73, 76%, 59%);
 }
 
 @theme inline {

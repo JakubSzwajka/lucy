@@ -14,7 +14,7 @@ interface ToolCallBlockProps {
 function StatusDot({ status }: { status: string }) {
   const color =
     status === "completed"
-      ? "bg-green-500"
+      ? "bg-primary"
       : status === "failed"
         ? "bg-destructive"
         : "bg-yellow-500";
