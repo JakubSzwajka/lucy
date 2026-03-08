@@ -16,6 +16,7 @@ dist
 
 # Documentation
 docs
+!docs/prds
 *.md
 
 # Environment and secrets

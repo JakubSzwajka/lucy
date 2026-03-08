@@ -1,0 +1,319 @@
+---
+import { getCollection, render } from "astro:content";
+
+export async function getStaticPaths() {
+  const prds = await getCollection("prds");
+  return prds.map((prd) => ({
+    params: { slug: prd.id },
+    props: { prd },
+  }));
+}
+
+const { prd } = Astro.props;
+const { Content, headings } = await render(prd);
+
+const title = headings.find((h) => h.depth === 1)?.text ?? prd.id.replace(/-/g, " ");
+
+function formatDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function statusColor(status: string): string {
+  switch (status.toLowerCase()) {
+    case "done":
+    case "complete":
+    case "completed":
+      return "#c8e64a";
+    case "in-progress":
+    case "in progress":
+      return "#68a2ff";
+    case "draft":
+      return "#7ad6c5";
+    default:
+      return "hsl(215, 16%, 40%)";
+  }
+}
+
+const color = statusColor(prd.data.status);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} - Lucy PRD</title>
+    <meta name="description" content={`PRD: ${title}`} />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: hsl(220, 15%, 7%);
+        --surface: hsl(220, 13%, 10%);
+        --border: hsl(220, 13%, 14%);
+        --text: hsl(214, 32%, 91%);
+        --muted: hsl(215, 16%, 40%);
+        --glow: #c8e64a;
+        --glow-dim: rgba(200, 230, 74, 0.06);
+      }
+
+      html {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", sans-serif;
+      }
+
+      body {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 800px;
+        padding: 3rem 2rem 4rem;
+      }
+
+      .back-link {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-decoration: none;
+        transition: color 0.2s;
+        display: inline-block;
+        margin-bottom: 2rem;
+      }
+
+      .back-link:hover {
+        color: var(--glow);
+      }
+
+      .prd-header {
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .prd-title {
+        font-family: "Inter", sans-serif;
+        font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1.3;
+        margin-bottom: 1rem;
+      }
+
+      .prd-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .prd-badge {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.6rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid;
+      }
+
+      .prd-meta-item {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+
+      /* Markdown content styling */
+      .prose {
+        line-height: 1.7;
+        font-size: 0.95rem;
+      }
+
+      .prose :global(h1) {
+        display: none;
+      }
+
+      .prose :global(h2) {
+        font-family: "Inter", sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 2.5rem;
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.01em;
+      }
+
+      .prose :global(h3) {
+        font-family: "Inter", sans-serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .prose :global(h4) {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .prose :global(p) {
+        color: var(--text);
+        margin-bottom: 1rem;
+        opacity: 0.9;
+      }
+
+      .prose :global(ul),
+      .prose :global(ol) {
+        padding-left: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .prose :global(li) {
+        color: var(--text);
+        opacity: 0.9;
+        margin-bottom: 0.35rem;
+      }
+
+      .prose :global(li)::marker {
+        color: var(--muted);
+      }
+
+      .prose :global(strong) {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .prose :global(em) {
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      .prose :global(code) {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85em;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.15em 0.4em;
+        color: var(--glow);
+      }
+
+      .prose :global(pre) {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+        overflow-x: auto;
+      }
+
+      .prose :global(pre code) {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 0.8rem;
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      .prose :global(blockquote) {
+        border-left: 2px solid var(--glow);
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      .prose :global(a) {
+        color: var(--glow);
+        text-decoration: none;
+        opacity: 0.8;
+        transition: opacity 0.2s;
+      }
+
+      .prose :global(a:hover) {
+        opacity: 1;
+      }
+
+      .prose :global(hr) {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 2rem 0;
+      }
+
+      .prose :global(table) {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.25rem;
+        font-size: 0.85rem;
+      }
+
+      .prose :global(th) {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .prose :global(td) {
+        padding: 0.6rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/prds/" class="back-link">&larr; All PRDs</a>
+      <div class="prd-header">
+        <h1 class="prd-title">{title}</h1>
+        <div class="prd-meta">
+          <span
+            class="prd-badge"
+            style={`color: ${color}; border-color: ${color}; background: ${color}11;`}
+          >
+            {prd.data.status}
+          </span>
+          {prd.data.date && <span class="prd-meta-item">{formatDate(prd.data.date)}</span>}
+          {prd.data.author && <span class="prd-meta-item">{prd.data.author}</span>}
+        </div>
+      </div>
+      <div class="prose">
+        <Content />
+      </div>
+    </div>
+  </body>
+</html>

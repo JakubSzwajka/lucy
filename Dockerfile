@@ -24,6 +24,7 @@ WORKDIR /app
 COPY agents-runtime/ agents-runtime/
 COPY agents-memory/ agents-memory/
 COPY agents-landing-page/ agents-landing-page/
+COPY docs/prds/ docs/prds/
 
 # Compile TypeScript packages and build static assets
 RUN npm run build --workspace=agents-runtime \

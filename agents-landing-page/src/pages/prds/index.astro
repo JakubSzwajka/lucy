@@ -1,0 +1,257 @@
+---
+import { getCollection, render } from "astro:content";
+
+const prds = await getCollection("prds");
+
+// Render each to extract H1 title and preview from body
+const prdsWithMeta = await Promise.all(
+  prds.map(async (prd) => {
+    const { headings } = await render(prd);
+    const title = headings.find((h) => h.depth === 1)?.text ?? prd.id.replace(/-/g, " ");
+
+    // Extract first ~3 sentences from the body (skip frontmatter and H1)
+    const lines = prd.body?.split("\n") ?? [];
+    const bodyText = lines
+      .filter((l) => !l.startsWith("#") && l.trim().length > 0)
+      .join(" ")
+      .replace(/\*\*/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/`[^`]+`/g, "")
+      .trim();
+    const sentences = bodyText.match(/[^.!?]+[.!?]+/g) ?? [];
+    const preview = sentences.slice(0, 3).join(" ").trim();
+
+    return { ...prd, title, preview };
+  })
+);
+
+// Sort by date descending
+prdsWithMeta.sort((a, b) => {
+  const da = a.data.date ? new Date(a.data.date).getTime() : 0;
+  const db = b.data.date ? new Date(b.data.date).getTime() : 0;
+  return db - da;
+});
+
+function formatDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function statusColor(status: string): string {
+  switch (status.toLowerCase()) {
+    case "done":
+    case "complete":
+    case "completed":
+      return "#c8e64a";
+    case "in-progress":
+    case "in progress":
+      return "#68a2ff";
+    case "draft":
+      return "#7ad6c5";
+    default:
+      return "hsl(215, 16%, 40%)";
+  }
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PRDs - Lucy</title>
+    <meta name="description" content="Product requirement documents for Lucy." />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: hsl(220, 15%, 7%);
+        --surface: hsl(220, 13%, 10%);
+        --border: hsl(220, 13%, 14%);
+        --text: hsl(214, 32%, 91%);
+        --muted: hsl(215, 16%, 40%);
+        --glow: #c8e64a;
+        --glow-dim: rgba(200, 230, 74, 0.06);
+      }
+
+      html {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", sans-serif;
+      }
+
+      body {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 800px;
+        padding: 3rem 2rem;
+      }
+
+      .back-link {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-decoration: none;
+        transition: color 0.2s;
+        display: inline-block;
+        margin-bottom: 2rem;
+      }
+
+      .back-link:hover {
+        color: var(--glow);
+      }
+
+      .page-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        background: linear-gradient(135deg, var(--text) 40%, var(--glow) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+      }
+
+      .page-subtitle {
+        font-size: 0.95rem;
+        font-weight: 300;
+        color: var(--muted);
+        margin-bottom: 2.5rem;
+      }
+
+      .prd-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .prd-card {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        transition: border-color 0.3s, background 0.3s;
+      }
+
+      .prd-card:hover {
+        border-color: rgba(200, 230, 74, 0.25);
+        background: hsl(220, 13%, 11%);
+      }
+
+      .prd-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.35rem;
+      }
+
+      .prd-title {
+        font-family: "Inter", sans-serif;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--text);
+        flex: 1;
+        min-width: 0;
+      }
+
+      .prd-badge {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.6rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid;
+        flex-shrink: 0;
+      }
+
+      .prd-preview {
+        font-size: 0.82rem;
+        font-weight: 300;
+        color: var(--muted);
+        line-height: 1.5;
+        margin-bottom: 0.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .prd-date {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+
+      .skill-link {
+        font-family: "JetBrains Mono", monospace;
+        color: var(--glow);
+        text-decoration: none;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      }
+
+      .skill-link:hover {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/" class="back-link">&larr; Home</a>
+      <h1 class="page-title">PRDs</h1>
+      <p class="page-subtitle">
+        {prdsWithMeta.length} documents drafted with
+        <a href="https://github.com/JakubSzwajka/skills" target="_blank" rel="noreferrer" class="skill-link">/prd-create</a>,
+        then implemented via
+        <a href="https://github.com/JakubSzwajka/skills" target="_blank" rel="noreferrer" class="skill-link">/pipeline</a>
+        — the two skills used to build everything here.
+      </p>
+      <div class="prd-list">
+        {prdsWithMeta.map((prd) => {
+          const color = statusColor(prd.data.status);
+          return (
+            <a href={`/prds/${prd.id}/`} class="prd-card">
+              <div class="prd-card-header">
+                <span class="prd-title">{prd.title}</span>
+                <span
+                  class="prd-badge"
+                  style={`color: ${color}; border-color: ${color}; background: ${color}11;`}
+                >
+                  {prd.data.status}
+                </span>
+              </div>
+              {prd.preview && <p class="prd-preview">{prd.preview}</p>}
+              {prd.data.date && <span class="prd-date">{formatDate(prd.data.date)}</span>}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  </body>
+</html>
