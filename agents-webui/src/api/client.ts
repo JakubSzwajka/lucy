@@ -3,16 +3,50 @@ import type { ChatResponse, HistoryResponse, ModelsResponse } from "./types";
 const BASE_URL: string =
   import.meta.env.VITE_API_URL ?? "";
 
+let apiKey: string | null = null;
+
+export function setApiKey(key: string | null): void {
+  apiKey = key;
+}
+
+export function getApiKey(): string | null {
+  return apiKey;
+}
+
+let onUnauthorized: (() => void) | null = null;
+
+export function setOnUnauthorized(cb: (() => void) | null): void {
+  onUnauthorized = cb;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, init);
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+  };
+
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers,
+  });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      apiKey = null;
+      localStorage.removeItem("lucy-api-key");
+      onUnauthorized?.();
+      throw new Error("Unauthorized");
+    }
+
     let message = res.statusText;
     try {
       const body = await res.json();
       if (body.error) message = body.error;
     } catch {
-      // ignore parse failures — fall back to statusText
+      // ignore parse failures
     }
     throw new Error(message);
   }

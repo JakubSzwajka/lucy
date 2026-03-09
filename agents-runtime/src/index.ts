@@ -9,7 +9,7 @@ export { loadConfig } from "./config/load-config.js";
 export { loadPlugins } from "./plugins/loader.js";
 
 // Re-export types
-export type { LucyConfig, PluginEntry } from "./config/types.js";
+export type { GatewayAuthConfig, GatewayHttpConfig, LucyConfig, PluginEntry } from "./config/types.js";
 export type { LoadedPlugins } from "./plugins/loader.js";
 export type {
   Agent,

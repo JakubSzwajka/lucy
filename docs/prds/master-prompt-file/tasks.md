@@ -20,7 +20,7 @@ last-updated: 2026-03-08
 ---
 
 ### 1. Add prompt file reader to runtime init
-<!-- status: pending -->
+<!-- status: done -->
 
 Create a small module that reads `/app/prompt.md` (or a conventional path) synchronously at init time and caches the UTF-8 content as a string. If the file is missing, log a warning and return `null`. Call this during `AgentRuntime.init()` and store the result on the runtime instance so context assembly can access it. The path is convention-based (`/app/prompt.md` in production, configurable via an argument or env for local dev).
 
@@ -31,7 +31,7 @@ Create a small module that reads `/app/prompt.md` (or a conventional path) synch
 ---
 
 ### 2. Wire cached prompt into context assembly
-<!-- status: pending -->
+<!-- status: done -->
 
 Replace the `resolveSystemPrompt()` function in `context.ts` with the cached prompt content from task 1. The function currently checks `agent.systemPrompt` then `agentConfig.systemPromptId` — both paths are removed. Instead, `prepareRuntimeContext` receives the cached prompt string (or `null`) and uses it as the base for the system prompt assembly chain. The rest of the chain (environment context, identity, plugin sections) continues appending on top unchanged.
 
@@ -42,7 +42,7 @@ Replace the `resolveSystemPrompt()` function in `context.ts` with the cached pro
 ---
 
 ### 3. Remove `systemPrompt` from Agent type
-<!-- status: pending -->
+<!-- status: done -->
 
 Delete the `systemPrompt?: string | null` field from the `Agent` interface in `domain.ts`. Update `ensureAgent()` in `agent-runtime.ts` which creates the default agent object (no field to remove since it's already not set there). Check the file-based agent store adapter for any serialization of this field. The legacy app references in `.legacy/` are out of scope.
 
@@ -53,7 +53,7 @@ Delete the `systemPrompt?: string | null` field from the `Agent` interface in `d
 ---
 
 ### 4. Remove `systemPromptId` from AgentConfig and ConfigStore
-<!-- status: pending -->
+<!-- status: done -->
 
 Remove `systemPromptId: string | null` from the `AgentConfig` interface. Remove `getSystemPrompt()` and `createSystemPrompt()` from the `ConfigStore` port interface. Remove the corresponding implementations from `FileConfigStore`. Update `ensureAgent()` in `agent-runtime.ts` which currently passes `systemPromptId: null` when creating the default config. Update the `isConfigStoreLike` type guard that checks for `getAgentConfig`.
 
@@ -64,7 +64,7 @@ Remove `systemPromptId: string | null` from the `AgentConfig` interface. Remove 
 ---
 
 ### 5. Remove `SystemPrompt` type and re-exports
-<!-- status: pending -->
+<!-- status: done -->
 
 Delete the `SystemPrompt` interface from `domain.ts`. Remove its import from `ports.ts` and the re-export from `agents-runtime/src/index.ts`. Also remove the `SystemPrompt` re-export from any gateway or external consumer imports. This is the final cleanup — after this, no code in the active packages references the old system prompt entity.
 
@@ -75,7 +75,7 @@ Delete the `SystemPrompt` interface from `domain.ts`. Remove its import from `po
 ---
 
 ### 6. Update Docker and docker-compose for prompt.md volume
-<!-- status: pending -->
+<!-- status: done -->
 
 Add a `prompt.md` volume mount to `docker-compose.yml` for the gateway service: `./prompt.md:/app/prompt.md:ro`. This is separate from the data directory mount. In the `Dockerfile`, use the same conditional copy pattern as `lucy.config.json` (`COPY prompt.m[d] ./`) so builds succeed even without the file in the build context.
 

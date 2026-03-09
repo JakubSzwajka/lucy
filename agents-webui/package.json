@@ -3,14 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/plugin.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hono/node-server": "*",
+    "agents-runtime": "*",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "hono": "*",
     "lucide-react": "^0.400.0",
     "radix-ui": "^1.4.3",
     "react": "^19.0.0",

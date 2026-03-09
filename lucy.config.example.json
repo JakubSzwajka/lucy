@@ -13,6 +13,12 @@
         "verifyToken": "YOUR_VERIFY_TOKEN",
         "allowedNumbers": ["1234567890"]
       }
+    },
+    {
+      "package": "agents-webui"
+    },
+    {
+      "package": "agents-landing-page"
     }
   ],
   "agents-runtime": {
@@ -21,6 +27,9 @@
     }
   },
   "agents-gateway-http": {
-    "allowedModels": ["anthropic/*", "openai/*"]
+    "allowedModels": ["anthropic/*", "openai/*"],
+    "auth": {                                  
+      "apiKey": "your-secret-key"
+    }
   }
 }

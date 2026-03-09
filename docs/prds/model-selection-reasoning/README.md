@@ -1,5 +1,5 @@
 ---
-status: draft
+status: done
 date: 2026-03-08
 author: kuba
 gh-issue: ""

@@ -20,7 +20,7 @@ last-updated: 2026-03-08
 ---
 
 ### 1. Add predefined model registry to webui
-<!-- status: pending -->
+<!-- status: done -->
 
 Create a `models.ts` file in `agents-webui/src/` that exports a typed array of predefined models. Each entry needs: `id` (OpenRouter format like `anthropic/claude-sonnet-4-5`), `label` (display name), `supportsReasoning`, and `maxContextTokens`. Include latest Anthropic models (Sonnet 4.5, Opus 4) and OpenAI models (GPT-4o, o3-mini). Export a `DEFAULT_MODEL_ID` constant.
 
@@ -31,7 +31,7 @@ Create a `models.ts` file in `agents-webui/src/` that exports a typed array of p
 ---
 
 ### 2. Add ModelSelector component
-<!-- status: pending -->
+<!-- status: done -->
 
 Create a simple select/dropdown component that renders the predefined model list. Show the model label in each option. The component takes `value` (current modelId) and `onChange` callback as props. Place it in the ChatPanel header area or above the ChatInput. Style with existing Tailwind classes to match the UI (border-border, bg-background, font-mono for the model names).
 
@@ -42,7 +42,7 @@ Create a simple select/dropdown component that renders the predefined model list
 ---
 
 ### 3. Wire model selection through to sendMessage
-<!-- status: pending -->
+<!-- status: done -->
 
 Add `selectedModelId` state to ChatPanel. Pass it to `sendMessage(message, selectedModelId)` in `handleSend()` (line 42 currently calls `sendMessage(message)` without modelId). The API client already accepts `modelId` as second param and the gateway already forwards it to runtime — no backend changes needed.
 
@@ -53,7 +53,7 @@ Add `selectedModelId` state to ChatPanel. Pass it to `sendMessage(message, selec
 ---
 
 ### 4. Persist model selection in localStorage
-<!-- status: pending -->
+<!-- status: done -->
 
 Initialize `selectedModelId` state from `localStorage.getItem("lucy-model-id")` falling back to `DEFAULT_MODEL_ID`. On change, write to localStorage. Simple `useEffect` or inline handler — no need for a custom hook.
 
@@ -64,7 +64,7 @@ Initialize `selectedModelId` state from `localStorage.getItem("lucy-model-id")` 
 ---
 
 ### 5. Render reasoning items in MessageList
-<!-- status: pending -->
+<!-- status: done -->
 
 Update MessageList to render reasoning items instead of returning `null`. Reasoning items should appear above the next assistant message (they share the same `agentId` and come before the message in sequence order). Render them using the ReasoningBlock component. Group reasoning + assistant message visually — the reasoning block sits directly above with no gap.
 
@@ -75,7 +75,7 @@ Update MessageList to render reasoning items instead of returning `null`. Reason
 ---
 
 ### 6. Add ReasoningBlock component
-<!-- status: pending -->
+<!-- status: done -->
 
 Create a collapsible component for reasoning display. Use existing Radix `Collapsible` wrapper from `components/ui/collapsible`. Collapsed state shows a subtle trigger like "Reasoning" with a chevron icon (similar to ToolCallBlock pattern at `ToolCallBlock.tsx:27-34`). Expanded state shows `reasoningContent` in a `font-mono text-sm` pre-wrap block. Default to collapsed. Style muted to not dominate the conversation — use `text-muted-foreground` and subtle border.
 

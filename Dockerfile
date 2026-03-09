@@ -58,13 +58,15 @@ COPY agents-plugin-whatsapp/src/ agents-plugin-whatsapp/src/
 COPY --from=deps /app/agents-gateway-http/package.json agents-gateway-http/package.json
 COPY agents-gateway-http/src/ agents-gateway-http/src/
 
-# Landing page (static build)
+# Landing page (static build + plugin entry point)
 COPY --from=deps /app/agents-landing-page/package.json agents-landing-page/package.json
 COPY --from=build /app/agents-landing-page/dist/ agents-landing-page/dist/
+COPY agents-landing-page/src/plugin.ts agents-landing-page/src/plugin.ts
 
-# WebUI (static build, served by gateway at /chat)
+# WebUI (static build + plugin entry point)
 COPY --from=deps /app/agents-webui/package.json agents-webui/package.json
 COPY --from=build /app/agents-webui/dist/ agents-webui/dist/
+COPY agents-webui/src/plugin.ts agents-webui/src/plugin.ts
 
 # Config and prompt (optional files)
 COPY lucy.config.jso[n] ./

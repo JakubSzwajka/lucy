@@ -5,11 +5,18 @@ export interface PluginEntry {
   package: string;
 }
 
+export interface GatewayAuthConfig {
+  apiKey?: string;
+}
+
+export interface GatewayHttpConfig {
+  allowedModels?: string[];
+  auth?: GatewayAuthConfig;
+  [key: string]: unknown;
+}
+
 export interface LucyConfig {
-  "agents-gateway-http"?: {
-    allowedModels?: string[];
-    [key: string]: unknown;
-  };
+  "agents-gateway-http"?: GatewayHttpConfig;
   "agents-runtime"?: RuntimeConfig;
   plugins?: PluginEntry[];
   [key: string]: unknown;
