@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -18,7 +17,6 @@ import {
 import type {
   AgentRuntimeOptions,
   HistoryEntry,
-  IdentityContent,
   ModelConfig,
   RuntimeConfig,
 } from "../types.js";
@@ -40,38 +38,6 @@ function readPromptFile(path = "./prompt.md"): string | null {
   }
 }
 
-async function loadIdentityContext(): Promise<string | null> {
-  const filePath = join(resolveDataDir(), "identity", "default.json");
-  let doc: { content: IdentityContent };
-  try {
-    const data = await readFile(filePath, "utf-8");
-    doc = JSON.parse(data);
-  } catch {
-    return null;
-  }
-
-  const { content } = doc;
-  const parts: string[] = [];
-  if (content.values.length > 0) {
-    parts.push(`Values: ${content.values.join(", ")}`);
-  }
-  if (content.capabilities.length > 0) {
-    parts.push(`Capabilities: ${content.capabilities.join(", ")}`);
-  }
-  if (content.growthNarrative) {
-    parts.push(`Growth: ${content.growthNarrative}`);
-  }
-  if (content.keyRelationships.length > 0) {
-    const rels = content.keyRelationships
-      .map((r) => `${r.name} (${r.nature})`)
-      .join(", ");
-    parts.push(`Relationships: ${rels}`);
-  }
-  return parts.length > 0
-    ? `<identity>\n${parts.join("\n")}\n</identity>`
-    : null;
-}
-
 // ---------------------------------------------------------------------------
 // AgentRuntime
 // ---------------------------------------------------------------------------
@@ -81,36 +47,29 @@ export class AgentRuntime {
   private modelRegistry: ModelRegistry | null = null;
   private session: AgentSession | null = null;
 
-  constructor(options?: AgentRuntimeOptions) {
-    this.config = options?.config ?? {};
+  constructor(options: AgentRuntimeOptions) {
+    this.config = options.config;
   }
 
   async init(): Promise<void> {
-    // Auth & model registry
+    // Auth — OpenRouter only. Set OPENROUTER_API_KEY in env.
     const authStorage = AuthStorage.create();
-
-    const envKeys: Record<string, string | undefined> = {
-      anthropic: process.env.ANTHROPIC_API_KEY,
-      openai: process.env.OPENAI_API_KEY,
-      google: process.env.GOOGLE_API_KEY,
-      openrouter: process.env.OPENROUTER_API_KEY,
-    };
-    for (const [provider, key] of Object.entries(envKeys)) {
-      if (key) authStorage.setRuntimeApiKey(provider, key);
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    if (!openrouterKey) {
+      console.warn("[runtime] OPENROUTER_API_KEY not set — no models will be available");
+    } else {
+      authStorage.setRuntimeApiKey("openrouter", openrouterKey);
     }
 
     const modelRegistry = new ModelRegistry(authStorage);
     this.modelRegistry = modelRegistry;
 
-    // Resolve model
-    let model;
-    if (this.config.model) {
-      const [provider, ...rest] = this.config.model.split("/");
-      const modelId = rest.join("/");
-      model = modelRegistry.find(provider, modelId);
-      if (!model) {
-        console.warn(`[runtime] model "${this.config.model}" not found in Pi registry, falling back to default`);
-      }
+    // Resolve model — must be set in config
+    const [provider, ...rest] = this.config.model.split("/");
+    const modelId = rest.join("/");
+    const model = modelRegistry.find(provider, modelId);
+    if (!model) {
+      throw new Error(`[runtime] model "${this.config.model}" not found in Pi registry`);
     }
 
     // Settings (compaction)
@@ -125,9 +84,8 @@ export class AgentRuntime {
         : undefined,
     });
 
-    // System prompt: read prompt.md + identity context
+    // System prompt: read prompt.md
     const promptContent = readPromptFile();
-    const identityContext = await loadIdentityContext();
 
     // Resolve extensions
     const extensionFactories: ExtensionFactory[] = [];
@@ -156,10 +114,7 @@ export class AgentRuntime {
       extensionFactories,
       additionalExtensionPaths,
       systemPromptOverride: () => {
-        const sections: string[] = [];
-        if (promptContent) sections.push(promptContent);
-        if (identityContext) sections.push(identityContext);
-        return sections.length > 0 ? sections.join("\n\n") : "You are a helpful assistant.";
+        return promptContent ?? "You are a helpful assistant.";
       },
     });
     await loader.reload();

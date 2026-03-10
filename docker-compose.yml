@@ -17,6 +17,7 @@ services:
       - ./runtime:/app/runtime
       - ./gateway:/app/gateway
       - ./tsconfig.json:/app/tsconfig.json:ro
+      # Configuration files. Mount them also when releasing a new version.
       - ./lucy.config.json:/app/lucy.config.json:ro
       - ./prompt.md:/app/prompt.md
-      - ~/.agents-data:/data
+      - ./.data:/data

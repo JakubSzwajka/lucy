@@ -6,7 +6,6 @@ export type {
   AgentRuntimeOptions,
   CompactionConfig,
   HistoryEntry,
-  IdentityContent,
   ModelConfig,
   RuntimeConfig,
   SessionConfig,

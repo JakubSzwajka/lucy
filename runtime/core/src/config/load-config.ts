@@ -10,7 +10,7 @@ export async function loadConfig(path?: string): Promise<LucyConfig> {
     path ?? process.env.LUCY_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
 
   if (!existsSync(configPath)) {
-    return {};
+    throw new Error(`Config file not found: ${configPath}`);
   }
 
   const raw = await readFile(configPath, "utf-8");

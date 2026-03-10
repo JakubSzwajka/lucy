@@ -1,7 +1,7 @@
 import type { RuntimeConfig } from "../types/plugins.js";
 
 export interface LucyConfig {
-  runtime?: RuntimeConfig;
+  runtime: RuntimeConfig;
   gateway?: {
     apiKey?: string;
   };

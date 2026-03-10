@@ -12,8 +12,8 @@ export interface SessionConfig {
 }
 
 export interface RuntimeConfig {
+  model: string;
   compaction?: CompactionConfig;
   extensions?: string[];
-  model?: string;
   session?: SessionConfig;
 }

@@ -8,13 +8,6 @@ export interface ModelConfig {
   maxContextTokens: number;
 }
 
-export interface IdentityContent {
-  values: string[];
-  capabilities: string[];
-  growthNarrative: string;
-  keyRelationships: { name: string; nature: string }[];
-}
-
 export interface HistoryEntry {
   id: string;
   type: "message";

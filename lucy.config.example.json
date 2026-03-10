@@ -10,9 +10,7 @@
       "persist": true,
       "resume": true
     },
-    "extensions": [
-      "agents-memory"
-    ]
+    "extensions": []
   },
   "gateway": {
     "apiKey": "YOUR_API_KEY"
