@@ -58,6 +58,9 @@ next-env.d.ts
 # Lucy config (user-specific; commit lucy.config.example.json instead)
 lucy.config.json
 
+# Lucy prompt (user-specific; commit prompt.example.md instead)
+prompt.md
+
 # IDE / Editor
 .vscode/
 .idea/
