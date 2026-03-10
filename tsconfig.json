@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "paths": {
+      "agents-runtime": ["./runtime/core/src/index.ts"],
+      "agents-memory": ["./runtime/extensions/memory/src/index.ts"]
+    }
+  },
+  "include": [
+    "runtime/**/*.ts",
+    "gateway/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "gateway/extensions/webui/src/**",
+    "!gateway/extensions/webui/src/plugin.ts",
+    "gateway/extensions/landing-page/src/**",
+    "!gateway/extensions/landing-page/src/plugin.ts"
+  ]
+}

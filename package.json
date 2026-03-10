@@ -2,15 +2,45 @@
   "name": "lucy",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "smoke:configured-runtime": "npx tsx agents-runtime/scripts/smoke-test.ts"
+    "dev": "tsx watch gateway/core/src/index.ts",
+    "start": "tsx gateway/core/src/index.ts",
+    "build:webui": "cd gateway/extensions/webui && npx vite build",
+    "build:landing": "cd gateway/extensions/landing-page && npx astro build",
+    "build": "npm run build:webui && npm run build:landing",
+    "typecheck": "tsc --noEmit",
+    "smoke:configured-runtime": "npx tsx runtime/core/scripts/smoke-test.ts"
   },
-  "workspaces": [
-    "agents-runtime",
-    "agents-memory",
-    "agents-gateway-http",
-    "agents-webui",
-    "agents-landing-page",
-    "agents-plugin-whatsapp"
-  ]
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.12",
+    "@astrojs/mdx": "^4.3.13",
+    "@hono/node-server": "^1.14.0",
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "ai": "^4.3.0",
+    "astro": "^5.13.5",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "hono": "^4.7.0",
+    "lucide-react": "^0.400.0",
+    "radix-ui": "^1.4.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.0",
+    "remark-gfm": "^4.0.0",
+    "tailwind-merge": "^3.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.0"
+  }
 }

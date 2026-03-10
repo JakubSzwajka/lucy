@@ -1,6 +1,6 @@
 {
-  "agents-runtime": {
-    "model": "anthropic/claude-sonnet-4-20250514",
+  "runtime": {
+    "model": "openrouter/anthropic/claude-sonnet-4",
     "compaction": {
       "enabled": true,
       "reserveTokens": 16384,
@@ -14,18 +14,12 @@
       "agents-memory"
     ]
   },
-  "plugins": [
-    {
-      "package": "agents-plugin-whatsapp",
-      "config": {}
-    }
-  ],
-  "agents-gateway-http": {
-    "allowedModels": [
-      "anthropic/*"
-    ],
-    "auth": {
-      "apiKey": ""
-    }
+  "gateway": {
+    "apiKey": "YOUR_API_KEY"
+  },
+  "whatsapp": {
+    "phoneNumberId": "YOUR_PHONE_NUMBER_ID",
+    "verifyToken": "YOUR_VERIFY_TOKEN",
+    "allowedNumbers": ["YOUR_PHONE_NUMBER"]
   }
 }

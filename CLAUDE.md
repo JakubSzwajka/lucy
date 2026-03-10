@@ -4,31 +4,70 @@
 
 ## Architecture Overview
 
-Lucy is a **multi-package workspace** for agent infrastructure. Active packages extract core agent capabilities (runtime loop, HTTP gateway) into standalone, framework-agnostic modules. The original Next.js app is preserved in `.legacy/` as a reference implementation.
+Lucy is a **single-package** agent infrastructure project. Two module buckets — `runtime/` and `gateway/` — each with a `core/` and `extensions/` directory. All code runs via `tsx` (no pre-compilation). The original Next.js app is preserved in `.legacy/` as a reference.
+
+### Module dependency graph
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  RUNTIME                                                │
+│                                                         │
+│  ┌──────────────┐      ┌───────────────────────────┐    │
+│  │  core        │ ◄─── │  extensions/memory        │    │
+│  │  (agent loop)│      │  (observe/extract/synth)  │    │
+│  └──────┬───────┘      └───────────────────────────┘    │
+│         │                                               │
+└─────────┼───────────────────────────────────────────────┘
+          │
+          ▼
+┌─────────────────────────────────────────────────────────┐
+│  GATEWAY                                                │
+│                                                         │
+│  ┌──────────────┐      ┌──────────────────────────────┐ │
+│  │  core        │ ◄─── │  extensions/                 │ │
+│  │  (Hono HTTP) │      │    webui     (React chat UI) │ │
+│  │              │      │    landing   (Astro static)  │ │
+│  │              │      │    whatsapp  (Meta webhook)  │ │
+│  └──────────────┘      └──────────────────────────────┘ │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+Cross-module imports use tsconfig `paths` (e.g. `"agents-runtime"` maps to `runtime/core/src/index.ts`). No npm workspaces — one flat dependency tree. Extensions are direct imports in `gateway/core/src/index.ts` — no plugin loader or manifest system.
+
+### Directory structure
 
 ```
 lucy/
-├── agents-runtime/          # Standalone agent execution loop
-├── agents-gateway-http/     # REST gateway for agent runtime (Hono)
+├── runtime/
+│   ├── core/                # Agent execution loop
+│   └── extensions/
+│       └── memory/          # Memory observer
+├── gateway/
+│   ├── core/                # REST gateway — Hono
+│   └── extensions/
+│       ├── webui/           # Chat UI — Vite + React
+│       ├── landing-page/    # Static site — Astro
+│       └── whatsapp/        # WhatsApp integration
 ├── .legacy/                 # Reference Next.js app (archived)
-│   ├── src/                 # Full Next.js app source
-│   ├── package.json         # Next.js dependencies
-│   └── ...config files
 ├── docs/                    # Shared documentation
-├── package.json             # Workspace root
+├── package.json             # Single package root
+├── tsconfig.json            # Root config with path aliases
 ├── CLAUDE.md
 └── README.md
 ```
 
 ## Commands
 
-### Workspace root
-
 | Command | Description |
 |---------|-------------|
-| `npm install` | Install all workspace dependencies |
-| `npm run typecheck --workspace=agents-runtime` | Typecheck runtime package |
-| `npm run typecheck --workspace=agents-gateway-http` | Typecheck gateway package |
+| `npm install` | Install all dependencies |
+| `npm run dev` | Start gateway with tsx watch |
+| `npm start` | Start gateway |
+| `npm run typecheck` | Typecheck all modules (excl. webui/landing client code) |
+| `npm run build` | Build static assets (webui + landing page) |
+| `npm run build:webui` | Build webui only |
+| `npm run build:landing` | Build landing page only |
 
 ### Legacy app
 
@@ -36,13 +75,17 @@ lucy/
 cd .legacy && npm install && npm run dev   # Starts on port 3009
 ```
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server on port 3009 |
-| `npm run build` | Build for production (standalone output) |
-| `npm run lint` | Lint source code |
-| `npm run db:push` | Push schema to PostgreSQL |
-| `npm run db:studio` | Open Drizzle Studio |
+## Configuration (`lucy.config.json`)
+
+```json
+{
+  "runtime": { "model": "...", "compaction": {...}, "session": {...}, "extensions": [...] },
+  "gateway": { "apiKey": "..." },
+  "whatsapp": { "phoneNumberId": "...", "verifyToken": "...", "allowedNumbers": [...] }
+}
+```
+
+All keys are optional. The API key can also be set via `LUCY_API_KEY` env var. WhatsApp section is only needed if you want the WhatsApp webhook.
 
 ## TypeScript
 

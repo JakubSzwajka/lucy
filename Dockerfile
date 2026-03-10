@@ -4,69 +4,44 @@ FROM node:24-slim AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-
-# Copy all workspace package.json files for npm ci
-# When adding a new package, add its package.json here
-COPY agents-runtime/package.json agents-runtime/
-COPY agents-gateway-http/package.json agents-gateway-http/
-COPY agents-memory/package.json agents-memory/
-COPY agents-plugin-whatsapp/package.json agents-plugin-whatsapp/
-COPY agents-landing-page/package.json agents-landing-page/
-COPY agents-webui/package.json agents-webui/
-
 RUN npm ci
 
-# Stage 2: Build compiled packages
+# Stage 2: Build static assets (webui + landing page)
 FROM deps AS build
 
 WORKDIR /app
 
-# Copy entire workspace directories for compilation
-COPY agents-runtime/ agents-runtime/
-COPY agents-memory/ agents-memory/
-COPY agents-landing-page/ agents-landing-page/
-COPY agents-webui/ agents-webui/
+COPY gateway/extensions/webui/ gateway/extensions/webui/
+COPY gateway/extensions/landing-page/ gateway/extensions/landing-page/
 COPY docs/prds/ docs/prds/
 
-# Compile TypeScript packages and build static assets
-RUN npm run build --workspace=agents-runtime \
- && npm run build --workspace=agents-memory \
- && npm run build --workspace=agents-landing-page \
- && npm run build --workspace=agents-webui
+RUN npx vite build --outDir dist gateway/extensions/webui \
+ && cd gateway/extensions/landing-page && npx astro build
 
 # Stage 3: Production image
-FROM node:24-slim AS runtime
+FROM node:24-slim AS production
 
 ENV NODE_ENV=production
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY tsconfig.json ./
 COPY --from=deps /app/node_modules/ node_modules/
 
-# Compiled packages: package.json + dist/
-COPY --from=deps /app/agents-runtime/package.json agents-runtime/package.json
-COPY --from=build /app/agents-runtime/dist/ agents-runtime/dist/
-COPY --from=deps /app/agents-memory/package.json agents-memory/package.json
-COPY --from=build /app/agents-memory/dist/ agents-memory/dist/
+# Runtime core + extensions (tsx resolves at runtime)
+COPY runtime/ runtime/
 
-# Plugin packages (run via tsx): package.json + src/
-# Adding a new plugin only requires adding lines here
-COPY --from=deps /app/agents-plugin-whatsapp/package.json agents-plugin-whatsapp/package.json
-COPY agents-plugin-whatsapp/src/ agents-plugin-whatsapp/src/
+# Gateway core + extensions (tsx resolves at runtime)
+COPY gateway/core/ gateway/core/
+COPY gateway/extensions/whatsapp/ gateway/extensions/whatsapp/
 
-# Gateway (entrypoint, runs via tsx)
-COPY --from=deps /app/agents-gateway-http/package.json agents-gateway-http/package.json
-COPY agents-gateway-http/src/ agents-gateway-http/src/
-
-# Landing page (static build + plugin entry point)
-COPY --from=deps /app/agents-landing-page/package.json agents-landing-page/package.json
-COPY --from=build /app/agents-landing-page/dist/ agents-landing-page/dist/
-COPY agents-landing-page/src/plugin.ts agents-landing-page/src/plugin.ts
-
-# WebUI (static build + plugin entry point)
-COPY --from=deps /app/agents-webui/package.json agents-webui/package.json
-COPY --from=build /app/agents-webui/dist/ agents-webui/dist/
-COPY agents-webui/src/plugin.ts agents-webui/src/plugin.ts
+# Static builds
+COPY --from=build /app/gateway/extensions/landing-page/dist/ gateway/extensions/landing-page/dist/
+COPY gateway/extensions/landing-page/src/plugin.ts gateway/extensions/landing-page/src/plugin.ts
+COPY gateway/extensions/landing-page/package.json gateway/extensions/landing-page/package.json
+COPY --from=build /app/gateway/extensions/webui/dist/ gateway/extensions/webui/dist/
+COPY gateway/extensions/webui/src/plugin.ts gateway/extensions/webui/src/plugin.ts
+COPY gateway/extensions/webui/package.json gateway/extensions/webui/package.json
 
 # Config and prompt (optional files)
 COPY lucy.config.jso[n] ./
@@ -75,4 +50,4 @@ COPY prompt.m[d] ./
 
 EXPOSE 3080
 
-ENTRYPOINT ["node_modules/.bin/tsx", "agents-gateway-http/src/index.ts"]
+ENTRYPOINT ["node_modules/.bin/tsx", "gateway/core/src/index.ts"]
