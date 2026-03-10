@@ -1,4 +1,5 @@
-import type { AgentRuntime, GatewayPlugin, GatewayPluginInitInput, GatewayPluginManifest } from "agents-runtime";
+import type { AgentRuntime } from "agents-runtime";
+import type { GatewayPlugin, GatewayPluginInitInput, GatewayPluginManifest } from "agents-gateway-http/plugin";
 import type { Hono } from "hono";
 
 import type { WhatsAppPluginConfig } from "./config.js";

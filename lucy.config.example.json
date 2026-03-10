@@ -1,35 +1,31 @@
 {
+  "agents-runtime": {
+    "model": "anthropic/claude-sonnet-4-20250514",
+    "compaction": {
+      "enabled": true,
+      "reserveTokens": 16384,
+      "keepRecentTokens": 20000
+    },
+    "session": {
+      "persist": true,
+      "resume": true
+    },
+    "extensions": [
+      "agents-memory"
+    ]
+  },
   "plugins": [
     {
-      "package": "agents-memory",
-      "config": {
-        "modelId": "openai/gpt-4o-mini"
-      }
-    },
-    {
       "package": "agents-plugin-whatsapp",
-      "config": {
-        "phoneNumberId": "YOUR_PHONE_NUMBER_ID",
-        "verifyToken": "YOUR_VERIFY_TOKEN",
-        "allowedNumbers": ["1234567890"]
-      }
-    },
-    {
-      "package": "agents-webui"
-    },
-    {
-      "package": "agents-landing-page"
+      "config": {}
     }
   ],
-  "agents-runtime": {
-    "compaction": {
-      "windowSize": 50
-    }
-  },
   "agents-gateway-http": {
-    "allowedModels": ["anthropic/*", "openai/*"],
-    "auth": {                                  
-      "apiKey": "your-secret-key"
+    "allowedModels": [
+      "anthropic/*"
+    ],
+    "auth": {
+      "apiKey": ""
     }
   }
 }

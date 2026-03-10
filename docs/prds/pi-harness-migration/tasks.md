@@ -10,25 +10,25 @@ last-updated: 2026-03-09
 
 ## Task List
 
-- [ ] **1. Add Pi SDK dependency to agents-runtime** — install `@mariozechner/pi-coding-agent` and verify it resolves
-- [ ] **2. Add explicit `ai` dependency to agents-memory** — prevent broken transitive resolution after agents-runtime drops it
-- [ ] **3. Update `RuntimeConfig` and `LucyConfig` types for Pi settings** — new config shape for model, compaction, extensions
-- [ ] **4. Rewrite `AgentRuntime` as Pi SDK adapter** — replace constructor, `init()`, `destroy()`, `sendMessage()`, `getHistory()`, `getModels()` `[blocked by: 1, 3]`
-- [ ] **5. Implement custom `ResourceLoader` for Lucy** — wire prompt.md, identity, environment context into Pi's system prompt `[blocked by: 1]`
-- [ ] **6. Replace `OpenRouterModelProvider` with Pi `AuthStorage` + `ModelRegistry`** — multi-provider model access `[blocked by: 4]`
-- [ ] **7. Split `loadPlugins()` into gateway-only loader** — retain gateway plugin loading, remove runtime plugin loading `[blocked by: 3]`
-- [ ] **8. Slim `createFileAdapters()` to config + identity only** — remove agent/item store creation, keep what extensions need `[blocked by: 4]`
-- [ ] **9. Remove replaced modules from agents-runtime** — delete execution.ts, compaction.ts, context.ts, messages.ts, step-persistence.ts, prompt-file.ts, environment-context.ts, and unused adapters `[blocked by: 4, 5, 6, 8]`
-- [ ] **10. Update agents-runtime type exports and public API** — remove RuntimePlugin types, slim PluginManifest, re-export Pi types `[blocked by: 9]`
-- [ ] **11. Update gateway boot sequence** — use `loadGatewayPlugins()` and new `AgentRuntime` constructor `[blocked by: 4, 7]`
-- [ ] **12. Rewrite agents-memory as Pi extension** — convert plugin to extension factory, adapt observation pipeline to Pi messages `[blocked by: 4, 10]`
-- [ ] **13. Verify consumer packages compile** — check agents-plugin-whatsapp, agents-webui, agents-landing-page imports `[blocked by: 10]`
-- [ ] **14. Update `lucy.config.json` schema and add migration notes** — document breaking config change `[blocked by: 7, 12]`
+- [x] **1. Add Pi SDK dependency to agents-runtime** — install `@mariozechner/pi-coding-agent` and verify it resolves
+- [x] **2. Add explicit `ai` dependency to agents-memory** — prevent broken transitive resolution after agents-runtime drops it
+- [x] **3. Update `RuntimeConfig` and `LucyConfig` types for Pi settings** — new config shape for model, compaction, extensions
+- [x] **4. Rewrite `AgentRuntime` as Pi SDK adapter** — replace constructor, `init()`, `destroy()`, `sendMessage()`, `getHistory()`, `getModels()` `[blocked by: 1, 3]`
+- [x] **5. Implement custom `ResourceLoader` for Lucy** — wire prompt.md, identity, environment context into Pi's system prompt `[blocked by: 1]`
+- [x] **6. Replace `OpenRouterModelProvider` with Pi `AuthStorage` + `ModelRegistry`** — multi-provider model access `[blocked by: 4]`
+- [x] **7. Split `loadPlugins()` into gateway-only loader** — retain gateway plugin loading, remove runtime plugin loading `[blocked by: 3]`
+- [x] **8. Slim `createFileAdapters()` to config + identity only** — remove agent/item store creation, keep what extensions need `[blocked by: 4]`
+- [x] **9. Remove replaced modules from agents-runtime** — delete execution.ts, compaction.ts, context.ts, messages.ts, step-persistence.ts, prompt-file.ts, environment-context.ts, and unused adapters `[blocked by: 4, 5, 6, 8]`
+- [x] **10. Update agents-runtime type exports and public API** — remove RuntimePlugin types, slim PluginManifest, re-export Pi types `[blocked by: 9]`
+- [x] **11. Update gateway boot sequence** — use `loadGatewayPlugins()` and new `AgentRuntime` constructor `[blocked by: 4, 7]`
+- [x] **12. Rewrite agents-memory as Pi extension** — convert plugin to extension factory, adapt observation pipeline to Pi messages `[blocked by: 4, 10]`
+- [x] **13. Verify consumer packages compile** — check agents-plugin-whatsapp, agents-webui, agents-landing-page imports `[blocked by: 10]`
+- [x] **14. Update `lucy.config.json` schema and add migration notes** — document breaking config change `[blocked by: 7, 12]`
 
 ---
 
 ### 1. Add Pi SDK dependency to agents-runtime
-<!-- status: pending -->
+<!-- status: done -->
 
 Add `@mariozechner/pi-coding-agent` to `agents-runtime/package.json` dependencies. Run `npm install` at workspace root. Verify the package resolves and key exports are accessible: `createAgentSession`, `SessionManager`, `AuthStorage`, `ModelRegistry`, `SettingsManager`, `DefaultResourceLoader`, `createExtensionRuntime`.
 
@@ -39,7 +39,7 @@ Add `@mariozechner/pi-coding-agent` to `agents-runtime/package.json` dependencie
 ---
 
 ### 2. Add explicit `ai` dependency to agents-memory
-<!-- status: pending -->
+<!-- status: done -->
 
 `agents-memory/src/observe.ts:1` and `agents-memory/src/synthesize.ts:1` import `generateText` from `"ai"` but `agents-memory/package.json` doesn't list it — it resolves transitively via `agents-runtime`. When agents-runtime drops `ai`, this breaks. Add `"ai": "^4.3.0"` to `agents-memory/package.json` dependencies now, before the migration.
 
@@ -50,7 +50,7 @@ Add `@mariozechner/pi-coding-agent` to `agents-runtime/package.json` dependencie
 ---
 
 ### 3. Update `RuntimeConfig` and `LucyConfig` types for Pi settings
-<!-- status: pending -->
+<!-- status: done -->
 
 Change `RuntimeConfig` in `agents-runtime/src/types/plugins.ts` from `{ compaction?: CompactionConfig }` to hold Pi-compatible settings: `model?: string`, `compaction?: { enabled?: boolean; reserveTokens?: number; keepRecentTokens?: number }`, `extensions?: string[]`. Update `LucyConfig` in `agents-runtime/src/config/types.ts` if needed. Update `load-config.ts` KNOWN_KEYS if the shape changes validation.
 
@@ -61,7 +61,7 @@ Change `RuntimeConfig` in `agents-runtime/src/types/plugins.ts` from `{ compacti
 ---
 
 ### 4. Rewrite `AgentRuntime` as Pi SDK adapter
-<!-- status: pending -->
+<!-- status: done -->
 
 Replace the internals of `agents-runtime/src/runtime/agent-runtime.ts`. The new implementation:
 
@@ -84,7 +84,7 @@ Keep the public API signature compatible so `agents-gateway-http` and `agents-pl
 ---
 
 ### 5. Configure `DefaultResourceLoader` for Lucy
-<!-- status: pending -->
+<!-- status: done -->
 
 Use Pi's `DefaultResourceLoader` with override hooks instead of implementing `ResourceLoader` from scratch. This replaces `context.ts`, `prompt-file.ts`, and `environment-context.ts`:
 
@@ -102,7 +102,7 @@ This is wiring code inside `AgentRuntime.init()`, not a separate file. If the lo
 ---
 
 ### 6. Replace `OpenRouterModelProvider` with Pi `AuthStorage` + `ModelRegistry`
-<!-- status: pending -->
+<!-- status: done -->
 
 In the rewritten `AgentRuntime.init()`, configure Pi's model system instead of `OpenRouterModelProvider`:
 
@@ -122,7 +122,7 @@ Remove `agents-runtime/src/adapters/openrouter-model-provider.ts`. Remove `@open
 ---
 
 ### 7. Split `loadPlugins()` into gateway-only loader
-<!-- status: pending -->
+<!-- status: done -->
 
 Refactor `agents-runtime/src/plugins/loader.ts`. Currently `loadPlugins()` returns `{ gateway, runtime }` by iterating plugin entries and checking manifest type. Split into:
 
@@ -140,7 +140,7 @@ Update the export from `agents-runtime/src/index.ts`: `loadPlugins` → `loadGat
 ---
 
 ### 8. Slim `createFileAdapters()` to config + identity only
-<!-- status: pending -->
+<!-- status: done -->
 
 Update `agents-runtime/src/adapters/index.ts`. Currently creates 4 adapters: `FileAgentStore`, `FileItemStore`, `FileConfigStore`, `FileIdentityProvider`. Post-migration, Pi owns agent/item persistence. Slim to:
 
@@ -158,7 +158,7 @@ Don't delete the adapter files yet — that's task 9.
 ---
 
 ### 9. Remove replaced modules from agents-runtime
-<!-- status: pending -->
+<!-- status: done -->
 
 Delete files that Pi SDK replaces. These are no longer imported by the rewritten `AgentRuntime`:
 
@@ -183,7 +183,7 @@ Also remove `ai` and `@openrouter/ai-sdk-provider` from `agents-runtime/package.
 ---
 
 ### 10. Update agents-runtime type exports and public API
-<!-- status: pending -->
+<!-- status: done -->
 
 Clean up the public surface of `agents-runtime`:
 
@@ -200,7 +200,7 @@ Clean up the public surface of `agents-runtime`:
 ---
 
 ### 11. Update gateway boot sequence
-<!-- status: pending -->
+<!-- status: done -->
 
 Rewrite `agents-gateway-http/src/runtime.ts` to use the new loader and runtime:
 
@@ -217,7 +217,7 @@ Rewrite `agents-gateway-http/src/runtime.ts` to use the new loader and runtime:
 ---
 
 ### 12. Rewrite agents-memory as Pi extension
-<!-- status: pending -->
+<!-- status: done -->
 
 Convert from `RuntimePlugin` to Pi extension factory. This is the most involved migration:
 
@@ -237,7 +237,7 @@ Convert from `RuntimePlugin` to Pi extension factory. This is the most involved 
 ---
 
 ### 13. Verify consumer packages compile
-<!-- status: pending -->
+<!-- status: done -->
 
 Run typecheck on all packages that import from `agents-runtime` to confirm nothing broke:
 
@@ -256,7 +256,7 @@ Fix any import breakage discovered (likely minor — renamed exports, removed ty
 ---
 
 ### 14. Update `lucy.config.json` schema and add migration notes
-<!-- status: pending -->
+<!-- status: done -->
 
 Document the breaking config change and provide a migration path:
 

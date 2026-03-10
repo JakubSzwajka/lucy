@@ -10,7 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "agents-runtime": "*"
+    "@ai-sdk/anthropic": "^1.2.12",
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "agents-runtime": "*",
+    "ai": "^4.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

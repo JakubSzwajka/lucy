@@ -1,86 +1,59 @@
 # agents-runtime
 
-Standalone AI agent execution engine using the Vercel AI SDK. Runs agents in streaming or non-streaming mode with pluggable storage, model providers, identity enrichment, and config-resolved runtime plugins.
+Standalone agent runtime wrapping the [Pi SDK](https://github.com/nichochar/pi-agent) (`@mariozechner/pi-coding-agent`). Loads config, sets up a Pi `AgentSession` with persistent sessions, identity enrichment, and extensions.
 
 ## Public API
 
-- `AgentRuntime` - main runtime class for sessions, context preparation, and execution
-- `bootstrapAgentRuntime(...)` - primary bootstrap entrypoint; builds an `AgentRuntime` from runtime config, deps, and an installed plugin registry
-- `createConfiguredRuntime(...)` - compatibility alias for `bootstrapAgentRuntime(...)`
-- `resolveRuntimePlugins(...)` - resolves enabled plugin ids from runtime config against an installed plugin registry
-- `loadConfig(path?)` - loads `lucy.config.json` (or `LUCY_CONFIG_PATH`) into a typed `LucyConfig`
-- `cancelAgent(agentId)` - aborts a running non-streaming agent
-- `createFileAdapters(dataDir?)` - file-backed implementations of the runtime ports
-- `resolveDataDir(dataDir?)` - resolves the runtime data directory
-- `OpenRouterModelProvider` - `ModelProvider` implementation using OpenRouter
-- Runtime plugin types - `RuntimePlugin`, `RuntimePluginRegistry`, `RuntimePluginsConfig`, `ResolvedRuntimePlugin`, and hook input/output types
-
-## Plugin Installation
-
-Install plugins in a registry, then let runtime config decide which ones are active for a deployment.
-
 ```ts
-import { createMemoryPlugin } from "agents-memory";
-import {
-  bootstrapAgentRuntime,
-  type RuntimePluginRegistry,
-} from "agents-runtime";
-
-const pluginRegistry: RuntimePluginRegistry = {
-  memory: createMemoryPlugin(),
-};
-
-const runtime = bootstrapAgentRuntime({
-  config: {
-    plugins: {
-      enabled: ["memory"],
-      configById: {
-        memory: {
-          initialMemory: {
-            content: "User prefers concise updates and direct tradeoff summaries.",
-          },
-        },
-      },
-    },
-  },
-  pluginRegistry,
-});
+AgentRuntime          // Main class: init(), sendMessage(), getHistory(), getModels(), abort(), destroy()
+resolveDataDir()      // Resolves data dir: AGENTS_DATA_DIR env > ~/.agents-data
+loadConfig(path?)     // Loads lucy.config.json into typed LucyConfig
 ```
 
-`bootstrapAgentRuntime(...)` is the canonical name in docs and examples. `createConfiguredRuntime(...)` is the same function shape and behavior, kept as a thin alias for callers that already adopted it.
+Types: `RuntimeConfig`, `SessionConfig`, `CompactionConfig`, `ModelConfig`, `HistoryEntry`, `IdentityContent`, `LucyConfig`, `PluginEntry`, `GatewayHttpConfig`.
 
-Only plugin ids listed in `config.plugins.enabled` are resolved. Missing ids fail fast during bootstrap. This keeps plugin selection in runtime configuration rather than transport-level wiring. The workspace smoke test covers both the baseline no-plugin runtime path and the configured memory-plugin path end to end.
+## Config (`lucy.config.json`)
 
-## Data Model
-
-```
-User (string id, currently always "default")
- └── AgentConfig (reusable template: system prompt, model, tools, maxTurns)
-       └── Session ──1:1── Agent
-             │                 └── execution state (status, turnCount, timing)
-             └── Items[]  (append-only conversation log)
-                   ├── message      (role: user | assistant | system)
-                   ├── tool_call    (callId, toolName, args, status)
-                   ├── tool_result  (callId, output | error)
-                   └── reasoning    (thinking content + summary)
+```jsonc
+{
+  "agents-runtime": {
+    "model": "anthropic/claude-sonnet-4-20250514",
+    "session": { "persist": true, "resume": true },
+    "compaction": { "enabled": true, "reserveTokens": 16384, "keepRecentTokens": 20000 },
+    "extensions": ["agents-memory"]
+  }
+}
 ```
 
-**Key relationships:**
-
-- **Session : Agent is always 1:1** — `createSession()` creates both atomically. Agent is the execution handle; Session is the addressable entry point.
-- **AgentConfig is the reusable part** — defines personality (system prompt, model, tool set). Many sessions can share one config.
-- **Items are keyed by agentId** — since Session:Agent is 1:1, `sessionId` and `agentId` are interchangeable for lookups.
-- **User is single-tenant** — hardcoded `"default"`, no user store. All queries implicitly belong to one user.
+| `persist` | `resume` | Behavior |
+|-----------|----------|----------|
+| `true` (default) | `true` (default) | Resumes last session from `~/.agents-data/sessions/` |
+| `true` | `false` | New session file each boot |
+| `false` | — | In-memory only |
 
 ## Responsibility Boundary
 
-Owns session lifecycle, context assembly, model execution, step persistence, cancellation, and runtime plugin resolution. Delegates storage to port implementations, model resolution to `ModelProvider`, and plugin behavior to installed runtime plugins. It does not own transport-specific tool wiring.
+Owns agent session lifecycle, config loading, and Pi SDK orchestration. Delegates HTTP transport to `agents-gateway-http`, gateway plugin loading to `agents-gateway-http`, and agent behavior extensions to Pi SDK's extension system.
+
+## File Structure
+
+```
+src/
+├── index.ts                    # Barrel export
+├── types.ts                    # Type re-export barrel
+├── runtime/agent-runtime.ts    # Pi SDK wrapper + identity + data dir
+├── config/load-config.ts       # lucy.config.json loader
+├── config/types.ts             # LucyConfig shape
+└── types/                      # domain.ts, plugins.ts, runtime.ts
+```
+
+## Known Limitations
+
+- **Tools** — always `[]`; tool wiring not yet implemented
+- **Per-request model/thinking** — Pi SDK uses session-level config; per-request overrides log a warning
+- **compactionSummary** — always `null` in `getHistory()`
 
 ## Read Next
 
-- [Runtime internals](./src/runtime/README.md) - session helpers, context assembly, and execution flow
-- [Plugin system](./src/plugins/README.md) - registry resolution, bootstrap, and lifecycle hook orchestration
-- [Config loading](./src/config/) - `lucy.config.json` loader and `LucyConfig` type
-- [Type domains](./src/types/README.md) - split type surface for domain, runtime, and plugin contracts
-- [Adapters](./src/adapters/README.md) - file-based port implementations and OpenRouter provider
-- [agents-memory](../agents-memory/README.md) - proof plugin package implementing the runtime contract
+- [agents-gateway-http](../agents-gateway-http/README.md) — HTTP gateway that wraps this runtime
+- [agents-memory](../agents-memory/README.md) — Pi extension for memory/observation

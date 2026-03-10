@@ -1,13 +1,11 @@
 import {
   AgentRuntime,
-  createFileAdapters,
   loadConfig,
-  loadPlugins,
   type LucyConfig,
-  type ResolvedGatewayPlugin,
 } from "agents-runtime";
 
-import { DATA_DIR } from "./config.js";
+import { loadGatewayPlugins } from "./gateway-plugins/loader.js";
+import type { ResolvedGatewayPlugin } from "./types/gateway-plugins.js";
 
 let runtime: AgentRuntime | null = null;
 
@@ -20,16 +18,12 @@ export async function initRuntime(): Promise<{
 
   if (runtime) return { runtime, config: lucyConfig, gatewayPlugins: [] };
 
-  const loaded = await loadPlugins(lucyConfig.plugins);
+  const gatewayPlugins = await loadGatewayPlugins(lucyConfig.plugins);
 
-  runtime = new AgentRuntime({
-    config: lucyConfig["agents-runtime"],
-    deps: createFileAdapters(DATA_DIR),
-    resolvedPlugins: loaded.runtime,
-  });
+  runtime = new AgentRuntime({ config: lucyConfig["agents-runtime"] });
   await runtime.init();
 
-  return { runtime, config: lucyConfig, gatewayPlugins: loaded.gateway };
+  return { runtime, config: lucyConfig, gatewayPlugins };
 }
 
 export function getRuntime(): AgentRuntime {

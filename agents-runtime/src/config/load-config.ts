@@ -5,7 +5,7 @@ import type { LucyConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = "lucy.config.json";
 
-const KNOWN_KEYS = ["agents-runtime"];
+const KNOWN_KEYS = ["agents-gateway-http", "agents-runtime"];
 
 export async function loadConfig(path?: string): Promise<LucyConfig> {
   const configPath =
@@ -42,6 +42,18 @@ export async function loadConfig(path?: string): Promise<LucyConfig> {
 
   if (config.plugins !== undefined && !Array.isArray(config.plugins)) {
     throw new Error(`Config key "plugins" must be an array in: ${configPath}`);
+  }
+
+  // Detect old config shape and warn
+  const runtime = config["agents-runtime"] as Record<string, unknown> | undefined;
+  if (runtime?.compaction && typeof runtime.compaction === "object") {
+    const compaction = runtime.compaction as Record<string, unknown>;
+    if ("windowSize" in compaction) {
+      console.warn(
+        "[config] deprecated: agents-runtime.compaction.windowSize is no longer supported. " +
+        "Use reserveTokens/keepRecentTokens instead. See agents-runtime/MIGRATION.md"
+      );
+    }
   }
 
   return config as LucyConfig;

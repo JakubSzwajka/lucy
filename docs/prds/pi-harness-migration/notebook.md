@@ -53,3 +53,22 @@ Five open questions from task review, all resolved:
 - `AgentRuntime` constructor maps almost 1:1 to `createAgentSession()`. The deps pattern maps to Pi's options pattern. The refactor is mostly wiring, not reimplementation.
 - The gateway layer (`agents-gateway-http`) is completely unaffected. It calls `runtime.sendMessage()` and gets a response. What happens inside is Pi's business.
 - `agents-memory` migrates from `RuntimePlugin` to Pi extension. Same logic, different hooks: `onRunComplete` → `pi.on("agent_end")`, `prepareContext` → `pi.on("session_start")`.
+
+### Pipeline execution — Waves 0-2 — 2026-03-09
+
+9/14 tasks done across 3 waves. All delegated to agents in parallel per wave.
+
+**Implementation findings:**
+- **`systemPromptOverride` is sync, not async.** Signature is `(base: string | undefined) => string | undefined`. Identity and prompt content must be pre-read before building the closure. Both `agent-runtime.ts` (inlined) and `resource-loader.ts` (helper) handle this correctly.
+- **`sendMessage` options ignored for now.** `modelId` and `thinkingEnabled` params are prefixed with `_`. To support per-message model switching, call `session.setModel()` and `session.setThinkingLevel()` before prompting. Low priority — gateway doesn't use it.
+- **`@ai-sdk/provider` needed as explicit dep.** `execution.ts` imports `LanguageModelV1ProviderMetadata` from it. Was transitive via `@openrouter/ai-sdk-provider` — removing OpenRouter un-hoisted it. Fixed by adding `@ai-sdk/provider: ^1.1.3`.
+- **Duplicate resource loader code.** Task 4 inlined prompt/identity/extension logic directly in `agent-runtime.ts`. Task 5 created `resource-loader.ts` as a clean extracted helper. Both exist; `resource-loader.ts` is not imported. **Next agent should decide:** either wire `agent-runtime.ts` to use the helper, or delete the helper during task 9's module removal.
+- **CompactionService still uses message-count windowing internally.** The new token-based fields (`reserveTokens`, `keepRecentTokens`) are exposed as getters but `windowSize` is derived via heuristic (~80 tokens/msg). This is moot once Pi's compaction takes over, but the file still exists until task 9 deletes it.
+- **`DATA_DIR` removed from gateway config.** Only consumer was the old `runtime.ts` which no longer needs `createFileAdapters(DATA_DIR)`.
+
+**State for next agent (Wave 3+):**
+- `agents-runtime` typechecks clean
+- `agents-gateway-http` runtime.ts updated but no typecheck script exists — verify manually or add one
+- Files to delete in task 9: `execution.ts`, `compaction.ts`, `context.ts`, `prompt-file.ts`, `messages.ts`, `step-persistence.ts`, `environment-context.ts`, `file-agent-store.ts`, `file-item-store.ts`, `plugins/lifecycle.ts`. Also `@ai-sdk/provider` dep can be removed once `execution.ts` is gone. Same for `ai` dep — verify no remaining imports.
+- `index.ts` still exports stale types (`RuntimePlugin*`, `RuntimeDeps`, `ChatContext`, `RunResult`, etc.) and stale value exports (`createFileAdapters`, `OpenRouterModelProvider` already removed). Task 10 cleans all of this.
+- `resource-loader.ts` created but unused — cleanup candidate

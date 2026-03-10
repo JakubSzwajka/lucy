@@ -14,7 +14,7 @@
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",
     "@hono/node-server": "*",
-    "agents-runtime": "*",
+    "agents-gateway-http": "*",
     "astro": "^5.13.5",
     "hono": "*"
   }

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import type { GatewayPlugin, GatewayPluginManifest } from "agents-runtime";
+import type { GatewayPlugin, GatewayPluginManifest } from "agents-gateway-http/plugin";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Hono } from "hono";
 

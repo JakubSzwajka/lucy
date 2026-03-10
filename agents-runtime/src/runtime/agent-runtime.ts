@@ -1,273 +1,313 @@
-import { createFileAdapters } from "../adapters/index.js";
-import { resolveDataDir } from "../adapters/resolve-data-dir.js";
-import { OpenRouterModelProvider } from "../adapters/openrouter-model-provider.js";
-import { destroyPlugins, initPlugins } from "../plugins/lifecycle.js";
-import { CompactionService } from "./compaction.js";
-import { prepareRuntimeContext } from "./context.js";
+import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
+
 import {
-  runNonStreamingAgent,
-  runStreamingAgent,
-} from "./execution.js";
-import { readPromptFile } from "./prompt-file.js";
+  AuthStorage,
+  createAgentSession,
+  DefaultResourceLoader,
+  ModelRegistry,
+  SessionManager,
+  SettingsManager,
+  type AgentSession,
+  type AgentSessionEvent,
+  type ExtensionFactory,
+} from "@mariozechner/pi-coding-agent";
+
 import type {
-  Agent,
   AgentRuntimeOptions,
-  ChatContext,
-  Item,
+  HistoryEntry,
+  IdentityContent,
   ModelConfig,
-  ModelMessage,
-  ResolvedRuntimePlugin,
-  RunOptions,
-  RunResult,
   RuntimeConfig,
-  RuntimeDeps,
 } from "../types.js";
 
-const activeAbortControllers = new Map<string, AbortController>();
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-interface AgentRuntimeInit extends AgentRuntimeOptions {
-  resolvedPlugins?: ResolvedRuntimePlugin[];
+export function resolveDataDir(): string {
+  if (process.env.AGENTS_DATA_DIR) return process.env.AGENTS_DATA_DIR;
+  return join(homedir(), ".agents-data");
 }
 
-function isConfigStoreLike(value: unknown): value is RuntimeDeps["config"] {
-  return typeof value === "object"
-    && value !== null
-    && "getAgentConfig" in value
-    && typeof value.getAgentConfig === "function";
+function readPromptFile(path = "./prompt.md"): string | null {
+  try {
+    return readFileSync(resolve(path), "utf-8");
+  } catch {
+    return null;
+  }
 }
 
-function isAgentRuntimeOptions(
-  value: AgentRuntimeInit | Partial<RuntimeDeps> | undefined,
-): value is AgentRuntimeInit {
-  if (value === undefined) {
-    return false;
+async function loadIdentityContext(): Promise<string | null> {
+  const filePath = join(resolveDataDir(), "identity", "default.json");
+  let doc: { content: IdentityContent };
+  try {
+    const data = await readFile(filePath, "utf-8");
+    doc = JSON.parse(data);
+  } catch {
+    return null;
   }
 
-  if ("deps" in value || "resolvedPlugins" in value) {
-    return true;
+  const { content } = doc;
+  const parts: string[] = [];
+  if (content.values.length > 0) {
+    parts.push(`Values: ${content.values.join(", ")}`);
   }
-
-  return "config" in value && !isConfigStoreLike(value.config);
+  if (content.capabilities.length > 0) {
+    parts.push(`Capabilities: ${content.capabilities.join(", ")}`);
+  }
+  if (content.growthNarrative) {
+    parts.push(`Growth: ${content.growthNarrative}`);
+  }
+  if (content.keyRelationships.length > 0) {
+    const rels = content.keyRelationships
+      .map((r) => `${r.name} (${r.nature})`)
+      .join(", ");
+    parts.push(`Relationships: ${rels}`);
+  }
+  return parts.length > 0
+    ? `<identity>\n${parts.join("\n")}\n</identity>`
+    : null;
 }
 
-export function cancelAgent(agentId: string): boolean {
-  const controller = activeAbortControllers.get(agentId);
-  if (controller) {
-    controller.abort();
-    activeAbortControllers.delete(agentId);
-    return true;
-  }
-  return false;
-}
+// ---------------------------------------------------------------------------
+// AgentRuntime
+// ---------------------------------------------------------------------------
 
 export class AgentRuntime {
-  private agentId: string | null = null;
-  private compaction: CompactionService;
-  private deps: RuntimeDeps;
-  private promptContent: string | null = null;
-  private readonly resolvedPlugins: ResolvedRuntimePlugin[];
-  private runtimeConfig: RuntimeConfig;
+  private config: RuntimeConfig;
+  private modelRegistry: ModelRegistry | null = null;
+  private session: AgentSession | null = null;
 
-  constructor(options?: AgentRuntimeInit | Partial<RuntimeDeps>) {
-    const init = isAgentRuntimeOptions(options)
-      ? options
-      : { deps: options };
-    const fileAdapters = createFileAdapters();
-    const deps = init.deps;
-    this.deps = {
-      agents: deps?.agents ?? fileAdapters.agents,
-      config: deps?.config ?? fileAdapters.config,
-      identity: deps?.identity ?? fileAdapters.identity,
-      items: deps?.items ?? fileAdapters.items,
-      models: deps?.models ?? new OpenRouterModelProvider(),
-    };
-    this.resolvedPlugins = init.resolvedPlugins ?? [];
-    this.runtimeConfig = init.config ?? {};
-    this.compaction = new CompactionService(
-      resolveDataDir(),
-      this.runtimeConfig.compaction,
-    );
+  constructor(options?: AgentRuntimeOptions) {
+    this.config = options?.config ?? {};
   }
 
   async init(): Promise<void> {
-    this.promptContent = readPromptFile();
-    await initPlugins(this.resolvedPlugins, this.deps);
+    // Auth & model registry
+    const authStorage = AuthStorage.create();
+
+    const envKeys: Record<string, string | undefined> = {
+      anthropic: process.env.ANTHROPIC_API_KEY,
+      openai: process.env.OPENAI_API_KEY,
+      google: process.env.GOOGLE_API_KEY,
+      openrouter: process.env.OPENROUTER_API_KEY,
+    };
+    for (const [provider, key] of Object.entries(envKeys)) {
+      if (key) authStorage.setRuntimeApiKey(provider, key);
+    }
+
+    const modelRegistry = new ModelRegistry(authStorage);
+    this.modelRegistry = modelRegistry;
+
+    // Resolve model
+    let model;
+    if (this.config.model) {
+      const [provider, ...rest] = this.config.model.split("/");
+      const modelId = rest.join("/");
+      model = modelRegistry.find(provider, modelId);
+      if (!model) {
+        console.warn(`[runtime] model "${this.config.model}" not found in Pi registry, falling back to default`);
+      }
+    }
+
+    // Settings (compaction)
+    const compaction = this.config.compaction;
+    const settingsManager = SettingsManager.inMemory({
+      compaction: compaction
+        ? {
+            enabled: compaction.enabled ?? true,
+            reserveTokens: compaction.reserveTokens,
+            keepRecentTokens: compaction.keepRecentTokens,
+          }
+        : undefined,
+    });
+
+    // System prompt: read prompt.md + identity context
+    const promptContent = readPromptFile();
+    const identityContext = await loadIdentityContext();
+
+    // Resolve extensions
+    const extensionFactories: ExtensionFactory[] = [];
+    const additionalExtensionPaths: string[] = [];
+
+    if (this.config.extensions) {
+      for (const ext of this.config.extensions) {
+        if (ext.startsWith(".") || ext.startsWith("/")) {
+          additionalExtensionPaths.push(resolve(ext));
+        } else {
+          try {
+            const mod = await import(ext);
+            const factory: ExtensionFactory =
+              mod.default ?? mod.extension ?? mod;
+            extensionFactories.push(factory);
+          } catch (err) {
+            console.warn(`[runtime] failed to load extension "${ext}":`, err);
+          }
+        }
+      }
+    }
+
+    // Resource loader
+    const loader = new DefaultResourceLoader({
+      settingsManager,
+      extensionFactories,
+      additionalExtensionPaths,
+      systemPromptOverride: () => {
+        const sections: string[] = [];
+        if (promptContent) sections.push(promptContent);
+        if (identityContext) sections.push(identityContext);
+        return sections.length > 0 ? sections.join("\n\n") : "You are a helpful assistant.";
+      },
+    });
+    await loader.reload();
+
+    // Session manager — persistent by default, in-memory only if explicitly disabled
+    const sessionConfig = this.config.session;
+    const dataDir = resolveDataDir();
+    const sessionDir = resolve(dataDir, "sessions");
+
+    let sessionManager: SessionManager;
+    if (sessionConfig?.persist === false) {
+      sessionManager = SessionManager.inMemory();
+      console.log("[runtime] using in-memory session");
+    } else if (sessionConfig?.resume !== false) {
+      sessionManager = SessionManager.continueRecent(process.cwd(), sessionDir);
+      console.log(`[runtime] resuming session ${sessionManager.getSessionId()} from ${sessionDir}`);
+    } else {
+      sessionManager = SessionManager.create(process.cwd(), sessionDir);
+      console.log(`[runtime] new session ${sessionManager.getSessionId()} in ${sessionDir}`);
+    }
+
+    // Create session
+    const { session } = await createAgentSession({
+      model,
+      authStorage,
+      modelRegistry,
+      resourceLoader: loader,
+      sessionManager,
+      settingsManager,
+      tools: [],
+    });
+
+    this.session = session;
+    console.log("[runtime] initialized with Pi SDK session", session.sessionId);
   }
 
   async destroy(): Promise<void> {
-    await destroyPlugins(this.resolvedPlugins);
+    if (this.session) {
+      this.session.dispose();
+      this.session = null;
+    }
   }
 
   async sendMessage(
     message: string,
     options?: { modelId?: string; thinkingEnabled?: boolean },
   ): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }> {
-    const agentId = await this.ensureAgent();
-    await this.deps.items.createMessage(agentId, { role: "user", content: message });
-
-    const result = await this.run(agentId, "default", [], {
-      streaming: false,
-      modelId: options?.modelId,
-      thinkingEnabled: options?.thinkingEnabled,
-    });
-
-    if (result.streaming) throw new Error("Unexpected streaming result");
-
-    // Run compaction after successful exchange
-    try {
-      const allItems = await this.deps.items.getByAgentId(agentId);
-      await this.compaction.compactIfNeeded(
-        allItems,
-        async (modelId?: string) => {
-          const resolvedId = modelId ?? options?.modelId;
-          const config = resolvedId
-            ? await this.deps.models.getModelConfig(resolvedId)
-            : undefined;
-          if (!config) {
-            // Fall back to context's model
-            const ctx = await this.prepareContext(agentId, "default");
-            if (!ctx) throw new Error("Cannot resolve model for compaction");
-            return ctx.languageModel;
-          }
-          return this.deps.models.getLanguageModel(config);
-        },
-      );
-    } catch (err) {
-      console.error("[runtime] compaction failed:", err);
+    if (!this.session) throw new Error("Runtime not initialized");
+    if (options?.modelId || options?.thinkingEnabled) {
+      console.warn("[runtime] per-request modelId/thinkingEnabled not yet supported with Pi SDK, using session defaults");
     }
+    const session = this.session;
 
-    return {
-      response: result.result,
-      agentId,
-      reachedMaxTurns: result.reachedMaxTurns,
-    };
+    let responseText = "";
+    let reachedMaxTurns = false;
+    let done = false;
+
+    const result = new Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }>(
+      (resolve, reject) => {
+        const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+          if (
+            event.type === "message_update" &&
+            event.assistantMessageEvent.type === "text_delta"
+          ) {
+            responseText += event.assistantMessageEvent.delta;
+          }
+
+          if (event.type === "agent_end") {
+            done = true;
+            const msgs = event.messages;
+            if (msgs.length > 0) {
+              const last = msgs[msgs.length - 1];
+              if (last.role === "assistant" && "stopReason" in last && last.stopReason === "length") {
+                reachedMaxTurns = true;
+              }
+            }
+            unsubscribe();
+            resolve({
+              response: responseText,
+              agentId: session.sessionId,
+              reachedMaxTurns,
+            });
+          }
+        });
+
+        session.prompt(message).catch((err) => {
+          unsubscribe();
+          if (!done) reject(err);
+        });
+      },
+    );
+
+    return result;
   }
 
-  async getHistory(): Promise<{ items: Item[]; compactionSummary: string | null }> {
-    const agentId = await this.ensureAgent();
-    const items = await this.deps.items.getByAgentId(agentId);
-    const state = await this.compaction.getState();
-    return { items, compactionSummary: state?.summary ?? null };
+  async getHistory(): Promise<{ items: HistoryEntry[]; compactionSummary: string | null }> {
+    if (!this.session) throw new Error("Runtime not initialized");
+
+    const messages = this.session.messages;
+    const items: HistoryEntry[] = messages
+      .filter((m): m is typeof m & { role: "user" | "assistant" } =>
+        m.role === "user" || m.role === "assistant",
+      )
+      .map((m, i) => {
+        let content = "";
+        if (typeof m.content === "string") {
+          content = m.content;
+        } else if (Array.isArray(m.content)) {
+          content = m.content
+            .filter((c): c is { type: "text"; text: string } => c.type === "text")
+            .map((c) => c.text)
+            .join("");
+        }
+
+        return {
+          id: `msg-${i}`,
+          type: "message" as const,
+          role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+          content,
+          sequence: i,
+          agentId: this.session!.sessionId,
+          createdAt: new Date(
+            "timestamp" in m && typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+          ),
+        };
+      });
+
+    return { items, compactionSummary: null };
   }
 
   async getModels(): Promise<ModelConfig[]> {
-    return this.deps.models.listModels();
+    if (!this.modelRegistry) throw new Error("Runtime not initialized");
+
+    const available = await this.modelRegistry.getAvailable();
+    return available.map((m) => ({
+      id: `${m.provider}/${m.id}`,
+      name: m.name,
+      provider: m.provider,
+      modelId: m.id,
+      supportsReasoning: m.reasoning ?? false,
+      supportsImages: Array.isArray(m.input) && m.input.includes("image"),
+      maxContextTokens: m.contextWindow ?? 0,
+    }));
   }
 
-  private async ensureAgent(): Promise<string> {
-    if (this.agentId) return this.agentId;
-
-    const agentId = "agent";
-    const existing = await this.deps.agents.getById(agentId);
-    if (existing) {
-      this.agentId = agentId;
-      return agentId;
-    }
-
-    const configId = "default";
-    const existingConfig = await this.deps.config.getAgentConfig(configId);
-    if (!existingConfig) {
-      await this.deps.config.createAgentConfig({
-        id: configId,
-        userId: "default",
-        name: "Default Agent",
-        description: null,
-        defaultModelId: null,
-        maxTurns: 25,
-        icon: null,
-        color: null,
-        isDefault: true,
-        tools: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    }
-
-    const agent: Agent = {
-      id: agentId,
-      agentConfigId: configId,
-      name: "Agent",
-      status: "pending",
-      turnCount: 0,
-      createdAt: new Date(),
-    };
-    await this.deps.agents.create(agent);
-    this.agentId = agentId;
-    return agentId;
-  }
-
-  async prepareContext(
-    agentId: string,
-    userId: string,
-    options: { modelId?: string; thinkingEnabled?: boolean } = {},
-  ): Promise<ChatContext | null> {
-    return prepareRuntimeContext({
-      agentId,
-      deps: this.deps,
-      options,
-      promptContent: this.promptContent,
-      resolvedPlugins: this.resolvedPlugins,
-      userId,
-    });
-  }
-
-  async run(
-    agentId: string,
-    userId: string,
-    messages: ModelMessage[],
-    options: RunOptions,
-  ): Promise<RunResult> {
-    const { modelId, thinkingEnabled } = options;
-
-    let context = await this.prepareContext(agentId, userId, { modelId, thinkingEnabled });
-    if (!context) {
-      throw new Error("Agent not found");
-    }
-
-    // Update agent status to running
-    await this.deps.agents.update(agentId, {
-      status: "running",
-      startedAt: context.agent.startedAt || new Date(),
-    });
-
-    // Inject compacted summary into system prompt if available
-    const compactionState = await this.compaction.getState();
-    if (compactionState?.summary) {
-      const compactionBlock = `\n\n<conversation-history-summary>\n${compactionState.summary}\n</conversation-history-summary>`;
-      context = {
-        ...context,
-        systemPrompt: (context.systemPrompt ?? "") + compactionBlock,
-      };
-    }
-
-    if (options.streaming) {
-      return runStreamingAgent({
-        agentId,
-        context,
-        deps: this.deps,
-        messages,
-        onFinish: options.onFinish,
-        resolvedPlugins: this.resolvedPlugins,
-        userId,
-      });
-    }
-
-    const abortController = new AbortController();
-    activeAbortControllers.set(agentId, abortController);
-
-    try {
-      return await runNonStreamingAgent({
-        abortController,
-        agentId,
-        context,
-        deps: this.deps,
-        maxTurns: options.maxTurns ?? 25,
-        onFinish: options.onFinish,
-        resolvedPlugins: this.resolvedPlugins,
-        userId,
-      });
-    } finally {
-      activeAbortControllers.delete(agentId);
+  async abort(): Promise<void> {
+    if (this.session) {
+      await this.session.abort();
     }
   }
 }
