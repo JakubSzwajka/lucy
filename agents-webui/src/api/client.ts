@@ -1,4 +1,4 @@
-import type { ChatResponse, HistoryResponse, ModelsResponse } from "./types";
+import type { ChatResponse, HistoryResponse } from "./types";
 
 const BASE_URL: string =
   import.meta.env.VITE_API_URL ?? "";
@@ -58,17 +58,10 @@ export function getHistory(): Promise<HistoryResponse> {
   return request<HistoryResponse>("/api/chat/history");
 }
 
-export function sendMessage(
-  message: string,
-  options?: { modelId?: string; thinkingEnabled?: boolean },
-): Promise<ChatResponse> {
+export function sendMessage(message: string): Promise<ChatResponse> {
   return request<ChatResponse>("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, ...options }),
+    body: JSON.stringify({ message }),
   });
-}
-
-export function getModels(): Promise<ModelsResponse> {
-  return request<ModelsResponse>("/api/models");
 }

@@ -8,7 +8,6 @@ REST gateway exposing `agents-runtime` over HTTP using Hono. Owns gateway plugin
 |--------|------|------|-------------|
 | `POST` | `/api/chat` | API key | Send a message, get response |
 | `GET` | `/api/chat/history` | API key | Conversation history |
-| `GET` | `/api/models` | API key | Available models |
 | `GET` | `/api/health` | None | Liveness check |
 
 ## Gateway Plugins

@@ -54,13 +54,3 @@ export interface ChatResponse {
   reachedMaxTurns: boolean;
 }
 
-export interface ModelDef {
-  id: string;
-  name: string;
-  supportsReasoning?: boolean;
-  maxContextTokens: number;
-}
-
-export interface ModelsResponse {
-  models: ModelDef[];
-}

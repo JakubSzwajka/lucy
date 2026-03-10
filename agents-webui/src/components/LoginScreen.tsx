@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { getModels, setApiKey } from "@/api/client";
+import { getHistory, setApiKey } from "@/api/client";
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -21,7 +21,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     setApiKey(trimmed);
 
     try {
-      await getModels();
+      await getHistory();
       localStorage.setItem("lucy-api-key", trimmed);
       onLogin();
     } catch {

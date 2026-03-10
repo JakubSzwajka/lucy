@@ -21,7 +21,6 @@ app.route("/api", health);
 
 app.use("/api/chat", apiKeyAuth);
 app.use("/api/chat/*", apiKeyAuth);
-app.use("/api/models", apiKeyAuth);
 app.route("/api", chat);
 
 app.onError(errorHandler);
