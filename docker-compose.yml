@@ -1,15 +1,22 @@
 services:
   gateway:
-    build: .
+    build:
+      context: .
+      target: deps
+    command: sh -c "npm run build && npx -y nodemon --legacy-watch --watch runtime --watch gateway --ext ts,json --exec 'npx tsx gateway/core/src/index.ts'"
     ports:
       - "${PORT:-3080}:${PORT:-3080}"
     environment:
+      - NODE_ENV=development
       - PORT=${PORT:-3080}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - AGENTS_DATA_DIR=/data
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
       - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN}
     volumes:
-      - ~/.agents-data:/data
+      - ./runtime:/app/runtime
+      - ./gateway:/app/gateway
+      - ./tsconfig.json:/app/tsconfig.json:ro
       - ./lucy.config.json:/app/lucy.config.json:ro
-      - ./prompt.md:/app/prompt.md:ro
+      - ./prompt.md:/app/prompt.md
+      - ~/.agents-data:/data

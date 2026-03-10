@@ -189,7 +189,7 @@ export class AgentRuntime {
       resourceLoader: loader,
       sessionManager,
       settingsManager,
-      tools: [],
+      // tools: [],
     });
 
     this.session = session;

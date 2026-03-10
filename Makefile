@@ -28,7 +28,7 @@ endef
 # Targets
 # ----------------------------------------------------------------------------
 
-.PHONY: help up down logs docker-build docker-run deploy deploy-secrets
+.PHONY: help dev up down logs docker-build docker-run deploy deploy-secrets
 
 ## help — show this help (default)
 help:
