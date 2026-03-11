@@ -18,7 +18,9 @@ chat.post("/chat", async (c) => {
 
 chat.get("/chat/history", async (c) => {
   const runtime = getRuntime();
-  const history = await runtime.getHistory();
+  const hideToolCalls = c.req.query("hideToolCalls") === "true";
+  const history = await runtime.getHistory({ hideToolCalls });
+   
   return c.json(history);
 });
 

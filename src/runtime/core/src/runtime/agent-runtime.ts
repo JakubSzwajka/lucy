@@ -210,37 +210,60 @@ export class AgentRuntime {
     return result;
   }
 
-  async getHistory(): Promise<{ items: HistoryEntry[]; compactionSummary: string | null }> {
+  async getHistory({
+    hideToolCalls = false,
+  }: {
+    hideToolCalls?: boolean;
+  }): Promise<{ items: HistoryEntry[]; compactionSummary: string | null }> {
     if (!this.session) throw new Error("Runtime not initialized");
 
     const messages = this.session.messages;
-    const items: HistoryEntry[] = messages
-      .filter((m): m is typeof m & { role: "user" | "assistant" } =>
-        m.role === "user" || m.role === "assistant",
-      )
-      .map((m, i) => {
-        let content = "";
-        if (typeof m.content === "string") {
-          content = m.content;
-        } else if (Array.isArray(m.content)) {
-          content = m.content
-            .filter((c): c is { type: "text"; text: string } => c.type === "text")
-            .map((c) => c.text)
-            .join("");
-        }
+    const items: HistoryEntry[] = [];
+    let sequence = 0;
 
-        return {
-          id: `msg-${i}`,
-          type: "message" as const,
-          role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
-          content,
-          sequence: i,
-          agentId: this.session!.sessionId,
-          createdAt: new Date(
-            "timestamp" in m && typeof m.timestamp === "number" ? m.timestamp : Date.now(),
-          ),
-        };
+    for (const m of messages) {
+      if (m.role !== "user" && m.role !== "assistant") continue;
+
+      let textContent = "";
+      const toolCalls: Array<{ name: string; id: string }> = [];
+
+      if (typeof m.content === "string") {
+        textContent = m.content;
+      } else if (Array.isArray(m.content)) {
+        for (const block of m.content) {
+          if (block.type === "text") {
+            textContent += (block as { type: "text"; text: string }).text;
+          } else if (block.type === "toolCall") {
+            const tc = block as { type: "toolCall"; name: string; id: string };
+            toolCalls.push({ name: tc.name, id: tc.id });
+          }
+        }
+      }
+
+      // When hiding tool calls, skip assistant messages that only contain tool calls
+      if (hideToolCalls && m.role === "assistant" && !textContent && toolCalls.length > 0) {
+        continue;
+      }
+
+      // When showing tool calls, append tool call summaries to the text
+      if (!hideToolCalls && toolCalls.length > 0) {
+        const summary = toolCalls.map((tc) => `[tool: ${tc.name}]`).join(" ");
+        textContent = textContent ? `${textContent}\n\n${summary}` : summary;
+      }
+
+      items.push({
+        id: `msg-${sequence}`,
+        type: "message" as const,
+        role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+        content: textContent,
+        sequence,
+        agentId: this.session!.sessionId,
+        createdAt: new Date(
+          "timestamp" in m && typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+        ),
       });
+      sequence++;
+    }
 
     return { items, compactionSummary: null };
   }

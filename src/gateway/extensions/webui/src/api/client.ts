@@ -54,8 +54,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function getHistory(): Promise<HistoryResponse> {
-  return request<HistoryResponse>("/api/chat/history");
+export function getHistory(hideToolCalls?: boolean): Promise<HistoryResponse> {
+  const params = hideToolCalls ? "?hideToolCalls=true" : "";
+  return request<HistoryResponse>(`/api/chat/history${params}`);
 }
 
 export function sendMessage(message: string): Promise<ChatResponse> {
