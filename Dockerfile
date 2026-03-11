@@ -42,4 +42,4 @@ COPY prompt.m[d] ./
 
 EXPOSE 3080
 
-ENTRYPOINT ["node_modules/.bin/tsx", "src/gateway/core/src/index.ts"]
+ENTRYPOINT ["node_modules/.bin/concurrently", "-n", "bridge,gateway", "node_modules/.bin/tsx src/runtime/pi-bridge/index.ts", "node_modules/.bin/tsx src/gateway/core/src/index.ts"]

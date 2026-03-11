@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { resolveDataDir } from "agents-runtime";
+import { homedir } from "node:os";
 
 import { observe } from "./observe.js";
 import { synthesizeMemory } from "./synthesize.js";
@@ -20,6 +20,11 @@ async function readMemoryFromDisk(dataDir: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function resolveDataDir(): string {
+  if (process.env.AGENTS_DATA_DIR) return process.env.AGENTS_DATA_DIR;
+  return join(homedir(), ".agents-data");
 }
 
 export default function memoryExtension(pi: ExtensionAPI) {

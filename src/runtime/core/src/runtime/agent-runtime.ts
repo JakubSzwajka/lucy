@@ -1,19 +1,3 @@
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-
-import {
-  AuthStorage,
-  createAgentSession,
-  DefaultResourceLoader,
-  ModelRegistry,
-  SessionManager,
-  SettingsManager,
-  type AgentSession,
-  type AgentSessionEvent,
-  type ExtensionFactory,
-} from "@mariozechner/pi-coding-agent";
-
 import type {
   AgentRuntimeOptions,
   HistoryEntry,
@@ -21,24 +5,7 @@ import type {
   RuntimeConfig,
 } from "../types.js";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-export function resolveDataDir(): string {
-  if (process.env.AGENTS_DATA_DIR) return process.env.AGENTS_DATA_DIR;
-  return join(homedir(), ".agents-data");
-}
-
-const PROMPT_FILE_PATH = resolve("./prompt.md");
-
-function readPromptFile(): string {
-  try {
-    return readFileSync(PROMPT_FILE_PATH, "utf-8");
-  } catch {
-    throw new Error(`[runtime] prompt.md not found at ${PROMPT_FILE_PATH} — mount or create it before starting`);
-  }
-}
+import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.js";
 
 // ---------------------------------------------------------------------------
 // AgentRuntime
@@ -46,168 +13,102 @@ function readPromptFile(): string {
 
 export class AgentRuntime {
   private config: RuntimeConfig;
-  private modelRegistry: ModelRegistry | null = null;
-  private session: AgentSession | null = null;
+  private client: SocketClient;
+  private sessionId: string | null = null;
 
   constructor(options: AgentRuntimeOptions) {
     this.config = options.config;
+    this.client = new SocketClient();
   }
 
   async init(): Promise<void> {
-    // Auth — OpenRouter only. Set OPENROUTER_API_KEY in env.
-    const authStorage = AuthStorage.create();
-    const openrouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openrouterKey) {
-      console.warn("[runtime] OPENROUTER_API_KEY not set — no models will be available");
-    } else {
-      authStorage.setRuntimeApiKey("openrouter", openrouterKey);
+    await this.client.connect();
+
+    // Verify bridge is alive and cache session id
+    const resp = await this.client.request({ type: "get_state" });
+    if (!resp.success) {
+      throw new Error(`[runtime] pi-bridge get_state failed: ${resp.error ?? "unknown error"}`);
     }
 
-    const modelRegistry = new ModelRegistry(authStorage);
-    this.modelRegistry = modelRegistry;
+    const data = resp.data as Record<string, unknown> | undefined;
+    this.sessionId = (data?.sessionId as string) ?? "unknown";
+    console.log(`[runtime] connected to pi-bridge, session ${this.sessionId}`);
+  }
 
-    // Resolve model — must be set in config
-    const [provider, ...rest] = this.config.model.split("/");
-    const modelId = rest.join("/");
-    const model = modelRegistry.find(provider, modelId);
-    if (!model) {
-      throw new Error(`[runtime] model "${this.config.model}" not found in Pi registry`);
-    }
-
-    // Settings (compaction)
-    const compaction = this.config.compaction;
-    const settingsManager = SettingsManager.inMemory({
-      compaction: compaction
-        ? {
-            enabled: compaction.enabled ?? true,
-            reserveTokens: compaction.reserveTokens,
-            keepRecentTokens: compaction.keepRecentTokens,
-          }
-        : undefined,
-    });
-
-    // System prompt: validate prompt.md exists at init
-    readPromptFile();
-
-    // Resolve extensions
-    const extensionFactories: ExtensionFactory[] = [];
-    const additionalExtensionPaths: string[] = [];
-
-    if (this.config.extensions) {
-      for (const ext of this.config.extensions) {
-        if (ext.startsWith(".") || ext.startsWith("/")) {
-          additionalExtensionPaths.push(resolve(ext));
-        } else {
-          try {
-            const mod = await import(ext);
-            const factory: ExtensionFactory =
-              mod.default ?? mod.extension ?? mod;
-            extensionFactories.push(factory);
-          } catch (err) {
-            console.warn(`[runtime] failed to load extension "${ext}":`, err);
-          }
-        }
+  private async ensureConnected(): Promise<void> {
+    if (!this.client.isConnected) {
+      console.log("[runtime] reconnecting to pi-bridge...");
+      await this.client.connect();
+      // Re-cache session info after reconnect
+      const resp = await this.client.request({ type: "get_state" });
+      if (resp.success) {
+        const data = resp.data as Record<string, unknown> | undefined;
+        this.sessionId = (data?.sessionId as string) ?? this.sessionId;
       }
     }
-
-    // Resource loader — re-reads prompt.md on every call
-    const loader = new DefaultResourceLoader({
-      settingsManager,
-      extensionFactories,
-      additionalExtensionPaths,
-      systemPromptOverride: () => readPromptFile(),
-    });
-    await loader.reload();
-
-    // Session manager — persistent by default, in-memory only if explicitly disabled
-    const sessionConfig = this.config.session;
-    const dataDir = resolveDataDir();
-    const sessionDir = resolve(dataDir, "sessions");
-
-    let sessionManager: SessionManager;
-    if (sessionConfig?.persist === false) {
-      sessionManager = SessionManager.inMemory();
-      console.log("[runtime] using in-memory session");
-    } else if (sessionConfig?.resume !== false) {
-      sessionManager = SessionManager.continueRecent(process.cwd(), sessionDir);
-      console.log(`[runtime] resuming session ${sessionManager.getSessionId()} from ${sessionDir}`);
-    } else {
-      sessionManager = SessionManager.create(process.cwd(), sessionDir);
-      console.log(`[runtime] new session ${sessionManager.getSessionId()} in ${sessionDir}`);
-    }
-
-    // Create session
-    const { session } = await createAgentSession({
-      model,
-      authStorage,
-      modelRegistry,
-      resourceLoader: loader,
-      sessionManager,
-      settingsManager,
-      // tools: [],
-    });
-
-    this.session = session;
-    console.log("[runtime] initialized with Pi SDK session", session.sessionId);
   }
 
   async destroy(): Promise<void> {
-    if (this.session) {
-      this.session.dispose();
-      this.session = null;
-    }
+    this.client.disconnect();
+    this.sessionId = null;
   }
 
   async sendMessage(
     message: string,
     options?: { modelId?: string; thinkingEnabled?: boolean },
   ): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }> {
-    if (!this.session) throw new Error("Runtime not initialized");
+    await this.ensureConnected();
+
     if (options?.modelId || options?.thinkingEnabled) {
-      console.warn("[runtime] per-request modelId/thinkingEnabled not yet supported with Pi SDK, using session defaults");
+      console.warn("[runtime] per-request modelId/thinkingEnabled not yet supported over RPC, using session defaults");
     }
-    const session = this.session;
 
     let responseText = "";
     let reachedMaxTurns = false;
-    let done = false;
 
-    const result = new Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }>(
+    return new Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }>(
       (resolve, reject) => {
-        const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+        // Subscribe to streaming events before sending the command
+        const unsubscribe = this.client.subscribe((event: RpcEvent) => {
           if (
             event.type === "message_update" &&
-            event.assistantMessageEvent.type === "text_delta"
+            event.assistantMessageEvent &&
+            typeof event.assistantMessageEvent === "object" &&
+            (event.assistantMessageEvent as Record<string, unknown>).type === "text_delta"
           ) {
-            responseText += event.assistantMessageEvent.delta;
+            responseText += (event.assistantMessageEvent as Record<string, unknown>).delta as string;
           }
 
           if (event.type === "agent_end") {
-            done = true;
-            const msgs = event.messages;
-            if (msgs.length > 0) {
+            const msgs = event.messages as Array<Record<string, unknown>> | undefined;
+            if (msgs && msgs.length > 0) {
               const last = msgs[msgs.length - 1];
-              if (last.role === "assistant" && "stopReason" in last && last.stopReason === "length") {
+              if (last.role === "assistant" && last.stopReason === "length") {
                 reachedMaxTurns = true;
               }
             }
             unsubscribe();
             resolve({
               response: responseText,
-              agentId: session.sessionId,
+              agentId: this.sessionId ?? "unknown",
               reachedMaxTurns,
             });
           }
         });
 
-        session.prompt(message).catch((err) => {
+        // Send the prompt command — the response is just an ack
+        this.client.request({ type: "prompt", message }).then((ack: RpcResponse) => {
+          if (!ack.success) {
+            unsubscribe();
+            reject(new Error(`[runtime] prompt rejected: ${ack.error ?? "unknown error"}`));
+          }
+          // Ack received — streaming events will follow
+        }).catch((err) => {
           unsubscribe();
-          if (!done) reject(err);
+          reject(err);
         });
       },
     );
-
-    return result;
   }
 
   async getHistory({
@@ -215,9 +116,15 @@ export class AgentRuntime {
   }: {
     hideToolCalls?: boolean;
   }): Promise<{ items: HistoryEntry[]; compactionSummary: string | null }> {
-    if (!this.session) throw new Error("Runtime not initialized");
+    await this.ensureConnected();
 
-    const messages = this.session.messages;
+    const resp = await this.client.request({ type: "get_messages" });
+    if (!resp.success) {
+      throw new Error(`[runtime] get_messages failed: ${resp.error ?? "unknown error"}`);
+    }
+
+    const data = resp.data as { messages: Array<Record<string, unknown>> } | undefined;
+    const messages = data?.messages ?? [];
     const items: HistoryEntry[] = [];
     let sequence = 0;
 
@@ -230,12 +137,11 @@ export class AgentRuntime {
       if (typeof m.content === "string") {
         textContent = m.content;
       } else if (Array.isArray(m.content)) {
-        for (const block of m.content) {
+        for (const block of m.content as Array<Record<string, unknown>>) {
           if (block.type === "text") {
-            textContent += (block as { type: "text"; text: string }).text;
+            textContent += block.text as string;
           } else if (block.type === "toolCall") {
-            const tc = block as { type: "toolCall"; name: string; id: string };
-            toolCalls.push({ name: tc.name, id: tc.id });
+            toolCalls.push({ name: block.name as string, id: block.id as string });
           }
         }
       }
@@ -257,9 +163,9 @@ export class AgentRuntime {
         role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
         content: textContent,
         sequence,
-        agentId: this.session!.sessionId,
+        agentId: this.sessionId ?? "unknown",
         createdAt: new Date(
-          "timestamp" in m && typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+          typeof m.timestamp === "number" ? m.timestamp : Date.now(),
         ),
       });
       sequence++;
@@ -269,23 +175,29 @@ export class AgentRuntime {
   }
 
   async getModels(): Promise<ModelConfig[]> {
-    if (!this.modelRegistry) throw new Error("Runtime not initialized");
+    await this.ensureConnected();
 
-    const available = await this.modelRegistry.getAvailable();
-    return available.map((m) => ({
-      id: `${m.provider}/${m.id}`,
-      name: m.name,
-      provider: m.provider,
-      modelId: m.id,
-      supportsReasoning: m.reasoning ?? false,
-      supportsImages: Array.isArray(m.input) && m.input.includes("image"),
-      maxContextTokens: m.contextWindow ?? 0,
+    const resp = await this.client.request({ type: "get_available_models" });
+    if (!resp.success) {
+      throw new Error(`[runtime] get_available_models failed: ${resp.error ?? "unknown error"}`);
+    }
+
+    const data = resp.data as { models: Array<Record<string, unknown>> } | undefined;
+    const models = data?.models ?? [];
+
+    return models.map((m) => ({
+      id: m.id as string,
+      name: (m.name as string) ?? (m.id as string),
+      provider: m.provider as string,
+      modelId: m.modelId as string,
+      supportsReasoning: m.supportsReasoning as boolean | undefined,
+      supportsImages: m.supportsImages as boolean | undefined,
+      maxContextTokens: (m.maxContextTokens as number) ?? 0,
     }));
   }
 
   async abort(): Promise<void> {
-    if (this.session) {
-      await this.session.abort();
-    }
+    await this.ensureConnected();
+    await this.client.request({ type: "abort" });
   }
 }

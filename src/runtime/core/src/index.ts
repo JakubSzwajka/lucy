@@ -1,4 +1,4 @@
-export { AgentRuntime, resolveDataDir } from "./runtime/agent-runtime.js";
+export { AgentRuntime } from "./runtime/agent-runtime.js";
 export { loadConfig } from "./config/load-config.js";
 
 export type { LucyConfig } from "./config/types.js";
