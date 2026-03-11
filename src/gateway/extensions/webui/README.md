@@ -1,3 +1,9 @@
+---
+title: Web UI
+section: Gateway
+order: 2
+---
+
 # agents-webui
 
 React chat UI for the `agents-gateway-http` REST API. Built with Vite, Tailwind CSS, and shadcn/ui components.

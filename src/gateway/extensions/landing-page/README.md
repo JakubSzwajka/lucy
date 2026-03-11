@@ -1,3 +1,9 @@
+---
+title: Landing Page
+section: Gateway
+order: 4
+---
+
 # agents-landing-page
 
 Separate Astro module for the Lucy landing page, intended to deploy to GitHub Pages.

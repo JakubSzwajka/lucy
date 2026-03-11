@@ -1,3 +1,9 @@
+---
+title: WhatsApp Integration
+section: Gateway
+order: 3
+---
+
 # agents-plugin-whatsapp
 
 Gateway plugin that bridges WhatsApp Business Cloud API with the agent runtime. Receives inbound WhatsApp messages via Meta webhooks, routes them to `AgentRuntime.sendMessage()`, and replies via the WhatsApp API.

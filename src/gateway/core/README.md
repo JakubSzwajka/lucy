@@ -1,3 +1,9 @@
+---
+title: Gateway (HTTP)
+section: Gateway
+order: 1
+---
+
 # agents-gateway-http
 
 REST gateway exposing `agents-runtime` over HTTP using Hono. Owns gateway plugin loading, lifecycle, and HTTP infrastructure.

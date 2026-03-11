@@ -1,3 +1,9 @@
+---
+title: Runtime
+section: Runtime
+order: 1
+---
+
 # agents-runtime
 
 Standalone agent runtime wrapping the [Pi SDK](https://github.com/badlogic/pi-mono) (`@mariozechner/pi-coding-agent`). Loads config, sets up a Pi `AgentSession` with persistent sessions and extensions. Auth is OpenRouter-only (`OPENROUTER_API_KEY`).

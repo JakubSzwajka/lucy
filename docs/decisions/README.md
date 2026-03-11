@@ -1,3 +1,9 @@
+---
+title: Architecture Decisions
+section: Reference
+order: 1
+---
+
 # Architecture Decision Records (ADR)
 
 An Architecture Decision Record (ADR) captures an important architecture decision along with its context and consequences.

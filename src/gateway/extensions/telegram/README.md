@@ -1,3 +1,9 @@
+---
+title: Telegram Integration
+section: Gateway
+order: 5
+---
+
 # agents-plugin-telegram
 
 Gateway plugin that bridges Telegram Bot API with the agent runtime. Receives inbound messages via Telegram webhooks, routes them to `AgentRuntime.sendMessage()`, and replies via the Bot API.

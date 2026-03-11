@@ -1,3 +1,9 @@
+---
+title: Memory Plugin
+section: Runtime
+order: 2
+---
+
 # agents-memory
 
 Proof runtime plugin package implementing the `agents-runtime` plugin contract.
