@@ -34,6 +34,7 @@ COPY runtime/ runtime/
 # Gateway core + extensions (tsx resolves at runtime)
 COPY gateway/core/ gateway/core/
 COPY gateway/extensions/whatsapp/ gateway/extensions/whatsapp/
+COPY gateway/extensions/telegram/ gateway/extensions/telegram/
 
 # Static builds
 COPY --from=build /app/gateway/extensions/landing-page/dist/ gateway/extensions/landing-page/dist/

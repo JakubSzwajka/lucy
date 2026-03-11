@@ -75,6 +75,7 @@ deploy:
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
 		WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN \
+		TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN \
 		AGENTS_DATA_DIR=/data \
 		CORS_ORIGIN=$${CORS_ORIGIN:-*}
 	@echo "Deploying to Railway..."
@@ -88,6 +89,7 @@ deploy-secrets:
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
 		WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN \
+		TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN \
 		AGENTS_DATA_DIR=/data \
 		CORS_ORIGIN=$${CORS_ORIGIN:-*}
 	@echo "Variables set."

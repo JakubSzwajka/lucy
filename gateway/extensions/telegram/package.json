@@ -1,0 +1,6 @@
+{
+  "name": "agents-plugin-telegram",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module"
+}

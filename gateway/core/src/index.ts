@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { loadConfig } from "agents-runtime";
 import { createWebUiPlugin } from "../../extensions/webui/src/plugin.js";
 import { createLandingPagePlugin } from "../../extensions/landing-page/src/plugin.js";
+import { createTelegramPlugin } from "../../extensions/telegram/src/index.js";
 import { createWhatsAppPlugin } from "../../extensions/whatsapp/src/index.js";
 import { initRuntime, destroyRuntime } from "./runtime.js";
 import { app } from "./server.js";
@@ -29,6 +30,11 @@ await landing.onInit({ app });
 if (config.whatsapp) {
   const whatsapp = createWhatsAppPlugin();
   await whatsapp.onInit({ app, runtime, config: config.whatsapp });
+}
+
+if (config.telegram) {
+  const telegram = createTelegramPlugin();
+  await telegram.onInit({ app, runtime, config: config.telegram });
 }
 
 // --- Server ---------------------------------------------------------------

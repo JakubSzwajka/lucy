@@ -10,4 +10,7 @@ export interface LucyConfig {
     verifyToken: string;
     allowedNumbers: string[];
   };
+  telegram?: {
+    allowedChatIds: number[];
+  };
 }
