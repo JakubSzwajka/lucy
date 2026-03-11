@@ -1,8 +1,6 @@
 import type {
-  AgentRuntimeOptions,
   HistoryEntry,
   ModelConfig,
-  RuntimeConfig,
 } from "../types.js";
 
 import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.js";
@@ -12,12 +10,10 @@ import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.j
 // ---------------------------------------------------------------------------
 
 export class AgentRuntime {
-  private config: RuntimeConfig;
   private client: SocketClient;
   private sessionId: string | null = null;
 
-  constructor(options: AgentRuntimeOptions) {
-    this.config = options.config;
+  constructor() {
     this.client = new SocketClient();
   }
 

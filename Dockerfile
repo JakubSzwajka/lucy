@@ -35,9 +35,7 @@ COPY src/ src/
 COPY --from=build /app/src/gateway/extensions/landing-page/dist/ src/gateway/extensions/landing-page/dist/
 COPY --from=build /app/src/gateway/extensions/webui/dist/ src/gateway/extensions/webui/dist/
 
-# Config and prompt (optional files)
-COPY lucy.config.jso[n] ./
-RUN test -f lucy.config.json || echo '{}' > lucy.config.json
+# Prompt file (optional)
 COPY prompt.m[d] ./
 
 EXPOSE 3080

@@ -5,22 +5,37 @@ import { resolve } from "node:path";
 
 const SOCKET_PATH = process.env.PI_BRIDGE_SOCKET ?? "/tmp/lucy-pi.sock";
 
-function buildPiArgs(): string[] {
-  const args = ["--mode", "rpc"];
+function requireEnv(name: string): string {
+  const val = process.env[name];
+  if (!val) {
+    process.stderr.write(`[pi-bridge] ERROR: ${name} is required but not set\n`);
+    process.exit(1);
+  }
+  return val;
+}
 
-  const flags: Record<string, string> = {
-    PI_BRIDGE_MODEL: "--model",
+function buildPiArgs(): string[] {
+  const model = requireEnv("PI_BRIDGE_MODEL");
+  const args = ["--mode", "rpc", "--model", model];
+
+  const optionalFlags: Record<string, string> = {
     PI_BRIDGE_PROVIDER: "--provider",
-    PI_BRIDGE_SESSION_DIR: "--session-dir",
   };
 
-  for (const [env, flag] of Object.entries(flags)) {
+  for (const [env, flag] of Object.entries(optionalFlags)) {
     const val = process.env[env];
     if (val) args.push(flag, val);
   }
 
   if (process.env.PI_BRIDGE_NO_SESSION) {
     args.push("--no-session");
+  }
+
+  // Append prompt.md as system prompt if it exists
+  const promptPath = resolve(process.env.PI_BRIDGE_PROMPT ?? "prompt.md");
+  if (existsSync(promptPath)) {
+    args.push("--append-system-prompt", promptPath);
+    log(`using prompt file: ${promptPath}`);
   }
 
   return args;

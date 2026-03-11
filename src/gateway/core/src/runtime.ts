@@ -1,11 +1,11 @@
-import { AgentRuntime, type LucyConfig } from "agents-runtime";
+import { AgentRuntime } from "agents-runtime";
 
 let runtime: AgentRuntime | null = null;
 
-export async function initRuntime(config: LucyConfig): Promise<AgentRuntime> {
+export async function initRuntime(): Promise<AgentRuntime> {
   if (runtime) return runtime;
 
-  runtime = new AgentRuntime({ config: config.runtime });
+  runtime = new AgentRuntime();
   await runtime.init();
 
   return runtime;

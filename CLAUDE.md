@@ -77,18 +77,36 @@ lucy/
 cd .legacy && npm install && npm run dev   # Starts on port 3009
 ```
 
-## Configuration (`lucy.config.json`)
+## Configuration (Environment Variables)
 
-```json
-{
-  "runtime": { "model": "...", "compaction": {...}, "session": {...}, "extensions": [...] },
-  "gateway": { "apiKey": "..." },
-  "whatsapp": { "phoneNumberId": "...", "verifyToken": "...", "allowedNumbers": [...] },
-  "telegram": { "allowedChatIds": [...] }
-}
-```
+All configuration is via environment variables. See `.env.example` for the full list.
 
-All keys are optional. The API key can also be set via `LUCY_API_KEY` env var. WhatsApp/Telegram sections are only needed if you want those integrations.
+**Required (no defaults — app won't start without these):**
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENROUTER_API_KEY` | LLM provider key for Pi SDK |
+| `PI_BRIDGE_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
+
+**Optional (have sensible defaults):**
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `3080` | Gateway HTTP port |
+| `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for bridge ↔ gateway IPC |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `AGENTS_DATA_DIR` | `~/.agents-data` | Persistent storage for memory extension |
+| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) |
+
+**Optional (enable features when set):**
+
+| Variable | Purpose |
+|----------|---------|
+| `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
+| `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
+| `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
+| `WHATSAPP_PHONE_NUMBER_ID` | Enables WhatsApp integration (also needs `WHATSAPP_API_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ALLOWED_NUMBERS`) |
+| `TELEGRAM_BOT_TOKEN` | Enables Telegram integration (also needs `TELEGRAM_ALLOWED_CHAT_IDS`) |
 
 ## TypeScript
 

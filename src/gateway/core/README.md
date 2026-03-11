@@ -6,7 +6,7 @@ order: 1
 
 # agents-gateway-http
 
-REST gateway exposing `agents-runtime` over HTTP using Hono. Owns gateway plugin loading, lifecycle, and HTTP infrastructure.
+REST gateway exposing `agents-runtime` over HTTP using Hono. Loads extensions (webui, landing page, WhatsApp, Telegram) based on environment variables.
 
 ## API Endpoints
 
@@ -16,41 +16,26 @@ REST gateway exposing `agents-runtime` over HTTP using Hono. Owns gateway plugin
 | `GET` | `/api/chat/history` | API key | Conversation history |
 | `GET` | `/api/health` | None | Liveness check |
 
-## Gateway Plugins
-
-Plugins mount routes and middleware on the Hono app. Configured in `lucy.config.json`:
-
-```jsonc
-{
-  "plugins": [
-    { "package": "agents-webui", "config": {} },
-    { "package": "agents-plugin-whatsapp", "config": { "phoneNumberId": "..." } }
-  ]
-}
-```
-
-Plugin authors import types from `agents-gateway-http/plugin`:
-
-```ts
-import type { GatewayPlugin, GatewayPluginManifest } from "agents-gateway-http/plugin";
-```
-
-Exported types: `GatewayPlugin`, `GatewayPluginManifest`, `GatewayPluginInitInput`, `GatewayPluginConfig`, `ResolvedGatewayPlugin`.
-
 ## Configuration
+
+All configuration is via environment variables (see `.env.example`).
 
 | Env var | Default | Description |
 |---------|---------|-------------|
 | `PORT` | `3080` | Server listen port |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
-| `LUCY_API_KEY` | — | API key (or set in `lucy.config.json` auth) |
+| `LUCY_API_KEY` | — | API key for Bearer token auth on `/api/*` |
+
+Extensions are enabled by setting their env vars (e.g. `WHATSAPP_PHONE_NUMBER_ID` enables WhatsApp, `TELEGRAM_BOT_TOKEN` enables Telegram).
 
 ## Responsibility Boundary
 
-Owns HTTP routing, auth middleware, CORS, gateway plugin loading and lifecycle. Delegates all agent execution to `AgentRuntime`. Route handlers are thin wrappers over runtime methods.
+Owns HTTP routing, auth middleware, CORS, and extension initialization. Delegates all agent execution to `AgentRuntime`. Route handlers are thin wrappers over runtime methods.
 
 ## Read Next
 
-- [agents-runtime](../agents-runtime/README.md) — standalone runtime this gateway wraps
-- [agents-webui](../agents-webui/README.md) — React chat UI (gateway plugin)
-- [agents-plugin-whatsapp](../agents-plugin-whatsapp/README.md) — WhatsApp webhook (gateway plugin)
+- [agents-runtime](../../runtime/core/README.md) — RPC client this gateway wraps
+- [webui](../extensions/webui/README.md) — React chat UI extension
+- [whatsapp](../extensions/whatsapp/README.md) — WhatsApp webhook extension
+- [telegram](../extensions/telegram/README.md) — Telegram bot extension
+- [landing-page](../extensions/landing-page/README.md) — Static site extension

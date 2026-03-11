@@ -7,7 +7,6 @@ export
 
 IMAGE       := lucy-gateway
 PORT        := 3080
-LUCY_CONFIG ?=
 
 # ----------------------------------------------------------------------------
 # Guard macros
@@ -16,6 +15,10 @@ LUCY_CONFIG ?=
 # Fail if OPENROUTER_API_KEY is not set
 check-env-KEY = @test -n "$$OPENROUTER_API_KEY" || \
 	(echo "ERROR: OPENROUTER_API_KEY is not set. Export it or add to .env" && exit 1)
+
+# Fail if PI_BRIDGE_MODEL is not set
+check-env-MODEL = @test -n "$$PI_BRIDGE_MODEL" || \
+	(echo "ERROR: PI_BRIDGE_MODEL is not set. Export it or add to .env" && exit 1)
 
 # Fail if a required CLI tool is missing
 # Usage: $(call require-cmd,<binary>,<install hint>)
@@ -57,27 +60,37 @@ docker-build:
 	@echo "Building $(IMAGE)..."
 	docker build -t $(IMAGE) .
 
-## docker-run — run lucy-gateway locally (requires OPENROUTER_API_KEY)
+## docker-run — run lucy-gateway locally (requires OPENROUTER_API_KEY + PI_BRIDGE_MODEL)
 docker-run:
 	$(check-env-KEY)
+	$(check-env-MODEL)
 	@echo "Running $(IMAGE) on port $(PORT)..."
 	docker run --rm -p $(PORT):$(PORT) \
 		-e OPENROUTER_API_KEY \
+		-e PI_BRIDGE_MODEL \
 		-e PORT=$(PORT) \
-		$(if $(LUCY_CONFIG),-v $(abspath $(LUCY_CONFIG)):/app/lucy.config.json:ro) \
 		$(IMAGE)
 
-## deploy — set secrets and deploy to Railway (requires railway CLI + OPENROUTER_API_KEY)
+## deploy — set secrets and deploy to Railway (requires railway CLI + OPENROUTER_API_KEY + PI_BRIDGE_MODEL)
 deploy:
 	$(call require-cmd,railway,https://docs.railway.app/guides/cli)
 	$(check-env-KEY)
+	$(check-env-MODEL)
 	@echo "Setting Railway variables..."
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
-		WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN \
-		TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN \
+		PI_BRIDGE_MODEL=$$PI_BRIDGE_MODEL \
 		AGENTS_DATA_DIR=/data \
-		CORS_ORIGIN=$${CORS_ORIGIN:-*}
+		CORS_ORIGIN=$${CORS_ORIGIN:-*} \
+		$${LUCY_API_KEY:+LUCY_API_KEY=$$LUCY_API_KEY} \
+		PI_CODING_AGENT_DIR=/data/pi \
+		$${PI_BRIDGE_PROVIDER:+PI_BRIDGE_PROVIDER=$$PI_BRIDGE_PROVIDER} \
+		$${WHATSAPP_PHONE_NUMBER_ID:+WHATSAPP_PHONE_NUMBER_ID=$$WHATSAPP_PHONE_NUMBER_ID} \
+		$${WHATSAPP_API_TOKEN:+WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN} \
+		$${WHATSAPP_VERIFY_TOKEN:+WHATSAPP_VERIFY_TOKEN=$$WHATSAPP_VERIFY_TOKEN} \
+		$${WHATSAPP_ALLOWED_NUMBERS:+WHATSAPP_ALLOWED_NUMBERS=$$WHATSAPP_ALLOWED_NUMBERS} \
+		$${TELEGRAM_BOT_TOKEN:+TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN} \
+		$${TELEGRAM_ALLOWED_CHAT_IDS:+TELEGRAM_ALLOWED_CHAT_IDS=$$TELEGRAM_ALLOWED_CHAT_IDS}
 	@echo "Deploying to Railway..."
 	railway up --no-gitignore
 
@@ -85,11 +98,20 @@ deploy:
 deploy-secrets:
 	$(call require-cmd,railway,https://docs.railway.app/guides/cli)
 	$(check-env-KEY)
+	$(check-env-MODEL)
 	@echo "Setting Railway variables..."
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
-		WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN \
-		TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN \
+		PI_BRIDGE_MODEL=$$PI_BRIDGE_MODEL \
 		AGENTS_DATA_DIR=/data \
-		CORS_ORIGIN=$${CORS_ORIGIN:-*}
+		CORS_ORIGIN=$${CORS_ORIGIN:-*} \
+		$${LUCY_API_KEY:+LUCY_API_KEY=$$LUCY_API_KEY} \
+		PI_CODING_AGENT_DIR=/data/pi \
+		$${PI_BRIDGE_PROVIDER:+PI_BRIDGE_PROVIDER=$$PI_BRIDGE_PROVIDER} \
+		$${WHATSAPP_PHONE_NUMBER_ID:+WHATSAPP_PHONE_NUMBER_ID=$$WHATSAPP_PHONE_NUMBER_ID} \
+		$${WHATSAPP_API_TOKEN:+WHATSAPP_API_TOKEN=$$WHATSAPP_API_TOKEN} \
+		$${WHATSAPP_VERIFY_TOKEN:+WHATSAPP_VERIFY_TOKEN=$$WHATSAPP_VERIFY_TOKEN} \
+		$${WHATSAPP_ALLOWED_NUMBERS:+WHATSAPP_ALLOWED_NUMBERS=$$WHATSAPP_ALLOWED_NUMBERS} \
+		$${TELEGRAM_BOT_TOKEN:+TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN} \
+		$${TELEGRAM_ALLOWED_CHAT_IDS:+TELEGRAM_ALLOWED_CHAT_IDS=$$TELEGRAM_ALLOWED_CHAT_IDS}
 	@echo "Variables set."

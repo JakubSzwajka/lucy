@@ -10,13 +10,20 @@ services:
       - NODE_ENV=development
       - PORT=${PORT:-3080}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - PI_BRIDGE_MODEL=${PI_BRIDGE_MODEL}
+      - PI_BRIDGE_PROVIDER=${PI_BRIDGE_PROVIDER:-}
+      - PI_CODING_AGENT_DIR=/data/pi
+      - LUCY_API_KEY=${LUCY_API_KEY:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_CHAT_IDS=${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+      - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN:-}
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN:-}
+      - WHATSAPP_ALLOWED_NUMBERS=${WHATSAPP_ALLOWED_NUMBERS:-}
       - AGENTS_DATA_DIR=/data
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
     volumes:
       - ./src:/app/src
       - ./tsconfig.json:/app/tsconfig.json:ro
-      # Configuration files. Mount them also when releasing a new version.
-      - ./lucy.config.json:/app/lucy.config.json:ro
       - ./prompt.md:/app/prompt.md
       - ./.data:/data

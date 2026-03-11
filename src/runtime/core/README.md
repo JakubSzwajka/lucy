@@ -6,62 +6,39 @@ order: 1
 
 # agents-runtime
 
-Standalone agent runtime wrapping the [Pi SDK](https://github.com/badlogic/pi-mono) (`@mariozechner/pi-coding-agent`). Loads config, sets up a Pi `AgentSession` with persistent sessions and extensions. Auth is OpenRouter-only (`OPENROUTER_API_KEY`).
+RPC client wrapping the Pi SDK agent via the [pi-bridge](../pi-bridge/) Unix socket. Provides `sendMessage()`, `getHistory()`, `getModels()`, and `abort()` over JSONL.
 
 ## Public API
 
 ```ts
-AgentRuntime          // Main class: init(), sendMessage(), getHistory(), getModels(), abort(), destroy()
-resolveDataDir()      // Resolves data dir: AGENTS_DATA_DIR env > ~/.agents-data
-loadConfig(path?)     // Loads lucy.config.json — throws if file missing
+AgentRuntime   // init(), sendMessage(), getHistory(), getModels(), abort(), destroy()
 ```
 
-Types: `RuntimeConfig`, `SessionConfig`, `CompactionConfig`, `ModelConfig`, `HistoryEntry`, `AgentRuntimeOptions`, `LucyConfig`.
+Types: `ModelConfig`, `HistoryEntry`.
 
-## Config (`lucy.config.json`)
+## Use It Like This
 
-`runtime` and `runtime.model` are required. Missing config file throws at startup.
-
-```jsonc
-{
-  "runtime": {
-    "model": "openrouter/anthropic/claude-sonnet-4",  // required
-    "session": { "persist": true, "resume": true },
-    "compaction": { "enabled": true, "reserveTokens": 16384, "keepRecentTokens": 20000 },
-    "extensions": []
-  }
-}
+```ts
+const runtime = new AgentRuntime();
+await runtime.init(); // connects to pi-bridge socket
+const { response } = await runtime.sendMessage("Hello");
 ```
 
-| `persist` | `resume` | Behavior |
-|-----------|----------|----------|
-| `true` (default) | `true` (default) | Resumes last session from `<dataDir>/sessions/` |
-| `true` | `false` | New session file each boot |
-| `false` | — | In-memory only |
+## Configuration
+
+`AgentRuntime` is configured entirely via environment variables (see `.env.example`). The socket path defaults to `/tmp/lucy-pi.sock` and can be overridden with `PI_BRIDGE_SOCKET`.
 
 ## Responsibility Boundary
 
-Owns agent session lifecycle, config loading, and Pi SDK orchestration. Delegates HTTP transport to gateway, and agent behavior extensions to Pi SDK's extension system.
-
-## File Structure
-
-```
-src/
-├── index.ts                    # Barrel export
-├── types.ts                    # Type re-export barrel
-├── runtime/agent-runtime.ts    # Pi SDK wrapper + prompt.md + data dir
-├── config/load-config.ts       # lucy.config.json loader (throws if missing)
-├── config/types.ts             # LucyConfig shape
-└── types/                      # domain.ts, plugins.ts, runtime.ts
-```
+Owns the RPC connection to pi-bridge and message/history translation. Delegates agent execution to Pi SDK (running in the pi-bridge process) and HTTP transport to gateway.
 
 ## Known Limitations
 
-- **Tools** — always `[]`; tool wiring not yet implemented
 - **Per-request model/thinking** — Pi SDK uses session-level config; per-request overrides log a warning
 - **compactionSummary** — always `null` in `getHistory()`
 
 ## Read Next
 
+- [pi-bridge](../pi-bridge/) — separate process that spawns and manages the Pi SDK
 - [gateway/core](../../gateway/core/README.md) — HTTP gateway that wraps this runtime
 - [memory extension](../extensions/memory/README.md) — Pi extension for memory/observation

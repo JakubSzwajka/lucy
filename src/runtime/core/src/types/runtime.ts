@@ -1,5 +1,1 @@
-import type { RuntimeConfig } from "./plugins.js";
-
-export interface AgentRuntimeOptions {
-  config: RuntimeConfig;
-}
+// AgentRuntime is now configured via environment variables — no options needed.
