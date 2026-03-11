@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch gateway/core/src/index.ts",
-    "start": "tsx gateway/core/src/index.ts",
-    "build:webui": "cd gateway/extensions/webui && npx vite build",
-    "build:landing": "cd gateway/extensions/landing-page && npx astro build",
+    "dev": "tsx watch src/gateway/core/src/index.ts",
+    "start": "tsx src/gateway/core/src/index.ts",
+    "build:webui": "cd src/gateway/extensions/webui && npx vite build",
+    "build:landing": "cd src/gateway/extensions/landing-page && npx astro build",
     "build": "npm run build:webui && npm run build:landing",
     "typecheck": "tsc --noEmit",
-    "smoke:configured-runtime": "npx tsx runtime/core/scripts/smoke-test.ts"
+    "smoke:configured-runtime": "npx tsx src/runtime/core/scripts/smoke-test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",

@@ -4,7 +4,7 @@
 
 ## Architecture Overview
 
-Lucy is a **single-package** agent infrastructure project. Two module buckets — `runtime/` and `gateway/` — each with a `core/` and `extensions/` directory. All code runs via `tsx` (no pre-compilation). The original Next.js app is preserved in `.legacy/` as a reference.
+Lucy is a **single-package** agent infrastructure project. All source code lives in `src/`, with two module buckets — `runtime/` and `gateway/` — each with a `core/` and `extensions/` directory. All code runs via `tsx` (no pre-compilation). The original Next.js app is preserved in `.legacy/` as a reference.
 
 ### Module dependency graph
 
@@ -33,26 +33,28 @@ Lucy is a **single-package** agent infrastructure project. Two module buckets �
 └─────────────────────────────────────────────────────────┘
 ```
 
-Cross-module imports use tsconfig `paths` (e.g. `"agents-runtime"` maps to `runtime/core/src/index.ts`). No npm workspaces — one flat dependency tree. Extensions are direct imports in `gateway/core/src/index.ts` — no plugin loader or manifest system.
+Cross-module imports use tsconfig `paths` (e.g. `"agents-runtime"` maps to `src/runtime/core/src/index.ts`). No npm workspaces — one flat dependency tree. Extensions are direct imports in `src/gateway/core/src/index.ts` — no plugin loader or manifest system.
 
 ### Directory structure
 
 ```
 lucy/
-├── runtime/
-│   ├── core/                # Agent execution loop
-│   └── extensions/
-│       └── memory/          # Memory observer
-├── gateway/
-│   ├── core/                # REST gateway — Hono
-│   └── extensions/
-│       ├── webui/           # Chat UI — Vite + React
-│       ├── landing-page/    # Static site — Astro
-│       └── whatsapp/        # WhatsApp integration
-├── .legacy/                 # Reference Next.js app (archived)
-├── docs/                    # Shared documentation
-├── package.json             # Single package root
-├── tsconfig.json            # Root config with path aliases
+├── src/
+│   ├── runtime/
+│   │   ├── core/                # Agent execution loop
+│   │   └── extensions/
+│   │       └── memory/          # Memory observer
+│   └── gateway/
+│       ├── core/                # REST gateway — Hono
+│       └── extensions/
+│           ├── webui/           # Chat UI — Vite + React
+│           ├── landing-page/    # Static site — Astro
+│           ├── whatsapp/        # WhatsApp integration
+│           └── telegram/        # Telegram bot integration
+├── .legacy/                     # Reference Next.js app (archived)
+├── docs/                        # Shared documentation
+├── package.json                 # Single package root
+├── tsconfig.json                # Root config with path aliases
 ├── CLAUDE.md
 └── README.md
 ```
@@ -81,11 +83,12 @@ cd .legacy && npm install && npm run dev   # Starts on port 3009
 {
   "runtime": { "model": "...", "compaction": {...}, "session": {...}, "extensions": [...] },
   "gateway": { "apiKey": "..." },
-  "whatsapp": { "phoneNumberId": "...", "verifyToken": "...", "allowedNumbers": [...] }
+  "whatsapp": { "phoneNumberId": "...", "verifyToken": "...", "allowedNumbers": [...] },
+  "telegram": { "allowedChatIds": [...] }
 }
 ```
 
-All keys are optional. The API key can also be set via `LUCY_API_KEY` env var. WhatsApp section is only needed if you want the WhatsApp webhook.
+All keys are optional. The API key can also be set via `LUCY_API_KEY` env var. WhatsApp/Telegram sections are only needed if you want those integrations.
 
 ## TypeScript
 

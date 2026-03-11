@@ -11,20 +11,20 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "agents-runtime": ["./runtime/core/src/index.ts"],
-      "agents-memory": ["./runtime/extensions/memory/src/index.ts"]
+      "agents-runtime": ["./src/runtime/core/src/index.ts"],
+      "agents-memory": ["./src/runtime/extensions/memory/src/index.ts"]
     }
   },
   "include": [
-    "runtime/**/*.ts",
-    "gateway/**/*.ts"
+    "src/runtime/**/*.ts",
+    "src/gateway/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "**/dist",
-    "gateway/extensions/webui/src/**",
-    "!gateway/extensions/webui/src/plugin.ts",
-    "gateway/extensions/landing-page/src/**",
-    "!gateway/extensions/landing-page/src/plugin.ts"
+    "src/gateway/extensions/webui/src/**",
+    "!src/gateway/extensions/webui/src/plugin.ts",
+    "src/gateway/extensions/landing-page/src/**",
+    "!src/gateway/extensions/landing-page/src/plugin.ts"
   ]
 }

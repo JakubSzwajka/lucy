@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: deps
-    command: sh -c "npm run build && npx -y nodemon --legacy-watch --watch runtime --watch gateway --ext ts,json --exec 'npx tsx gateway/core/src/index.ts'"
+    command: sh -c "npm run build && npx -y nodemon --legacy-watch --watch src/runtime --watch src/gateway --ext ts,json --exec 'npx tsx src/gateway/core/src/index.ts'"
     ports:
       - "${PORT:-3080}:${PORT:-3080}"
     environment:
@@ -13,8 +13,7 @@ services:
       - AGENTS_DATA_DIR=/data
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
     volumes:
-      - ./runtime:/app/runtime
-      - ./gateway:/app/gateway
+      - ./src:/app/src
       - ./tsconfig.json:/app/tsconfig.json:ro
       # Configuration files. Mount them also when releasing a new version.
       - ./lucy.config.json:/app/lucy.config.json:ro

@@ -30,11 +30,13 @@ export function resolveDataDir(): string {
   return join(homedir(), ".agents-data");
 }
 
-function readPromptFile(path = "./prompt.md"): string | null {
+const PROMPT_FILE_PATH = resolve("./prompt.md");
+
+function readPromptFile(): string {
   try {
-    return readFileSync(resolve(path), "utf-8");
+    return readFileSync(PROMPT_FILE_PATH, "utf-8");
   } catch {
-    return null;
+    throw new Error(`[runtime] prompt.md not found at ${PROMPT_FILE_PATH} — mount or create it before starting`);
   }
 }
 
@@ -84,8 +86,8 @@ export class AgentRuntime {
         : undefined,
     });
 
-    // System prompt: read prompt.md
-    const promptContent = readPromptFile();
+    // System prompt: validate prompt.md exists at init
+    readPromptFile();
 
     // Resolve extensions
     const extensionFactories: ExtensionFactory[] = [];
@@ -108,14 +110,12 @@ export class AgentRuntime {
       }
     }
 
-    // Resource loader
+    // Resource loader — re-reads prompt.md on every call
     const loader = new DefaultResourceLoader({
       settingsManager,
       extensionFactories,
       additionalExtensionPaths,
-      systemPromptOverride: () => {
-        return promptContent ?? "You are a helpful assistant.";
-      },
+      systemPromptOverride: () => readPromptFile(),
     });
     await loader.reload();
 

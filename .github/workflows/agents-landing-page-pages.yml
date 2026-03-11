@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "agents-landing-page/**"
+      - "src/gateway/extensions/landing-page/**"
       - ".github/workflows/agents-landing-page-pages.yml"
       - "package.json"
       - "package-lock.json"
@@ -40,17 +40,15 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
-        working-directory: agents-landing-page
         run: npm ci
 
       - name: Build Astro site
-        working-directory: agents-landing-page
-        run: npm run build
+        run: npm run build:landing
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: agents-landing-page/dist
+          path: src/gateway/extensions/landing-page/dist
 
   deploy:
     environment:
