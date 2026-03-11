@@ -19,12 +19,7 @@ Lucy is configured via `lucy.config.json` at the project root. All keys are opti
   "gateway": {
     "apiKey": "..."
   },
-  "whatsapp": {
-    "phoneNumberId": "...",
-    "verifyToken": "...",
-    "allowedNumbers": []
-  },
-  "telegram": {
+"telegram": {
     "allowedChatIds": []
   }
 }

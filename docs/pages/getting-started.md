@@ -30,7 +30,6 @@ src/
     └── extensions/
         ├── webui/      # Chat UI (Vite + React)
         ├── landing-page/ # This site (Astro)
-        ├── whatsapp/   # WhatsApp integration
         └── telegram/   # Telegram bot
 ```
 

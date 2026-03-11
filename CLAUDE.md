@@ -27,7 +27,6 @@ Lucy is a **single-package** agent infrastructure project. All source code lives
 │  │  core        │ ◄─── │  extensions/                 │ │
 │  │  (Hono HTTP) │      │    webui     (React chat UI) │ │
 │  │              │      │    landing   (Astro static)  │ │
-│  │              │      │    whatsapp  (Meta webhook)  │ │
 │  └──────────────┘      └──────────────────────────────┘ │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
@@ -49,7 +48,6 @@ lucy/
 │       └── extensions/
 │           ├── webui/           # Chat UI — Vite + React
 │           ├── landing-page/    # Static site — Astro
-│           ├── whatsapp/        # WhatsApp integration
 │           └── telegram/        # Telegram bot integration
 ├── .legacy/                     # Reference Next.js app (archived)
 ├── docs/                        # Shared documentation
@@ -105,7 +103,6 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
 | `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
 | `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
-| `WHATSAPP_PHONE_NUMBER_ID` | Enables WhatsApp integration (also needs `WHATSAPP_API_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ALLOWED_NUMBERS`) |
 | `TELEGRAM_BOT_TOKEN` | Enables Telegram integration (also needs `TELEGRAM_ALLOWED_CHAT_IDS`) |
 
 ## TypeScript
@@ -125,7 +122,7 @@ All configuration is via environment variables. See `.env.example` for the full 
 
 ## Logging
 
-- Prefix all logs with `[source]` indicating where they happen: `[gateway]`, `[runtime]`, `[memory]`, `[whatsapp]`, `[plugins]`, etc.
+- Prefix all logs with `[source]` indicating where they happen: `[gateway]`, `[runtime]`, `[memory]`, `[plugins]`, etc.
 - Keep logs concise — one summary line per operation, not step-by-step
 - For HTTP requests, log a single line on completion: method, path, status, duration
 - No emoji prefixes — use bracket prefixes only
