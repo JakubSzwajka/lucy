@@ -31,18 +31,12 @@ COPY --from=deps /app/node_modules/ node_modules/
 # Runtime core + extensions (tsx resolves at runtime)
 COPY runtime/ runtime/
 
-# Gateway core + extensions (tsx resolves at runtime)
-COPY gateway/core/ gateway/core/
-COPY gateway/extensions/whatsapp/ gateway/extensions/whatsapp/
-COPY gateway/extensions/telegram/ gateway/extensions/telegram/
+# Gateway core + all extensions (tsx resolves at runtime)
+COPY gateway/ gateway/
 
-# Static builds
+# Overlay built static assets
 COPY --from=build /app/gateway/extensions/landing-page/dist/ gateway/extensions/landing-page/dist/
-COPY gateway/extensions/landing-page/src/plugin.ts gateway/extensions/landing-page/src/plugin.ts
-COPY gateway/extensions/landing-page/package.json gateway/extensions/landing-page/package.json
 COPY --from=build /app/gateway/extensions/webui/dist/ gateway/extensions/webui/dist/
-COPY gateway/extensions/webui/src/plugin.ts gateway/extensions/webui/src/plugin.ts
-COPY gateway/extensions/webui/package.json gateway/extensions/webui/package.json
 
 # Config and prompt (optional files)
 COPY lucy.config.jso[n] ./
