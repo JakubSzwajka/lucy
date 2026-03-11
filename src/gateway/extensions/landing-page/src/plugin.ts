@@ -15,7 +15,20 @@ export function createLandingPagePlugin() {
       }
 
       const root = path.relative(process.cwd(), distDir);
-      app.use("/*", serveStatic({ root, index: "index.html" }));
+
+      app.use("/*", serveStatic({
+        root,
+        rewriteRequestPath: (reqPath) => {
+          // /docs/getting-started → /docs/getting-started/index.html
+          // /docs/getting-started/ → /docs/getting-started/index.html
+          const clean = reqPath.endsWith("/") ? reqPath : reqPath + "/";
+          const candidate = path.join(distDir, clean, "index.html");
+          if (existsSync(candidate)) {
+            return clean + "index.html";
+          }
+          return reqPath;
+        },
+      }));
 
       console.log("[landing-page] initialized");
     },

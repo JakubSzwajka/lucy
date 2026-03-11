@@ -13,7 +13,7 @@ WORKDIR /app
 
 COPY src/gateway/extensions/webui/ src/gateway/extensions/webui/
 COPY src/gateway/extensions/landing-page/ src/gateway/extensions/landing-page/
-COPY docs/prds/ docs/prds/
+COPY docs/ docs/
 
 RUN npx vite build --outDir dist src/gateway/extensions/webui \
  && cd src/gateway/extensions/landing-page && npx astro build
