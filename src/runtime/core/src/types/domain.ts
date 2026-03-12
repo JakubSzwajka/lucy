@@ -8,15 +8,45 @@ export interface ModelConfig {
   maxContextTokens: number;
 }
 
-export interface HistoryEntry {
+// ---------------------------------------------------------------------------
+// History entries (discriminated union)
+// ---------------------------------------------------------------------------
+
+interface EntryBase {
   id: string;
-  type: "message";
-  role: "user" | "assistant";
-  content: string;
   sequence: number;
   agentId: string;
   createdAt: Date;
 }
+
+export interface MessageEntry extends EntryBase {
+  type: "message";
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ToolCallEntry extends EntryBase {
+  type: "tool_call";
+  callId: string;
+  toolName: string;
+  toolArgs?: Record<string, unknown>;
+  toolStatus: "completed" | "failed" | "running";
+}
+
+export interface ToolResultEntry extends EntryBase {
+  type: "tool_result";
+  callId: string;
+  toolOutput?: string;
+  toolError?: string;
+}
+
+export interface ReasoningEntry extends EntryBase {
+  type: "reasoning";
+  reasoningContent: string;
+  reasoningSummary?: string;
+}
+
+export type HistoryEntry = MessageEntry | ToolCallEntry | ToolResultEntry | ReasoningEntry;
 
 export interface SessionInfo {
   sessionId: string;

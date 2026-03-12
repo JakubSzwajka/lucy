@@ -124,48 +124,163 @@ export class AgentRuntime {
     const messages = data?.messages ?? [];
     const items: HistoryEntry[] = [];
     let sequence = 0;
+    const agentId = this.sessionId ?? "unknown";
+
+    // Build a map of toolCallId → toolResult for pairing
+    const toolResultsByCallId = new Map<string, Record<string, unknown>>();
+    for (const m of messages) {
+      if (m.role === "toolResult") {
+        toolResultsByCallId.set(m.toolCallId as string, m);
+      }
+    }
 
     for (const m of messages) {
-      if (m.role !== "user" && m.role !== "assistant") continue;
+      const timestamp = new Date(
+        typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+      );
 
-      let textContent = "";
-      const toolCalls: Array<{ name: string; id: string }> = [];
-
-      if (typeof m.content === "string") {
-        textContent = m.content;
-      } else if (Array.isArray(m.content)) {
-        for (const block of m.content as Array<Record<string, unknown>>) {
-          if (block.type === "text") {
-            textContent += block.text as string;
-          } else if (block.type === "toolCall") {
-            toolCalls.push({ name: block.name as string, id: block.id as string });
+      // --- User messages ---
+      if (m.role === "user") {
+        let textContent = "";
+        if (typeof m.content === "string") {
+          textContent = m.content;
+        } else if (Array.isArray(m.content)) {
+          for (const block of m.content as Array<Record<string, unknown>>) {
+            if (block.type === "text") {
+              textContent += block.text as string;
+            }
           }
         }
-      }
-
-      // When hiding tool calls, skip assistant messages that only contain tool calls
-      if (hideToolCalls && m.role === "assistant" && !textContent && toolCalls.length > 0) {
+        if (textContent) {
+          items.push({
+            id: `msg-${sequence}`,
+            type: "message",
+            role: "user",
+            content: textContent,
+            sequence: sequence++,
+            agentId,
+            createdAt: timestamp,
+          });
+        }
         continue;
       }
 
-      // When showing tool calls, append tool call summaries to the text
-      if (!hideToolCalls && toolCalls.length > 0) {
-        const summary = toolCalls.map((tc) => `[tool: ${tc.name}]`).join(" ");
-        textContent = textContent ? `${textContent}\n\n${summary}` : summary;
+      // --- Assistant messages ---
+      if (m.role === "assistant") {
+        let textContent = "";
+        const contentBlocks = Array.isArray(m.content) ? m.content as Array<Record<string, unknown>> : [];
+
+        if (typeof m.content === "string") {
+          textContent = m.content;
+        }
+
+        for (const block of contentBlocks) {
+          // Text blocks
+          if (block.type === "text") {
+            textContent += block.text as string;
+          }
+
+          // Thinking / reasoning blocks
+          if (block.type === "thinking" && !hideToolCalls) {
+            const thinking = (block.thinking as string) ?? "";
+            if (thinking) {
+              items.push({
+                id: `reasoning-${sequence}`,
+                type: "reasoning",
+                reasoningContent: thinking,
+                sequence: sequence++,
+                agentId,
+                createdAt: timestamp,
+              });
+            }
+          }
+
+          // Tool call blocks
+          if (block.type === "toolCall" && !hideToolCalls) {
+            const callId = block.id as string;
+            const toolName = block.name as string;
+
+            // Parse arguments — can be string or object
+            let toolArgs: Record<string, unknown> | undefined;
+            if (typeof block.arguments === "string") {
+              try {
+                toolArgs = JSON.parse(block.arguments);
+              } catch {
+                toolArgs = { raw: block.arguments };
+              }
+            } else if (block.arguments && typeof block.arguments === "object") {
+              toolArgs = block.arguments as Record<string, unknown>;
+            }
+
+            // Determine status from paired tool result
+            const result = toolResultsByCallId.get(callId);
+            let toolStatus: "completed" | "failed" | "running" = "running";
+            if (result) {
+              toolStatus = result.isError ? "failed" : "completed";
+            }
+
+            items.push({
+              id: `toolcall-${sequence}`,
+              type: "tool_call",
+              callId,
+              toolName,
+              toolArgs,
+              toolStatus,
+              sequence: sequence++,
+              agentId,
+              createdAt: timestamp,
+            });
+
+            // Emit paired tool result
+            if (result) {
+              let toolOutput: string | undefined;
+              let toolError: string | undefined;
+
+              const resultContent = Array.isArray(result.content)
+                ? (result.content as Array<Record<string, unknown>>)
+                : [];
+              const outputText = resultContent
+                .filter((c) => c.type === "text")
+                .map((c) => c.text as string)
+                .join("\n");
+
+              if (result.isError) {
+                toolError = outputText || "Unknown error";
+              } else {
+                toolOutput = outputText || undefined;
+              }
+
+              items.push({
+                id: `toolresult-${sequence}`,
+                type: "tool_result",
+                callId,
+                toolOutput,
+                toolError,
+                sequence: sequence++,
+                agentId,
+                createdAt: timestamp,
+              });
+            }
+          }
+        }
+
+        // Emit text content as a message (if any)
+        if (textContent) {
+          items.push({
+            id: `msg-${sequence}`,
+            type: "message",
+            role: "assistant",
+            content: textContent,
+            sequence: sequence++,
+            agentId,
+            createdAt: timestamp,
+          });
+        }
+
+        continue;
       }
 
-      items.push({
-        id: `msg-${sequence}`,
-        type: "message" as const,
-        role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
-        content: textContent,
-        sequence,
-        agentId: this.sessionId ?? "unknown",
-        createdAt: new Date(
-          typeof m.timestamp === "number" ? m.timestamp : Date.now(),
-        ),
-      });
-      sequence++;
+      // Skip toolResult messages — already handled inline with tool calls above
     }
 
     return { items, compactionSummary: null };

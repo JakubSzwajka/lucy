@@ -4,9 +4,46 @@ import type { Item, ToolResultItem } from "@/api/types";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ReasoningBlock } from "@/components/ReasoningBlock";
 import { ToolCallBlock } from "@/components/ToolCallBlock";
+import { ActivityGroup } from "@/components/ActivityGroup";
 
 interface MessageListProps {
   items: Item[];
+}
+
+/**
+ * Determines if an item is an "activity" item (tool call, tool result, or reasoning)
+ * that should be grouped between messages.
+ */
+function isActivityItem(item: Item): boolean {
+  return item.type === "tool_call" || item.type === "tool_result" || item.type === "reasoning";
+}
+
+/**
+ * Groups consecutive activity items together so they render as a single
+ * collapsible cluster rather than individual noisy blocks.
+ */
+function buildRenderGroups(sorted: Item[]): Array<{ kind: "message"; item: Item } | { kind: "activity"; items: Item[] }> {
+  const groups: Array<{ kind: "message"; item: Item } | { kind: "activity"; items: Item[] }> = [];
+  let currentActivity: Item[] = [];
+
+  function flushActivity() {
+    if (currentActivity.length > 0) {
+      groups.push({ kind: "activity", items: currentActivity });
+      currentActivity = [];
+    }
+  }
+
+  for (const item of sorted) {
+    if (isActivityItem(item)) {
+      currentActivity.push(item);
+    } else {
+      flushActivity();
+      groups.push({ kind: "message", item });
+    }
+  }
+  flushActivity();
+
+  return groups;
 }
 
 export function MessageList({ items }: MessageListProps) {
@@ -22,6 +59,8 @@ export function MessageList({ items }: MessageListProps) {
     }
   }
 
+  const groups = buildRenderGroups(sorted);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [items]);
@@ -29,25 +68,19 @@ export function MessageList({ items }: MessageListProps) {
   return (
     <div className="flex h-full flex-col overflow-y-auto px-4 py-4">
       <div className="flex flex-1 flex-col gap-3">
-        {sorted.map((item) => {
-          switch (item.type) {
-            case "message":
-              return <MessageBubble key={item.id} item={item} />;
-            case "tool_call":
-              return (
-                <ToolCallBlock
-                  key={item.id}
-                  toolCall={item}
-                  toolResult={toolResultsByCallId.get(item.callId)}
-                />
-              );
-            case "tool_result":
-              return null;
-            case "reasoning":
-              return <ReasoningBlock key={item.id} item={item} />;
-            default:
-              return null;
+        {groups.map((group, idx) => {
+          if (group.kind === "message") {
+            return <MessageBubble key={group.item.id} item={group.item} />;
           }
+          // Activity group
+          const key = group.items.map((i) => i.id).join("-");
+          return (
+            <ActivityGroup
+              key={key}
+              items={group.items}
+              toolResultsByCallId={toolResultsByCallId}
+            />
+          );
         })}
         <div ref={bottomRef} />
       </div>
