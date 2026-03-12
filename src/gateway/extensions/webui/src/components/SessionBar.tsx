@@ -14,7 +14,12 @@ function formatCost(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-export function SessionBar() {
+interface SessionBarProps {
+  showActivity: boolean;
+  onShowActivityChange: (value: boolean) => void;
+}
+
+export function SessionBar({ showActivity, onShowActivityChange }: SessionBarProps) {
   const [info, setInfo] = useState<SessionInfo | null>(null);
 
   const refresh = useCallback(async () => {
@@ -40,7 +45,17 @@ export function SessionBar() {
       </span>
 
       <span title="Total messages">{info.messages.total} msgs</span>
-      <span title="Session cost">{formatCost(info.cost)}</span>
+      <span title="Session API cost">{formatCost(info.cost)}</span>
+
+      <label className="ml-auto flex items-center gap-1.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={showActivity}
+          onChange={(e) => onShowActivityChange(e.target.checked)}
+          className="h-3 w-3 rounded border-border accent-primary cursor-pointer"
+        />
+        Activity
+      </label>
     </div>
   );
 }
