@@ -54,3 +54,33 @@ export interface ChatResponse {
   reachedMaxTurns: boolean;
 }
 
+export interface SessionInfo {
+  sessionId: string;
+  sessionName?: string;
+  model: {
+    id: string;
+    provider: string;
+    contextWindow: number;
+  };
+  tokens: {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    total: number;
+  };
+  cost: number;
+  messages: {
+    user: number;
+    assistant: number;
+    toolCalls: number;
+    total: number;
+  };
+  compaction: {
+    enabled: boolean;
+    isCompacting: boolean;
+    threshold: number;
+    usage: number;
+  };
+}
+

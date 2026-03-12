@@ -6,6 +6,7 @@ import { apiKeyAuth } from "./middleware/auth.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import chat from "./routes/chat.js";
 import health from "./routes/health.js";
+import session from "./routes/session.js";
 
 export const app = new Hono();
 
@@ -21,7 +22,9 @@ app.route("/api", health);
 
 app.use("/api/chat", apiKeyAuth);
 app.use("/api/chat/*", apiKeyAuth);
+app.use("/api/session", apiKeyAuth);
 app.route("/api", chat);
+app.route("/api", session);
 
 app.onError(errorHandler);
 app.notFound(notFoundHandler);

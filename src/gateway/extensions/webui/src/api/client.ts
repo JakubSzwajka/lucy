@@ -1,4 +1,4 @@
-import type { ChatResponse, HistoryResponse } from "./types";
+import type { ChatResponse, HistoryResponse, SessionInfo } from "./types";
 
 const BASE_URL: string =
   import.meta.env.VITE_API_URL ?? "";
@@ -65,4 +65,8 @@ export function sendMessage(message: string): Promise<ChatResponse> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
   });
+}
+
+export function getSessionInfo(): Promise<SessionInfo> {
+  return request<SessionInfo>("/api/session");
 }

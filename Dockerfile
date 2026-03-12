@@ -1,5 +1,8 @@
 # Stage 1: Install dependencies
-FROM node:24-slim AS deps
+FROM node:24-alpine AS deps
+
+RUN apk add --no-cache \
+  curl git jq tree 
 
 WORKDIR /app
 
@@ -18,7 +21,7 @@ RUN npx vite build --outDir dist src/gateway/extensions/webui \
  && cd src/gateway/extensions/landing-page && npx astro build
 
 # Stage 3: Production image
-FROM node:24-slim AS production
+FROM node:24-alpine AS production
 
 ENV NODE_ENV=production
 WORKDIR /app

@@ -1,54 +1,46 @@
 # Lucy
 
-Multi-package workspace for agent infrastructure.
+Single-package agent infrastructure app. Runtime and gateway code live under `src/`; the archived Next.js reference app lives in `.legacy/`.
 
-## Packages
+## Structure
 
-| Package | Description |
-|---------|-------------|
-| [agents-runtime](./agents-runtime/) | Standalone agent execution engine (AI SDK, pluggable storage, plugins) |
-| [agents-gateway-http](./agents-gateway-http/) | REST gateway for the runtime (Hono) |
-| [agents-webui](./agents-webui/) | Chat UI for the gateway (React + Vite) |
-| [agents-memory](./agents-memory/) | Proof runtime plugin for memory context |
-| [agents-landing-page](./agents-landing-page/) | Static landing page (Astro, GitHub Pages) |
-| [.legacy](./.legacy/) | Archived Next.js reference app |
+| Area | Purpose |
+|------|---------|
+| [`src/runtime/core/README.md`](./src/runtime/core/README.md) | RPC client for the Pi bridge |
+| [`src/runtime/extensions/memory/README.md`](./src/runtime/extensions/memory/README.md) | Pi memory extension |
+| [`src/gateway/core/README.md`](./src/gateway/core/README.md) | Hono HTTP gateway |
+| [`src/gateway/extensions/webui/README.md`](./src/gateway/extensions/webui/README.md) | React chat UI mounted by the gateway |
+| [`src/gateway/extensions/landing-page/README.md`](./src/gateway/extensions/landing-page/README.md) | Astro marketing/docs site mounted by the gateway |
+| [`src/gateway/extensions/telegram/README.md`](./src/gateway/extensions/telegram/README.md) | Telegram webhook integration |
+| [`docs/decisions/README.md`](./docs/decisions/README.md) | Architecture decision index |
 
-## Quick Start
+## Run
 
 ```bash
-npm install                                     # install all workspace deps
-npm run dev --workspace=agents-gateway-http     # start API on :3080
-npm run dev --workspace=agents-webui            # start UI on :5173
+npm install
+npm run dev
 ```
+
+`npm run dev` starts both the Pi bridge and the HTTP gateway. Build static gateway assets with `npm run build`.
 
 ## Configuration
 
-Lucy uses an optional `lucy.config.json` file for declarative configuration. Each workspace package reads its own top-level key.
+Configuration is env-driven. The main runtime contract is:
 
-```bash
-cp lucy.config.example.json lucy.config.json    # start from the example
-```
+| Env var | Purpose |
+|---------|---------|
+| `PI_BRIDGE_MODEL` | Required model id for the Pi bridge |
+| `OPENROUTER_API_KEY` | Provider auth for the bridge runtime |
+| `PORT` | Gateway port, default `3080` |
+| `PI_BRIDGE_SOCKET` | Unix socket path, default `/tmp/lucy-pi.sock` |
+| `CORS_ORIGIN` | CORS allowlist, default `*` |
+| `LUCY_API_KEY` | Protects `/api/chat*` when set |
+| `AGENTS_DATA_DIR` | Persistent data for memory and related state |
+| `TELEGRAM_BOT_TOKEN` | Enables Telegram webhook integration |
+| `TELEGRAM_ALLOWED_CHAT_IDS` | Optional comma-separated Telegram allowlist |
 
-| Key | Package | Description |
-|-----|---------|-------------|
-| `agents-runtime` | agents-runtime | Plugin enablement and per-plugin settings |
-| `agents-memory` | agents-memory | Reserved for future memory settings |
-| `agents-gateway-http` | agents-gateway-http | Reserved for future gateway settings |
+## Read Next
 
-Override the config path with `LUCY_CONFIG_PATH` env var. Missing file = zero-config defaults.
-
-For Docker deployments, mount a custom config:
-```bash
-make docker-run LUCY_CONFIG=./my-config.json
-```
-
-See [`lucy.config.example.json`](./lucy.config.example.json) for all available options.
-
-## Workspace Commands
-
-| Command | Description |
-|---------|-------------|
-| `npm install` | Install all workspace dependencies |
-| `npm run typecheck --workspace=agents-runtime` | Typecheck runtime |
-| `npm run typecheck --workspace=agents-gateway-http` | Typecheck gateway |
-| `npm run smoke:configured-runtime` | Run runtime smoke test |
+- [Runtime Core](./src/runtime/core/README.md)
+- [Gateway Core](./src/gateway/core/README.md)
+- [Development Notes](./CLAUDE.md)

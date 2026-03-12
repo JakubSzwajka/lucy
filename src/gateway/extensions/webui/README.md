@@ -9,11 +9,14 @@ order: 10
 
 React chat UI for the `agents-gateway-http` REST API. Built with Vite, Tailwind CSS, and shadcn/ui components.
 
-## Quick Start
+## Activation
+
+The gateway mounts this UI at `/chat` when `src/gateway/extensions/webui/dist/` exists. Build it with `npm run build:webui`.
+
+## Local Build
 
 ```bash
-npm install
-npm run dev          # Vite dev server, default port 5173
+npm run build:webui
 ```
 
 ## Configuration
@@ -34,6 +37,11 @@ src/
 ## Responsibility Boundary
 
 Owns the browser UI for session management and chat interaction. All data and execution is delegated to `agents-gateway-http` via REST calls.
+
+## Operational Constraints
+
+- Requires the gateway API to be reachable from the browser
+- The gateway serves the built SPA; this module does not self-host in production
 
 ## Read Next
 

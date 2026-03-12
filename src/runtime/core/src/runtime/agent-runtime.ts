@@ -1,6 +1,7 @@
 import type {
   HistoryEntry,
   ModelConfig,
+  SessionInfo,
 } from "../types.js";
 
 import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.js";
@@ -190,6 +191,62 @@ export class AgentRuntime {
       supportsImages: m.supportsImages as boolean | undefined,
       maxContextTokens: (m.maxContextTokens as number) ?? 0,
     }));
+  }
+
+  async getSessionInfo(): Promise<SessionInfo> {
+    await this.ensureConnected();
+
+    const [stateResp, statsResp] = await Promise.all([
+      this.client.request({ type: "get_state" }),
+      this.client.request({ type: "n" }),
+    ]);
+
+    if (!stateResp.success) {
+      throw new Error(`[runtime] get_state failed: ${stateResp.error ?? "unknown error"}`);
+    }
+    if (!statsResp.success) {
+      throw new Error(`[runtime] session stats failed: ${statsResp.error ?? "unknown error"}`);
+    }
+
+    const state = stateResp.data as Record<string, unknown>;
+    const stats = statsResp.data as Record<string, unknown>;
+    const model = state.model as Record<string, unknown> | undefined;
+    const tokens = stats.tokens as Record<string, number> | undefined;
+
+    const contextWindow = (model?.contextWindow as number) ?? 0;
+    const reserveTokens = 16_384; // Pi default
+    const threshold = contextWindow > 0 ? contextWindow - reserveTokens : 0;
+    const totalTokens = tokens?.total ?? 0;
+
+    return {
+      sessionId: (state.sessionId as string) ?? this.sessionId ?? "unknown",
+      sessionName: state.sessionName as string | undefined,
+      model: {
+        id: (model?.id as string) ?? "unknown",
+        provider: (model?.provider as string) ?? "unknown",
+        contextWindow,
+      },
+      tokens: {
+        input: tokens?.input ?? 0,
+        output: tokens?.output ?? 0,
+        cacheRead: tokens?.cacheRead ?? 0,
+        cacheWrite: tokens?.cacheWrite ?? 0,
+        total: totalTokens,
+      },
+      cost: (stats.cost as number) ?? 0,
+      messages: {
+        user: (stats.userMessages as number) ?? 0,
+        assistant: (stats.assistantMessages as number) ?? 0,
+        toolCalls: (stats.toolCalls as number) ?? 0,
+        total: (stats.totalMessages as number) ?? 0,
+      },
+      compaction: {
+        enabled: (state.autoCompactionEnabled as boolean) ?? true,
+        isCompacting: (state.isCompacting as boolean) ?? false,
+        threshold,
+        usage: threshold > 0 ? totalTokens / threshold : 0,
+      },
+    };
   }
 
   async abort(): Promise<void> {

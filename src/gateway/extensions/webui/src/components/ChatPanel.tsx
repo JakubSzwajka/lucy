@@ -4,6 +4,7 @@ import { getHistory, sendMessage } from "@/api/client";
 import type { Item, MessageItem } from "@/api/types";
 import { ChatInput } from "@/components/ChatInput";
 import { MessageList } from "@/components/MessageList";
+import { SessionBar } from "@/components/SessionBar";
 
 export function ChatPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -52,6 +53,7 @@ export function ChatPanel() {
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
+      <SessionBar />
       <div className="flex items-center justify-end px-4 py-1.5 border-b border-border/50">
         <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
           <input

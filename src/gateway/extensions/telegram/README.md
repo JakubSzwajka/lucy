@@ -9,61 +9,34 @@ order: 12
 
 Gateway plugin that bridges Telegram Bot API with the agent runtime. Receives inbound messages via Telegram webhooks, routes them to `AgentRuntime.sendMessage()`, and replies via the Bot API.
 
-## Setup
+## Activation
 
-### 1. Create a Bot
+The gateway mounts Telegram routes only when `TELEGRAM_BOT_TOKEN` is set. `TELEGRAM_ALLOWED_CHAT_IDS` is parsed as a comma-separated list; an empty value allows all chats.
 
-1. Open Telegram and message [@BotFather](https://t.me/BotFather)
-2. Send `/newbot` and follow the prompts (pick a name and username)
-3. BotFather replies with your **bot token** — save it
+## Configuration
 
-### 2. Configure Lucy
+| Env var | Required | Purpose |
+|---------|----------|---------|
+| `TELEGRAM_BOT_TOKEN` | Yes | Bot token used for webhook handling and replies |
+| `TELEGRAM_ALLOWED_CHAT_IDS` | No | Comma-separated numeric allowlist |
 
-Add to `lucy.config.json`:
-
-```json
-{
-  "telegram": {
-    "allowedChatIds": [123456789]
-  }
-}
-```
-
-Set the bot token as an env var (never in config):
+## Register the Webhook
 
 ```bash
 export TELEGRAM_BOT_TOKEN="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-```
-
-| Field | Description |
-|-------|-------------|
-| `allowedChatIds` | Array of Telegram chat IDs allowed to interact. Empty array `[]` allows all. |
-
-**Finding your chat ID:** Message your bot, then check `https://api.telegram.org/bot<TOKEN>/getUpdates` — your chat ID is in `message.chat.id`.
-
-### 3. Register the Webhook
-
-Once Lucy is deployed and publicly accessible, register the webhook with Telegram:
-
-```bash
+export TELEGRAM_ALLOWED_CHAT_IDS="123456789,987654321"
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://your-domain.com/telegram/webhook"}'
 ```
 
-Expected response:
-
-```json
-{"ok": true, "result": true, "description": "Webhook was set"}
-```
-
-To verify:
+Verify:
 
 ```bash
 curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ```
 
-To remove:
+Remove:
 
 ```bash
 curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
@@ -80,7 +53,7 @@ curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
 **Bot doesn't respond:**
 - Check `getWebhookInfo` — look for `last_error_message`
 - Verify `TELEGRAM_BOT_TOKEN` is set in the environment
-- Verify your chat ID is in `allowedChatIds` (or set to `[]` to allow all)
+- Verify your chat ID is in `TELEGRAM_ALLOWED_CHAT_IDS` (or leave it unset to allow all)
 - Check gateway logs for `[telegram]` entries
 
 **Webhook not receiving updates:**
@@ -94,3 +67,14 @@ curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
 ## Responsibility Boundary
 
 Owns Telegram webhook handling, chat ID filtering, message deduplication, and response splitting. All agent logic is delegated to the runtime via `sendMessage()`.
+
+## Operational Constraints
+
+- Requires a public HTTPS endpoint for Telegram webhooks
+- Mounts only when `TELEGRAM_BOT_TOKEN` is present at gateway boot
+- Telegram rendering can fail on malformed Markdown in agent responses
+
+## Read Next
+
+- [agents-gateway-http](../../core/README.md) - server that mounts this plugin
+- [agents-runtime](../../../runtime/core/README.md) - runtime invoked for each Telegram message

@@ -16,7 +16,7 @@ function requireEnv(name: string): string {
 
 function buildPiArgs(): string[] {
   const model = requireEnv("PI_BRIDGE_MODEL");
-  const args = ["--mode", "rpc", "--model", model];
+  const args = ["--mode", "rpc", "--model", model, "-c"];
 
   const optionalFlags: Record<string, string> = {
     PI_BRIDGE_PROVIDER: "--provider",

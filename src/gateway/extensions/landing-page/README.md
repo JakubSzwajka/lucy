@@ -7,21 +7,29 @@ order: 11
 
 # agents-landing-page
 
-Separate Astro module for the Lucy landing page, intended to deploy to GitHub Pages.
+Astro static site mounted by the gateway as the catch-all non-API surface.
 
-## Local usage
+## Activation
 
-```bash
-cd agents-landing-page
-npm install
-npm run dev
-```
+The gateway mounts this site when `src/gateway/extensions/landing-page/dist/` exists. Build it with `npm run build:landing`.
 
-## Production build
+## Local Build
 
 ```bash
-cd agents-landing-page
-npm run build
+npm run build:landing
 ```
 
-GitHub Pages sets `SITE_URL` and `BASE_PATH` during the workflow so the generated asset paths match the repository URL.
+## Responsibility Boundary
+
+Owns static marketing/docs pages and filesystem-based route output. Delegates all API and agent behavior to the gateway core.
+
+## Operational Constraints
+
+- Must be mounted after API routes so it does not shadow them
+- Serves built files only; missing `dist/` means the plugin is skipped
+- Rewrites directory-style paths to `index.html`
+
+## Read Next
+
+- [agents-gateway-http](../../core/README.md) - server that mounts this catch-all plugin
+- [agents-webui](../webui/README.md) - separate interactive UI mounted under `/chat`
