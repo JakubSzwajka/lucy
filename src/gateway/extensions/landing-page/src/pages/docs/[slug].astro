@@ -17,15 +17,28 @@ const allDocs = await getCollection("docs");
 allDocs.sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99));
 
 const sectionOrder = ["General", "Runtime", "Gateway", "Reference"];
-const grouped = new Map<string, typeof allDocs>();
+
+type DocEntry = (typeof allDocs)[number];
+type SidebarGroup = { subsection?: string; docs: DocEntry[] };
+type SidebarSection = { name: string; groups: SidebarGroup[] };
+
+const grouped = new Map<string, SidebarGroup[]>();
 for (const d of allDocs) {
   const section = d.data.section ?? "General";
+  const subsection = (d.data as { subsection?: string }).subsection;
   if (!grouped.has(section)) grouped.set(section, []);
-  grouped.get(section)!.push(d);
+  const groups = grouped.get(section)!;
+  let group = groups.find((g) => g.subsection === subsection);
+  if (!group) {
+    group = { subsection, docs: [] };
+    groups.push(group);
+  }
+  group.docs.push(d);
 }
-const sections = [...grouped.entries()].sort(
-  (a, b) => (sectionOrder.indexOf(a[0]) ?? 99) - (sectionOrder.indexOf(b[0]) ?? 99)
-);
+
+const sections: SidebarSection[] = [...grouped.entries()]
+  .sort((a, b) => (sectionOrder.indexOf(a[0]) ?? 99) - (sectionOrder.indexOf(b[0]) ?? 99))
+  .map(([name, groups]) => ({ name, groups }));
 
 const currentSlug = doc.id;
 ---
@@ -131,6 +144,23 @@ const currentSlug = doc.id;
         color: var(--muted);
         margin-bottom: 0.5rem;
         padding-left: 0.5rem;
+      }
+
+      .sidebar-group {
+        margin-bottom: 0.25rem;
+      }
+
+      .sidebar-subsection-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.55rem;
+        font-weight: 400;
+        letter-spacing: 0.08em;
+        text-transform: lowercase;
+        color: var(--muted);
+        opacity: 0.6;
+        padding-left: 0.5rem;
+        margin-top: 0.4rem;
+        margin-bottom: 0.15rem;
       }
 
       .sidebar-links {
@@ -369,19 +399,26 @@ const currentSlug = doc.id;
           <img src="/logo.png" alt="Lucy" />
           <span>lucy <span class="docs-label">docs</span></span>
         </a>
-        {sections.map(([sectionName, docs]) => (
+        {sections.map((section) => (
           <div class="sidebar-section">
-            <div class="sidebar-section-title">{sectionName}</div>
-            <div class="sidebar-links">
-              {docs.map((d) => (
-                <a
-                  href={`/docs/${d.id}/`}
-                  class:list={["sidebar-link", { active: d.id === currentSlug }]}
-                >
-                  {d.data.title}
-                </a>
-              ))}
-            </div>
+            <div class="sidebar-section-title">{section.name}</div>
+            {section.groups.map((group) => (
+              <div class="sidebar-group">
+                {group.subsection && (
+                  <div class="sidebar-subsection-title">{group.subsection}</div>
+                )}
+                <div class="sidebar-links">
+                  {group.docs.map((d) => (
+                    <a
+                      href={`/docs/${d.id}/`}
+                      class:list={["sidebar-link", { active: d.id === currentSlug }]}
+                    >
+                      {d.data.title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </nav>

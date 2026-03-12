@@ -1,7 +1,8 @@
 ---
 title: Telegram Integration
 section: Gateway
-order: 5
+subsection: Extensions
+order: 12
 ---
 
 # agents-plugin-telegram

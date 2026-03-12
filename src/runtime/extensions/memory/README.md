@@ -1,7 +1,8 @@
 ---
 title: Memory Plugin
 section: Runtime
-order: 2
+subsection: Extensions
+order: 10
 ---
 
 # agents-memory

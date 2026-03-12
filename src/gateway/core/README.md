@@ -1,6 +1,7 @@
 ---
 title: Gateway (HTTP)
 section: Gateway
+subsection: Core
 order: 1
 ---
 

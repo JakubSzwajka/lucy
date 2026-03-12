@@ -58,6 +58,7 @@ const docs = defineCollection({
   schema: z.object({
     title: z.string(),
     section: z.string().optional().default("General"),
+    subsection: z.string().optional(),
     order: z.number().optional().default(99),
   }),
 });

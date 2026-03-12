@@ -1,6 +1,7 @@
 ---
 title: Pi Bridge
 section: Runtime
+subsection: Core
 order: 2
 ---
 

@@ -1,7 +1,8 @@
 ---
 title: Web UI
 section: Gateway
-order: 2
+subsection: Extensions
+order: 10
 ---
 
 # agents-webui
