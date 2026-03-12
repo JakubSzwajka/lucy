@@ -41,6 +41,7 @@ const sections: SidebarSection[] = [...grouped.entries()]
   .map(([name, groups]) => ({ name, groups }));
 
 const currentSlug = doc.id;
+const currentPath = `/docs/${currentSlug}/`;
 ---
 
 <!doctype html>

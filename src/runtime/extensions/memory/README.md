@@ -59,5 +59,4 @@ Owns memory-specific plugin code and related types. Does not implement durable s
 
 ## Read Next
 
-- [agents-runtime](../agents-runtime/README.md) - runtime bootstrap, plugin resolution, and execution ownership
-- [Plugin system](../agents-runtime/src/plugins/README.md) - registry, bootstrap, and lifecycle ownership inside the runtime
+- [agents-runtime](../../core/README.md) - runtime bootstrap, plugin resolution, and execution ownership

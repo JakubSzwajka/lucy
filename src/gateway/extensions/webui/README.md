@@ -37,5 +37,5 @@ Owns the browser UI for session management and chat interaction. All data and ex
 
 ## Read Next
 
-- [agents-gateway-http](../agents-gateway-http/README.md) - REST API this UI consumes
-- [agents-runtime](../agents-runtime/README.md) - execution engine behind the gateway
+- [agents-gateway-http](../../core/README.md) - REST API this UI consumes
+- [agents-runtime](../../../runtime/core/README.md) - execution engine behind the gateway

@@ -41,18 +41,12 @@ const docs = defineCollection({
       if (entry === "docs/decisions/README.md") {
         return "decisions";
       }
-      // src/gateway/core/README.md → gateway-core
-      // src/runtime/core/README.md → runtime-core
-      // src/runtime/extensions/memory/README.md → memory
-      // src/gateway/extensions/webui/README.md → webui
-      const dir = entry.replace(/\/README\.md$/, "");
-      const parts = dir.split("/");
-      const name = parts[parts.length - 1];
-      // Disambiguate "core" by prefixing with parent (runtime/gateway)
-      if (name === "core" && parts.length >= 2) {
-        return `${parts[parts.length - 2]}-${name}`;
-      }
-      return name;
+      // src/runtime/core/README.md → runtime/core
+      // src/runtime/core/src/pi-bridge/README.md → runtime/core/src/pi-bridge
+      // src/runtime/extensions/memory/README.md → runtime/extensions/memory
+      // src/gateway/extensions/webui/README.md → gateway/extensions/webui
+      // Strip leading "src/" and trailing "/README.md" — URL mirrors code structure.
+      return entry.replace(/^src\//, "").replace(/\/README\.md$/, "");
     },
   }),
   schema: z.object({
