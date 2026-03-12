@@ -313,7 +313,7 @@ export class AgentRuntime {
 
     const [stateResp, statsResp] = await Promise.all([
       this.client.request({ type: "get_state" }),
-      this.client.request({ type: "n" }),
+      this.client.request({ type: "get_session_stats" }),
     ]);
 
     if (!stateResp.success) {
