@@ -39,6 +39,6 @@ Owns the RPC connection to pi-bridge and message/history translation. Delegates 
 
 ## Read Next
 
-- [pi-bridge](../pi-bridge/) — separate process that spawns and manages the Pi SDK
+- [pi-bridge](src/pi-bridge/) — separate process that spawns and manages the Pi SDK
 - [gateway/core](../../gateway/core/README.md) — HTTP gateway that wraps this runtime
 - [memory extension](../extensions/memory/README.md) — Pi extension for memory/observation

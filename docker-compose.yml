@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: deps
-    command: sh -c "npm run build && npx -y concurrently -n bridge,gateway -c blue,green 'npx tsx src/runtime/pi-bridge/index.ts' 'npx -y nodemon --legacy-watch --watch src/gateway --ext ts,json --exec npx\\ tsx\\ src/gateway/core/src/index.ts'"
+    command: sh -c "npm run build && npx -y concurrently -n bridge,gateway -c blue,green 'npx tsx src/runtime/core/src/pi-bridge/index.ts' 'npx -y nodemon --legacy-watch --watch src/gateway --ext ts,json --exec npx\\ tsx\\ src/gateway/core/src/index.ts'"
     ports:
       - "${PORT:-3080}:${PORT:-3080}"
     environment:
@@ -20,6 +20,7 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
     volumes:
       - ./src:/app/src
+      - ./docs:/app/docs
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./prompt.md:/app/prompt.md
       - ./.data:/data

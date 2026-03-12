@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "node_modules/.bin/concurrently -n bridge,gateway 'node_modules/.bin/tsx src/runtime/pi-bridge/index.ts' 'node_modules/.bin/tsx src/gateway/core/src/index.ts'"
+startCommand = "node_modules/.bin/concurrently -n bridge,gateway 'node_modules/.bin/tsx src/runtime/core/src/pi-bridge/index.ts' 'node_modules/.bin/tsx src/gateway/core/src/index.ts'"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"

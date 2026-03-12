@@ -24,4 +24,4 @@ Owns Pi SDK process lifecycle and Unix socket server. Passes JSONL messages bidi
 
 ## Read Next
 
-- [agents-runtime](../core/README.md) — RPC client that connects to this bridge
+- [agents-runtime](../../README.md) — RPC client that connects to this bridge

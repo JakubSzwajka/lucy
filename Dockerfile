@@ -11,8 +11,7 @@ FROM deps AS build
 
 WORKDIR /app
 
-COPY src/gateway/extensions/webui/ src/gateway/extensions/webui/
-COPY src/gateway/extensions/landing-page/ src/gateway/extensions/landing-page/
+COPY src/ src/
 COPY docs/ docs/
 
 RUN npx vite build --outDir dist src/gateway/extensions/webui \
@@ -40,4 +39,4 @@ COPY prompt.m[d] ./
 
 EXPOSE 3080
 
-ENTRYPOINT ["node_modules/.bin/concurrently", "-n", "bridge,gateway", "node_modules/.bin/tsx src/runtime/pi-bridge/index.ts", "node_modules/.bin/tsx src/gateway/core/src/index.ts"]
+ENTRYPOINT ["node_modules/.bin/concurrently", "-n", "bridge,gateway", "node_modules/.bin/tsx src/runtime/core/src/pi-bridge/index.ts", "node_modules/.bin/tsx src/gateway/core/src/index.ts"]

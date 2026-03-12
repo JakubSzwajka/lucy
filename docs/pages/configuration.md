@@ -6,31 +6,34 @@ order: 2
 
 # Configuration
 
-Lucy is configured via `lucy.config.json` at the project root. All keys are optional.
+Lucy is configured entirely via environment variables. Copy `.env.example` to `.env` and fill in the required values.
 
-```json
-{
-  "runtime": {
-    "model": "...",
-    "compaction": {},
-    "session": {},
-    "extensions": []
-  },
-  "gateway": {
-    "apiKey": "..."
-  },
-"telegram": {
-    "allowedChatIds": []
-  }
-}
-```
+## Required
 
-## Environment Variables
+| Variable | Purpose |
+|----------|---------|
+| `OPENROUTER_API_KEY` | OpenRouter API key for LLM calls (Pi SDK) |
+| `PI_BRIDGE_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
 
-| Variable | Description |
-|----------|-------------|
-| `LUCY_API_KEY` | API key (alternative to config file) |
-| `DATABASE_URL` | PostgreSQL connection string |
+## Optional (have defaults)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `3080` | Gateway HTTP port |
+| `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for pi-bridge ↔ gateway IPC |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `AGENTS_DATA_DIR` | `~/.agents-data` | Persistent storage for memory extension |
+| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) |
+
+## Optional (enable features)
+
+| Variable | Purpose |
+|----------|---------|
+| `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
+| `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
+| `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (also needs `TELEGRAM_ALLOWED_CHAT_IDS`) |
+| `TELEGRAM_ALLOWED_CHAT_IDS` | Comma-separated allowed Telegram chat IDs |
 
 ## Commands
 
