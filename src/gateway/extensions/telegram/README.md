@@ -11,20 +11,20 @@ Gateway plugin that bridges Telegram Bot API with the agent runtime. Receives in
 
 ## Activation
 
-The gateway mounts Telegram routes only when `TELEGRAM_BOT_TOKEN` is set. `TELEGRAM_ALLOWED_CHAT_IDS` is parsed as a comma-separated list; an empty value allows all chats.
+The gateway mounts Telegram routes only when `TELEGRAM_BOT_TOKEN` is set. `TELEGRAM_CHAT_ID` specifies a single allowed chat; when unset, all chats are allowed.
 
 ## Configuration
 
 | Env var | Required | Purpose |
 |---------|----------|---------|
 | `TELEGRAM_BOT_TOKEN` | Yes | Bot token used for webhook handling and replies |
-| `TELEGRAM_ALLOWED_CHAT_IDS` | No | Comma-separated numeric allowlist |
+| `TELEGRAM_CHAT_ID` | No | Single numeric chat ID to allow |
 
 ## Register the Webhook
 
 ```bash
 export TELEGRAM_BOT_TOKEN="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-export TELEGRAM_ALLOWED_CHAT_IDS="123456789,987654321"
+export TELEGRAM_CHAT_ID="123456789"
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://your-domain.com/telegram/webhook"}'
@@ -53,7 +53,7 @@ curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
 **Bot doesn't respond:**
 - Check `getWebhookInfo` — look for `last_error_message`
 - Verify `TELEGRAM_BOT_TOKEN` is set in the environment
-- Verify your chat ID is in `TELEGRAM_ALLOWED_CHAT_IDS` (or leave it unset to allow all)
+- Verify your chat ID matches `TELEGRAM_CHAT_ID` (or leave it unset to allow all)
 - Check gateway logs for `[telegram]` entries
 
 **Webhook not receiving updates:**

@@ -32,9 +32,9 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
     app,
     runtime,
     config: {
-      allowedChatIds: process.env.TELEGRAM_ALLOWED_CHAT_IDS
-        ? process.env.TELEGRAM_ALLOWED_CHAT_IDS.split(",").map((id) => Number(id.trim()))
-        : [],
+      chatId: process.env.TELEGRAM_CHAT_ID
+        ? Number(process.env.TELEGRAM_CHAT_ID.trim())
+        : undefined,
     },
   });
 }

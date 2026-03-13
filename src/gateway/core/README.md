@@ -32,7 +32,7 @@ All configuration is via environment variables (see `.env.example`).
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `LUCY_API_KEY` | — | API key for Bearer token auth on `/api/*` |
 | `TELEGRAM_BOT_TOKEN` | — | Enables Telegram webhook routes |
-| `TELEGRAM_ALLOWED_CHAT_IDS` | — | Optional comma-separated Telegram allowlist |
+| `TELEGRAM_CHAT_ID` | — | Optional single Telegram chat ID to allow |
 
 Web UI and landing page mount whenever their `dist/` folders exist. Telegram mounts only when its token is present.
 

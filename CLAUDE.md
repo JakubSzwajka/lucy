@@ -103,7 +103,7 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
 | `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
 | `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
-| `TELEGRAM_BOT_TOKEN` | Enables Telegram integration (also needs `TELEGRAM_ALLOWED_CHAT_IDS`) |
+| `TELEGRAM_BOT_TOKEN` | Enables Telegram integration (also needs `TELEGRAM_CHAT_ID`) |
 
 ## TypeScript
 

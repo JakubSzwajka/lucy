@@ -32,8 +32,8 @@ Lucy is configured entirely via environment variables. Copy `.env.example` to `.
 | `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
 | `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
 | `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token (also needs `TELEGRAM_ALLOWED_CHAT_IDS`) |
-| `TELEGRAM_ALLOWED_CHAT_IDS` | Comma-separated allowed Telegram chat IDs |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (also needs `TELEGRAM_CHAT_ID`) |
+| `TELEGRAM_CHAT_ID` | Single Telegram chat ID to allow |
 
 ## Commands
 

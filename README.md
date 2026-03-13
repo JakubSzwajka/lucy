@@ -37,7 +37,7 @@ Configuration is env-driven. The main runtime contract is:
 | `LUCY_API_KEY` | Protects `/api/chat*` when set |
 | `AGENTS_DATA_DIR` | Persistent data for memory and related state |
 | `TELEGRAM_BOT_TOKEN` | Enables Telegram webhook integration |
-| `TELEGRAM_ALLOWED_CHAT_IDS` | Optional comma-separated Telegram allowlist |
+| `TELEGRAM_CHAT_ID` | Optional single Telegram chat ID to allow |
 
 ## Read Next
 

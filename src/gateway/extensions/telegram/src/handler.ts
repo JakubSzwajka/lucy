@@ -18,8 +18,8 @@ export async function handleInboundMessage(
   messageId: number,
   text: string,
 ): Promise<void> {
-  if (deps.config.allowedChatIds.length > 0 && !deps.config.allowedChatIds.includes(chatId)) {
-    console.log(`[telegram] blocked: chat ${chatId} not in allowedChatIds`);
+  if (deps.config.chatId != null && deps.config.chatId !== chatId) {
+    console.log(`[telegram] blocked: chat ${chatId} not matching configured TELEGRAM_CHAT_ID`);
     return;
   }
 

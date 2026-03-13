@@ -1,3 +1,3 @@
 export interface TelegramConfig {
-  allowedChatIds: number[];
+  chatId?: number;
 }
