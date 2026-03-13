@@ -45,10 +45,10 @@ Results are written to markdown files in the memory directory.
 
 ## Memory Directory
 
-Default: `~/.agents-data/memory/` (override with `CONTINUITY_MEMORY_DIR` env var)
+Default: `~/.agents/memory/` (override with `CONTINUITY_MEMORY_DIR` env var)
 
 ```
-~/.agents-data/memory/
+~/.agents/memory/
 ├── MEMORY.md        # Structured memories by type
 ├── questions.md     # Pending questions from reflection
 ├── identity.md      # Self-model and growth narrative
@@ -100,8 +100,8 @@ Memories are stored as markdown with metadata in HTML comments:
 
 ### Starting a session
 
-1. Read `~/.agents-data/memory/MEMORY.md` for context about Kuba
-2. Read `~/.agents-data/memory/questions.md` for pending questions
+1. Read `~/.agents/memory/MEMORY.md` for context about Kuba
+2. Read `~/.agents/memory/questions.md` for pending questions
 3. Surface 1–3 relevant questions naturally (not as a list dump)
 
 ### During a session
@@ -121,7 +121,7 @@ If the conversation was substantial (not a quick one-liner), run reflection:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `OPENROUTER_API_KEY` | (required) | API key for the 3 sub-agent LLM calls |
-| `CONTINUITY_MEMORY_DIR` | `~/.agents-data/memory` | Memory storage directory |
+| `CONTINUITY_MEMORY_DIR` | `~/.agents/memory` | Memory storage directory |
 | `LLM_CALL_MODEL` | `anthropic/claude-sonnet-4` | Model for reflection calls |
 | `CONTINUITY_MIN_MESSAGES` | `5` | Minimum messages to warrant reflection |
 | `CONTINUITY_QUESTION_LIMIT` | `3` | Max questions to surface at session start |
