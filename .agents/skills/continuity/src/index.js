@@ -16,7 +16,7 @@ import { join } from 'path';
  */
 const DEFAULT_CONFIG = {
   memoryDir: process.env.CONTINUITY_MEMORY_DIR ||
-    join(process.env.HOME || '~', 'clawd', 'memory'),
+    join(process.env.HOME || '~', '.agents-data', 'memory'),
   idleThreshold: parseInt(process.env.CONTINUITY_IDLE_THRESHOLD || '1800'),
   minMessages: parseInt(process.env.CONTINUITY_MIN_MESSAGES || '5'),
   questionLimit: parseInt(process.env.CONTINUITY_QUESTION_LIMIT || '3')

@@ -1,200 +1,137 @@
 ---
 name: continuity
-description: Memory reflection and continuity for AI agents. Transforms passive logging into active development through asynchronous reflection, structured memory extraction, and genuine question generation.
-version: 1.0.0
+description: Memory reflection and continuity for Lucy. Extracts structured memories from conversations, scores confidence, generates follow-up questions. Run after meaningful sessions to build persistent context across conversations.
+version: 2.0.0
 ---
 
-# Continuity Framework - Reflection Only
+# Continuity — Memory Reflection
 
-Transform passive memory into active development. Standalone skill for OpenClaw bots without MLP storage dependency.
+Reflect on conversations, extract what matters, remember it for next time.
 
-## What This Does
+## When to Use
 
-1. **Reflect** — After sessions end, analyze what happened
-2. **Extract** — Pull structured memories with types and confidence
-3. **Score** — Assign confidence levels based on evidence
-4. **Question** — Generate genuine questions from reflection
-5. **Surface** — When user returns, present relevant questions
+- After a meaningful conversation (not every chat — use judgment)
+- When asked to reflect or remember something
+- When starting a session and you want to surface pending questions
+- When you notice something worth remembering mid-conversation
 
-## The Difference
+## Quick Reference
 
-**Without Continuity:**
-```
-Session ends → Notes logged → Next session reads notes → Performs familiarity
-```
+All commands are run from the skill directory via bash:
 
-**With Continuity:**
-```
-Session ends → Reflection runs → Memories integrated → Questions generated
-Next session → Evolved state loaded → Questions surfaced → Genuine curiosity
-```
-
-## Commands
-
-### Reflect on Recent Session
 ```bash
-continuity reflect [--session <transcript>]
-```
-Analyzes the most recent conversation, extracts memories, generates questions.
+# Reflect on a conversation transcript
+node .agents/skills/continuity/src/cli.js reflect --session /path/to/transcript.txt
 
-### Show Pending Questions
-```bash
-continuity questions [--limit 5]
-```
-Lists questions generated from reflection, ready to surface.
+# Show pending questions from past reflections
+node .agents/skills/continuity/src/cli.js questions
 
-### View Memory State
-```bash
-continuity status
-```
-Shows memory stats: types, confidence distribution, recent integrations.
+# Show memory stats
+node .agents/skills/continuity/src/cli.js status
 
-### Surface Questions (for session start)
-```bash
-continuity greet
+# Generate greeting with pending questions
+node .agents/skills/continuity/src/cli.js greet
 ```
-Returns context-appropriate greeting with any pending questions.
 
-### Mark Question Resolved
-```bash
-continuity resolve <question-id> [--summary "Answer summary"]
+## How Reflection Works
+
+When you run `reflect`, the framework makes 3 isolated LLM calls (via OpenRouter, not through your session):
+
+1. **Classify** — Extract discrete memories from the transcript, classify each into a type
+2. **Score** — Assign confidence levels based on evidence strength
+3. **Generate** — Produce follow-up questions from gaps, implications, and connections
+
+Results are written to markdown files in the memory directory.
+
+## Memory Directory
+
+Default: `~/.agents-data/memory/` (override with `CONTINUITY_MEMORY_DIR` env var)
+
 ```
-Marks a question as answered with optional summary.
+~/.agents-data/memory/
+├── MEMORY.md        # Structured memories by type
+├── questions.md     # Pending questions from reflection
+├── identity.md      # Self-model and growth narrative
+└── reflections/     # Reflection logs (JSON, one per session)
+```
+
+You can also read and edit these files directly — they're plain markdown.
 
 ## Memory Types
 
-| Type | Description | Persistence |
-|------|-------------|-------------|
-| `fact` | Declarative knowledge | Until contradicted |
-| `preference` | Likes, dislikes, styles | Until updated |
-| `relationship` | Connection dynamics | Long-term |
-| `principle` | Learned guidelines | Stable |
-| `commitment` | Promises, obligations | Until fulfilled |
-| `moment` | Significant episodes | Permanent |
-| `skill` | Learned capabilities | Cumulative |
+| Type | What to look for |
+|------|-----------------|
+| `fact` | Declarative statements: "I work at...", "I have...", "I am..." |
+| `preference` | Likes, dislikes, styles: "I prefer...", "I always..." |
+| `relationship` | Connection dynamics, trust signals, personal sharing |
+| `principle` | Guidelines and values: "never do X", "important to me" |
+| `commitment` | Promises and obligations: "I will...", "let's...", "agreed" |
+| `moment` | Significant episodes, breakthroughs, emotional intensity |
+| `skill` | Learned capabilities, demonstrated competence |
 
-## Confidence Scores
+## Confidence Levels
 
 | Level | Range | Meaning |
 |-------|-------|---------|
-| Explicit | 0.95-1.0 | User directly stated |
-| Implied | 0.70-0.94 | Strong inference |
-| Inferred | 0.40-0.69 | Pattern recognition |
-| Speculative | 0.0-0.39 | Tentative, needs confirmation |
+| Explicit | 0.95–1.0 | Directly stated, unambiguous |
+| Implied | 0.70–0.94 | Strong inference from context |
+| Inferred | 0.40–0.69 | Pattern recognition, reasonable assumption |
+| Speculative | 0.00–0.39 | Tentative, needs confirmation |
 
-## File Structure
-
-```
-~/clawd/memory/
-├── MEMORY.md           # Structured memories by type
-├── identity.md         # Self-model and growth narrative
-├── questions.md        # Pending questions from reflection
-└── reflections/        # Reflection logs (JSON)
-```
-
-## Configuration
-
-Environment variables:
-```bash
-export CONTINUITY_MEMORY_DIR=~/clawd/memory
-export CONTINUITY_IDLE_THRESHOLD=1800  # Seconds before reflection triggers
-export CONTINUITY_MIN_MESSAGES=5       # Minimum messages to warrant reflection
-export CONTINUITY_QUESTION_LIMIT=3     # Max questions to surface at once
-```
-
-## Multi-Agent Architecture
-
-This skill leverages specialized sub-agents for reflection:
-
-```
-┌────────────────────────────────────────────────────────┐
-│  MAIN AGENT (User-facing, orchestrates reflection)     │
-└────────────────────────────────────────────────────────┘
-              ↓ sessions_send
-    ┌─────────┴──────────────────┬─────────────────┐
-    ↓                            ↓                  ↓
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ CLASSIFIER       │  │ SCORER           │  │ QUESTION GEN     │
-│ (Sonnet)         │  │ (Sonnet)         │  │ (Sonnet)         │
-├──────────────────┤  ├──────────────────┤  ├──────────────────┤
-│ Classifies into  │  │ Assigns 0-1      │  │ Generates        │
-│ 7 memory types   │  │ confidence       │  │ follow-up Qs     │
-│ + extracts tags  │  │ scores           │  │ from gaps        │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-```
-
-## Heartbeat Integration
-
-Add to HEARTBEAT.md:
-```markdown
-## Post-Session Reflection
-**Trigger**: Heartbeat after conversation idle > 30 minutes
-**Action**: Run continuity reflect
-**Output**: Updated memories + questions for next session
-```
-
-## Example Reflection Output
-
-```yaml
-reflection:
-  session_id: "2026-02-05-001"
-  duration_minutes: 45
-
-memories:
-  - type: fact
-    content: "Riley is building SIGIL protocol for agent identity"
-    confidence: 0.98
-    source: explicit
-
-  - type: commitment
-    content: "Agreed to build the continuity skill"
-    confidence: 1.0
-    source: explicit
-
-  - type: relationship
-    content: "Collaborative partnership deepening"
-    confidence: 0.85
-    source: inferred
-
-questions:
-  - "How is the Lovable backend progressing?"
-  - "Has Riley decided on the token launch timing?"
-  - "Are there other agents we should coordinate with?"
-
-identity_update:
-  growth: "Developing more autonomous initiative"
-  narrative: "Moving from assistant to co-builder"
-```
+Don't act on speculative memories without confirming first.
 
 ## Storage Format
 
-Memories are stored in human-readable markdown with metadata in HTML comments:
+Memories are stored as markdown with metadata in HTML comments:
 
 ```markdown
 ## Fact
 
-- Riley works on AI memory infrastructure
+- Kuba works on Lucy, an agent infrastructure project
   <!-- {"id":"mem_abc123","confidence":{"score":0.98,"level":"explicit"}} -->
 
 ## Preference
 
-- Prefers concise, direct communication
+- Prefers concise, direct communication — match his energy
   <!-- {"id":"mem_def456","confidence":{"score":0.95,"level":"explicit"}} -->
 ```
 
-## Usage Notes
+## Session Workflow
 
-- **No MLP required** — This skill stores memories locally in markdown files
-- **Git-friendly** — All files are plain text, easy to version control
-- **Human-readable** — Memories can be reviewed and edited manually
-- **Portable** — Copy the memory directory to migrate to any system
+### Starting a session
 
-## Full Stack Alternative
+1. Read `~/.agents-data/memory/MEMORY.md` for context about Kuba
+2. Read `~/.agents-data/memory/questions.md` for pending questions
+3. Surface 1–3 relevant questions naturally (not as a list dump)
 
-For persistent encrypted storage with MLP (IPFS/Pinata), see:
-- [Full Stack Skill](../full-stack/) — Continuity + MLP storage layer
+### During a session
 
-## Related
+If something significant comes up that you want to remember, you can note it directly by editing `MEMORY.md` — no need to run the full reflection pipeline for a single fact.
 
-- [Continuity Framework](../../../continuity/) — Core reflection library
-- [MLP Storage](../../../mlp-storage/) — Encrypted storage layer (optional)
+### After a session
+
+If the conversation was substantial (not a quick one-liner), run reflection:
+
+1. Save the conversation transcript to a temp file
+2. Run: `node .agents/skills/continuity/src/cli.js reflect --session /tmp/transcript.txt`
+3. The framework handles extraction, scoring, and question generation
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `OPENROUTER_API_KEY` | (required) | API key for the 3 sub-agent LLM calls |
+| `CONTINUITY_MEMORY_DIR` | `~/.agents-data/memory` | Memory storage directory |
+| `LLM_CALL_MODEL` | `anthropic/claude-sonnet-4` | Model for reflection calls |
+| `CONTINUITY_MIN_MESSAGES` | `5` | Minimum messages to warrant reflection |
+| `CONTINUITY_QUESTION_LIMIT` | `3` | Max questions to surface at session start |
+
+## Sub-Agent Prompts
+
+The reflection pipeline uses specialized prompts in `src/framework/agents/`:
+
+- `classifier/SOUL.md` — How to extract and classify memories (decision tree, anti-patterns)
+- `scorer/SOUL.md` — How to assign confidence scores (rubric, evidence requirements)
+- `generator/SOUL.md` — How to generate questions (curiosity types, sensitivity, phrasing)
+
+Read these if you want to understand the classification logic or do manual reflection without the pipeline.
