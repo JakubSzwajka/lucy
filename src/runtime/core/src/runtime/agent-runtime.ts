@@ -2,9 +2,12 @@ import type {
   HistoryEntry,
   ModelConfig,
   SessionInfo,
+  StreamEvent,
 } from "../types.js";
 
 import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.js";
+
+type StreamCallback = (event: StreamEvent) => void;
 
 // ---------------------------------------------------------------------------
 // AgentRuntime
@@ -49,6 +52,119 @@ export class AgentRuntime {
     this.client.disconnect();
     this.sessionId = null;
   }
+
+  // ---------------------------------------------------------------------------
+  // Event streaming
+  // ---------------------------------------------------------------------------
+
+  private streamSubscribers = new Set<StreamCallback>();
+
+  /**
+   * Subscribe to normalized stream events. Returns an unsubscribe function.
+   * Events are emitted during sendMessage / sendMessageStreaming.
+   */
+  subscribe(callback: StreamCallback): () => void {
+    this.streamSubscribers.add(callback);
+    return () => { this.streamSubscribers.delete(callback); };
+  }
+
+  private emitStream(event: StreamEvent): void {
+    for (const cb of this.streamSubscribers) {
+      try {
+        cb(event);
+      } catch (err) {
+        console.error("[runtime] stream subscriber error:", err);
+      }
+    }
+  }
+
+  /**
+   * Translate a raw pi-bridge RPC event into normalized StreamEvents.
+   */
+  private handleBridgeEvent(event: RpcEvent): void {
+    switch (event.type) {
+      case "agent_start":
+        this.emitStream({ type: "agent_start" });
+        break;
+
+      case "agent_end":
+        this.emitStream({ type: "agent_end" });
+        break;
+
+      case "message_update": {
+        const ame = event.assistantMessageEvent as Record<string, unknown> | undefined;
+        if (!ame) break;
+        if (ame.type === "text_delta") {
+          this.emitStream({ type: "text_delta", delta: ame.delta as string });
+        } else if (ame.type === "thinking_delta") {
+          this.emitStream({ type: "thinking_delta", delta: ame.delta as string });
+        }
+        break;
+      }
+
+      case "tool_execution_start": {
+        const args = (event.args as Record<string, unknown>) ?? {};
+        this.emitStream({
+          type: "tool_start",
+          toolCallId: event.toolCallId as string,
+          toolName: event.toolName as string,
+          args,
+        });
+        break;
+      }
+
+      case "tool_execution_end": {
+        const result = event.result as Record<string, unknown> | undefined;
+        const content = (result?.content as Array<Record<string, unknown>>) ?? [];
+        const outputText = content
+          .filter((c) => c.type === "text")
+          .map((c) => c.text as string)
+          .join("\n");
+        this.emitStream({
+          type: "tool_end",
+          toolCallId: event.toolCallId as string,
+          toolName: event.toolName as string,
+          isError: (event.isError as boolean) ?? false,
+          output: outputText,
+        });
+        break;
+      }
+    }
+  }
+
+  /**
+   * Send a message and return immediately after the prompt is accepted.
+   * Events are emitted via subscribe(). Returns a promise that resolves
+   * when the agent finishes (agent_end).
+   */
+  async sendMessageStreaming(message: string): Promise<void> {
+    await this.ensureConnected();
+
+    return new Promise<void>((resolve, reject) => {
+      const unsubscribe = this.client.subscribe((event: RpcEvent) => {
+        this.handleBridgeEvent(event);
+
+        if (event.type === "agent_end") {
+          unsubscribe();
+          resolve();
+        }
+      });
+
+      this.client.request({ type: "prompt", message }).then((ack: RpcResponse) => {
+        if (!ack.success) {
+          unsubscribe();
+          reject(new Error(`[runtime] prompt rejected: ${ack.error ?? "unknown error"}`));
+        }
+      }).catch((err) => {
+        unsubscribe();
+        reject(err);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Legacy non-streaming sendMessage (kept for Telegram etc.)
+  // ---------------------------------------------------------------------------
 
   async sendMessage(
     message: string,

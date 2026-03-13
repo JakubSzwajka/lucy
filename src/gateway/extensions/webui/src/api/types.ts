@@ -40,6 +40,57 @@ export interface ReasoningItem extends ItemBase {
 export type Item = MessageItem | ReasoningItem | ToolCallItem | ToolResultItem;
 
 // ---------------------------------------------------------------------------
+// Stream events (from SSE)
+// ---------------------------------------------------------------------------
+
+export interface AgentStartStreamEvent {
+  type: "agent_start";
+}
+
+export interface AgentEndStreamEvent {
+  type: "agent_end";
+}
+
+export interface TextDeltaStreamEvent {
+  type: "text_delta";
+  delta: string;
+}
+
+export interface ThinkingDeltaStreamEvent {
+  type: "thinking_delta";
+  delta: string;
+}
+
+export interface ToolStartStreamEvent {
+  type: "tool_start";
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+}
+
+export interface ToolEndStreamEvent {
+  type: "tool_end";
+  toolCallId: string;
+  toolName: string;
+  isError: boolean;
+  output: string;
+}
+
+export interface StreamErrorEvent {
+  type: "error";
+  error: string;
+}
+
+export type StreamEvent =
+  | AgentStartStreamEvent
+  | AgentEndStreamEvent
+  | TextDeltaStreamEvent
+  | ThinkingDeltaStreamEvent
+  | ToolStartStreamEvent
+  | ToolEndStreamEvent
+  | StreamErrorEvent;
+
+// ---------------------------------------------------------------------------
 // API responses
 // ---------------------------------------------------------------------------
 

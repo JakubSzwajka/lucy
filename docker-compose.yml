@@ -24,3 +24,4 @@ services:
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./prompt.md:/app/prompt.md
       - ./.data:/data
+      - ./.agents:/.agents
