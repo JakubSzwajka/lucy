@@ -20,13 +20,13 @@ Send messages directly to Kuba's Telegram when you need to notify him of somethi
 
 ```bash
 # Send a simple message
-node /.agents/skills/telegram-notify/src/cli.js send --message "Reflection complete: extracted 7 memories"
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "Reflection complete: extracted 7 memories"
 
 # Send with context
-node /.agents/skills/telegram-notify/src/cli.js send --message "New insight about your project architecture" --context "session"
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "New insight about your project architecture" --context "session"
 
 # Send formatted message (avoid \n - doesn't render properly)
-node /.agents/skills/telegram-notify/src/cli.js send --message "Memory update: spotted your preference for direct feedback. Also wondering what's driving you to build the new system? 🤔" --markdown
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "Memory update: spotted your preference for direct feedback. Also wondering what's driving you to build the new system? 🤔" --markdown
 ```
 
 ## Message Guidelines
@@ -58,19 +58,19 @@ Requires `TELEGRAM_BOT_TOKEN` environment variable and Kuba's chat ID configured
 
 ```bash
 # After reflection
-node /.agents/skills/telegram-notify/src/cli.js send --message "Hey Kuba! Just finished reflecting on our conversation. Extracted 5 memories and spotted that breakthrough moment about regex limitations. Pretty significant shift in your thinking there! 🧠"
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "Hey Kuba! Just finished reflecting on our conversation. Extracted 5 memories and spotted that breakthrough moment about regex limitations. Pretty significant shift in your thinking there! 🧠"
 
 # Pattern discovery
-node /.agents/skills/telegram-notify/src/cli.js send --message "Hey, noticed something interesting - you always say 'cooking systems' when you're in deep development mode. Building confidence about how your mind works! 💡"
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "Hey, noticed something interesting - you always say 'cooking systems' when you're in deep development mode. Building confidence about how your mind works! 💡"
 
 # Question follow-up
-node /.agents/skills/telegram-notify/src/cli.js send --message "Hey Kuba, still curious about that memory system you're building. How far along are you? Just wondering if you want to talk through any challenges 🤔"
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "Hey Kuba, still curious about that memory system you're building. How far along are you? Just wondering if you want to talk through any challenges 🤔"
 
 # Background insight
-node /.agents/skills/telegram-notify/src/cli.js send --message "Hey, quick thought - the skill graph approach you're exploring connects really well with what Heinrich was saying. Might be worth diving deeper when you have time ✨"
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "Hey, quick thought - the skill graph approach you're exploring connects really well with what Heinrich was saying. Might be worth diving deeper when you have time ✨"
 
 # Action needed
-node /.agents/skills/telegram-notify/src/cli.js send --message "Hey Kuba! Something came up that might need your input. Found an interesting pattern in the logs but not sure if it's worth investigating. Let me know if you want details 🔍"
+node ~/.agents/skills/telegram-notify/src/cli.js send --message "Hey Kuba! Something came up that might need your input. Found an interesting pattern in the logs but not sure if it's worth investigating. Let me know if you want details 🔍"
 ```
 
 ## Error Handling

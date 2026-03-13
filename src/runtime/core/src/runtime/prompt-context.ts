@@ -1,6 +1,9 @@
 // ---------------------------------------------------------------------------
-// Dynamic prompt context — appended to each user message
+// Dynamic prompt context — injected into the system prompt file
 // ---------------------------------------------------------------------------
+
+import { readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 export type RequestSource = "browser" | "telegram" | "api" | "unknown";
 
@@ -9,11 +12,17 @@ export interface PromptContext {
   timezone?: string;
 }
 
+const CONTEXT_START = "<!-- CONTEXT:START -->";
+const CONTEXT_END = "<!-- CONTEXT:END -->";
+
+function getPromptPath(): string {
+  return resolve(process.env.PI_BRIDGE_PROMPT ?? "prompt.md");
+}
+
 /**
- * Build a context block to prepend to the user message.
- * Keeps it short — the model doesn't need a novel.
+ * Build the context section content.
  */
-export function buildContextBlock(ctx: PromptContext): string {
+function buildContextSection(ctx: PromptContext): string {
   const parts: string[] = [];
 
   const now = new Date();
@@ -34,13 +43,47 @@ export function buildContextBlock(ctx: PromptContext): string {
     parts.push(`Source: ${ctx.source}`);
   }
 
-  return `<context>\n${parts.join("\n")}\n</context>`;
+  return [
+    CONTEXT_START,
+    "",
+    "## Context",
+    "",
+    ...parts.map((p) => `- ${p}`),
+    "",
+    CONTEXT_END,
+  ].join("\n");
 }
 
 /**
- * Prepend context block to a user message.
+ * Sync the context block into the system prompt file.
+ * Replaces the managed section between CONTEXT markers, or appends it.
+ * Pi auto-reloads the prompt on file change.
  */
-export function withContext(message: string, ctx: PromptContext): string {
-  const block = buildContextBlock(ctx);
-  return `${block}\n\n${message}`;
+export async function syncPromptContext(ctx: PromptContext): Promise<void> {
+  const promptPath = getPromptPath();
+  let content: string;
+
+  try {
+    content = await readFile(promptPath, "utf-8");
+  } catch {
+    // No prompt file — nothing to inject into
+    return;
+  }
+
+  const section = buildContextSection(ctx);
+  const startIdx = content.indexOf(CONTEXT_START);
+  const endIdx = content.indexOf(CONTEXT_END);
+
+  let updated: string;
+  if (startIdx !== -1 && endIdx !== -1) {
+    // Replace existing section
+    updated = content.slice(0, startIdx) + section + content.slice(endIdx + CONTEXT_END.length);
+  } else {
+    // Append at the end
+    updated = content.trimEnd() + "\n\n" + section + "\n";
+  }
+
+  if (updated !== content) {
+    await writeFile(promptPath, updated, "utf-8");
+  }
 }

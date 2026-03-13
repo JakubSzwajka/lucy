@@ -5,7 +5,7 @@ import type {
   StreamEvent,
 } from "../types.js";
 
-import { withContext, type PromptContext } from "./prompt-context.js";
+import { syncPromptContext, type PromptContext } from "./prompt-context.js";
 import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.js";
 
 type StreamCallback = (event: StreamEvent) => void;
@@ -140,7 +140,7 @@ export class AgentRuntime {
    */
   async sendMessageStreaming(message: string, ctx?: PromptContext): Promise<void> {
     await this.ensureConnected();
-    const enriched = ctx ? withContext(message, ctx) : message;
+    if (ctx) await syncPromptContext(ctx);
 
     return new Promise<void>((resolve, reject) => {
       const unsubscribe = this.client.subscribe((event: RpcEvent) => {
@@ -152,7 +152,7 @@ export class AgentRuntime {
         }
       });
 
-      this.client.request({ type: "prompt", message: enriched }).then((ack: RpcResponse) => {
+      this.client.request({ type: "prompt", message }).then((ack: RpcResponse) => {
         if (!ack.success) {
           unsubscribe();
           reject(new Error(`[runtime] prompt rejected: ${ack.error ?? "unknown error"}`));
@@ -173,12 +173,12 @@ export class AgentRuntime {
     options?: { modelId?: string; thinkingEnabled?: boolean; context?: PromptContext },
   ): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }> {
     await this.ensureConnected();
+    if (options?.context) await syncPromptContext(options.context);
 
     if (options?.modelId || options?.thinkingEnabled) {
       console.warn("[runtime] per-request modelId/thinkingEnabled not yet supported over RPC, using session defaults");
     }
 
-    const enriched = options?.context ? withContext(message, options.context) : message;
     let responseText = "";
     let reachedMaxTurns = false;
 
@@ -213,7 +213,7 @@ export class AgentRuntime {
         });
 
         // Send the prompt command — the response is just an ack
-        this.client.request({ type: "prompt", message: enriched }).then((ack: RpcResponse) => {
+        this.client.request({ type: "prompt", message }).then((ack: RpcResponse) => {
           if (!ack.success) {
             unsubscribe();
             reject(new Error(`[runtime] prompt rejected: ${ack.error ?? "unknown error"}`));
