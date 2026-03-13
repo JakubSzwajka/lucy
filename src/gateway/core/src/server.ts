@@ -7,6 +7,7 @@ import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import chat from "./routes/chat.js";
 import health from "./routes/health.js";
 import session from "./routes/session.js";
+import tasks from "./routes/tasks.js";
 
 export const app = new Hono();
 
@@ -23,8 +24,10 @@ app.route("/api", health);
 app.use("/api/chat", apiKeyAuth);
 app.use("/api/chat/*", apiKeyAuth);
 app.use("/api/session", apiKeyAuth);
+app.use("/api/tasks", apiKeyAuth);
 app.route("/api", chat);
 app.route("/api", session);
+app.route("/api", tasks);
 
 app.onError(errorHandler);
 app.notFound(notFoundHandler);

@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "nextId": 4,
+  "tasks": [
+    {
+      "id": "001",
+      "title": "Build read-only kanban board in webui",
+      "status": "done",
+      "notes": "Three-column layout matching the dark theme, accessible via nav tab",
+      "links": ["src/gateway/extensions/webui/src/components/TaskBoard.tsx"],
+      "created": "2026-03-13",
+      "updated": "2026-03-13"
+    },
+    {
+      "id": "002",
+      "title": "Add tasks API endpoint to gateway",
+      "status": "done",
+      "notes": "GET /api/tasks reads .agents/tasks/board.json, returns empty board if file missing",
+      "links": ["src/gateway/core/src/routes/tasks.ts"],
+      "created": "2026-03-13",
+      "updated": "2026-03-13"
+    },
+    {
+      "id": "003",
+      "title": "Create task management skill",
+      "status": "done",
+      "notes": "Persistent JSON-based task board for agent self-management",
+      "links": [".agents/skills/tasks/SKILL.md"],
+      "created": "2026-03-13",
+      "updated": "2026-03-13"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { ChatResponse, HistoryResponse, SessionInfo, StreamEvent } from "./types";
+import type { ChatResponse, HistoryResponse, SessionInfo, StreamEvent, TaskBoard } from "./types";
 
 const BASE_URL: string =
   import.meta.env.VITE_API_URL ?? "";
@@ -131,4 +131,8 @@ export async function sendMessageStream(
 
 export function getSessionInfo(): Promise<SessionInfo> {
   return request<SessionInfo>("/api/session");
+}
+
+export function getTasks(): Promise<TaskBoard> {
+  return request<TaskBoard>("/api/tasks");
 }

@@ -105,6 +105,26 @@ export interface ChatResponse {
   reachedMaxTurns: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+export interface Task {
+  id: string;
+  title: string;
+  status: "todo" | "in-progress" | "done";
+  notes?: string;
+  links?: string[];
+  created: string;
+  updated: string;
+}
+
+export interface TaskBoard {
+  version: number;
+  nextId: number;
+  tasks: Task[];
+}
+
 export interface SessionInfo {
   sessionId: string;
   sessionName?: string;
