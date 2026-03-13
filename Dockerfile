@@ -40,6 +40,10 @@ COPY --from=build /app/src/gateway/extensions/webui/dist/ src/gateway/extensions
 # Prompt file (optional)
 COPY prompt.m[d] ./
 
+# Entrypoint script
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
 EXPOSE 3080
 
-ENTRYPOINT ["node_modules/.bin/concurrently", "-n", "bridge,gateway", "node_modules/.bin/tsx src/runtime/core/src/pi-bridge/index.ts", "node_modules/.bin/tsx src/gateway/core/src/index.ts"]
+ENTRYPOINT ["/app/entrypoint.sh"]
