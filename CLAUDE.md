@@ -93,8 +93,7 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `PORT` | `3080` | Gateway HTTP port |
 | `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for bridge ↔ gateway IPC |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
-| `AGENTS_DATA_DIR` | `~/.agents` | Persistent storage for memory extension |
-| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) |
+| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) — set to `.agents/pi` in Docker |
 
 **Optional (enable features when set):**
 

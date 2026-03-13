@@ -19,7 +19,7 @@ Introduce a `prompt.md` file as the **sole base system prompt**. The runtime rea
 
 **Key design decisions:**
 
-- **Separate from data dir.** The data dir (`AGENTS_DATA_DIR`) is storage — conversation items, agent state, memory. The prompt file is configuration/identity, mounted as its own explicit volume.
+- **Separate from data dir.** The data dir is storage — conversation items, agent state, memory. The prompt file is configuration/identity, mounted as its own explicit volume.
 - **Read once at init.** The file is loaded during `runtime.init()` and cached in memory. Changing the prompt requires a restart.
 - **Replaces agent-level system prompt.** The existing `agent.systemPrompt` / `agentConfig.systemPromptId` chain is removed. `prompt.md` is the single source for the base system prompt. Future phases will add more files/sections, but this is the baseline.
 

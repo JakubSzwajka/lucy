@@ -3,7 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-TEST_DATA_DIR="$(mktemp -d)"
 PORT=13080
 
 PASSED=0
@@ -25,12 +24,11 @@ cleanup() {
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
   fi
-  rm -rf "$TEST_DATA_DIR"
 }
 trap cleanup EXIT
 
-echo "Starting gateway server (port=$PORT, data=$TEST_DATA_DIR)..."
-AGENTS_DATA_DIR="$TEST_DATA_DIR" PORT="$PORT" npx tsx "$PROJECT_DIR/src/index.ts" &
+echo "Starting gateway server (port=$PORT)..."
+PORT="$PORT" npx tsx "$PROJECT_DIR/src/index.ts" &
 SERVER_PID=$!
 
 # Wait for server to be ready

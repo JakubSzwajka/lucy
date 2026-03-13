@@ -6,9 +6,8 @@ import { Hono } from "hono";
 const tasks = new Hono();
 
 tasks.get("/tasks", async (c) => {
-  const boardPath = path.resolve(process.cwd(), ".agents/tasks/board.json");
   try {
-    const raw = await readFile(boardPath, "utf-8");
+    const raw = await readFile(path.join(process.cwd(), ".agents/tasks/board.json"), "utf-8");
     const board = JSON.parse(raw);
     return c.json(board);
   } catch (err: unknown) {

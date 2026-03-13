@@ -22,8 +22,7 @@ Lucy is configured entirely via environment variables. Copy `.env.example` to `.
 | `PORT` | `3080` | Gateway HTTP port |
 | `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for pi-bridge ↔ gateway IPC |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
-| `AGENTS_DATA_DIR` | `~/.agents` | Persistent storage for memory extension |
-| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) |
+| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) — set to `.agents/pi` in Docker |
 
 ## Optional (enable features)
 

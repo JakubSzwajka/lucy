@@ -54,7 +54,7 @@ next-env.d.ts
 
 # Agent runtime data
 .agents-data/
-.data/
+
 
 # Lucy config (deprecated — now using env vars; kept for cleanup)
 lucy.config.json
@@ -79,3 +79,5 @@ storybook-static/
 .turbo/
 
 .agents/memory/
+.agents/pi/
+.data/

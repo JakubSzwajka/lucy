@@ -35,7 +35,6 @@ Configuration is env-driven. The main runtime contract is:
 | `PI_BRIDGE_SOCKET` | Unix socket path, default `/tmp/lucy-pi.sock` |
 | `CORS_ORIGIN` | CORS allowlist, default `*` |
 | `LUCY_API_KEY` | Protects `/api/chat*` when set |
-| `AGENTS_DATA_DIR` | Persistent data for memory and related state |
 | `TELEGRAM_BOT_TOKEN` | Enables Telegram webhook integration |
 | `TELEGRAM_CHAT_ID` | Optional single Telegram chat ID to allow |
 

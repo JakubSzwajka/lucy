@@ -44,6 +44,11 @@ help:
 ## up — start gateway + webui via docker-compose (dev mode)
 up:
 	$(check-env-KEY)
+	@mkdir -p .agents/pi
+	@if [ -f "$$HOME/.pi/agent/auth.json" ]; then \
+		cp "$$HOME/.pi/agent/auth.json" .agents/pi/auth.json; \
+		echo "Synced Pi auth to .agents/pi/auth.json"; \
+	fi
 	@echo "Starting all services..."
 	docker compose up --build
 	@echo ""
@@ -80,7 +85,6 @@ deploy:
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
 		PI_BRIDGE_MODEL=$$PI_BRIDGE_MODEL \
-		AGENTS_DATA_DIR=/data \
 		CORS_ORIGIN=$${CORS_ORIGIN:-*} \
 		$${LUCY_API_KEY:+LUCY_API_KEY=$$LUCY_API_KEY} \
 		PI_CODING_AGENT_DIR=/data/pi \
@@ -99,7 +103,6 @@ deploy-secrets:
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
 		PI_BRIDGE_MODEL=$$PI_BRIDGE_MODEL \
-		AGENTS_DATA_DIR=/data \
 		CORS_ORIGIN=$${CORS_ORIGIN:-*} \
 		$${LUCY_API_KEY:+LUCY_API_KEY=$$LUCY_API_KEY} \
 		PI_CODING_AGENT_DIR=/data/pi \

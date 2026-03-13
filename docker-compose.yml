@@ -12,19 +12,17 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - PI_BRIDGE_MODEL=${PI_BRIDGE_MODEL}
       - PI_BRIDGE_PROVIDER=${PI_BRIDGE_PROVIDER:-}
-      - PI_CODING_AGENT_DIR=/data/pi
+      - PI_CODING_AGENT_DIR=/app/.agents/pi
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - LUCY_API_KEY=${LUCY_API_KEY:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-      - AGENTS_DATA_DIR=/data
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
     volumes:
       - ./src:/app/src
       - ./docs:/app/docs
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./prompt.md:/app/prompt.md
-      - ./.data:/data
-      - ./.agents:/.agents
-      # Mount Pi auth for OAuth-based providers (Anthropic login)
-      - ${HOME}/.pi/agent/auth.json:/data/pi/auth.json:ro
+      - ./.agents:/app/.agents
+      # Pi auth: copy ~/.pi/agent/auth.json to .agents/pi/auth.json on host
+      # (picked up automatically via the .agents volume above)

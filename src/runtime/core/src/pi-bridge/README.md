@@ -17,7 +17,7 @@ Separate long-lived process that spawns the Pi SDK in RPC mode and exposes it ov
 | `PI_BRIDGE_SOCKET` | No | `/tmp/lucy-pi.sock` | Unix socket path |
 | `PI_BRIDGE_PROVIDER` | No | — | Provider override |
 | `PI_BRIDGE_PROMPT` | No | `prompt.md` | Path to file appended to Pi's system prompt |
-| `PI_CODING_AGENT_DIR` | No | `~/.pi/agent` | Pi SDK data dir (sessions, config) — native Pi env var |
+| `PI_CODING_AGENT_DIR` | No | `~/.pi/agent` | Pi SDK data dir (sessions, config) — set to `.agents/pi` in Docker |
 
 ## Responsibility Boundary
 
