@@ -1,19 +1,28 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import type { PromptContext, RequestSource } from "agents-runtime";
 
 import { getRuntime } from "../runtime.js";
 
 const chat = new Hono();
 
+/** Extract prompt context from the request body. */
+function extractContext(body: Record<string, unknown>): PromptContext {
+  const source = (body.source as RequestSource) ?? "browser";
+  const timezone = (body.timezone as string) ?? undefined;
+  return { source, timezone };
+}
+
 chat.post("/chat", async (c) => {
   const runtime = getRuntime();
-  const body = await c.req.json<{ message?: string }>();
+  const body = await c.req.json<{ message?: string; source?: RequestSource; timezone?: string }>();
 
   if (!body.message) {
     return c.json({ error: "message is required" }, 400);
   }
 
-  const result = await runtime.sendMessage(body.message);
+  const ctx = extractContext(body);
+  const result = await runtime.sendMessage(body.message, { context: ctx });
   return c.json(result);
 });
 
@@ -33,11 +42,13 @@ chat.get("/chat/history", async (c) => {
  */
 chat.post("/chat/stream", async (c) => {
   const runtime = getRuntime();
-  const body = await c.req.json<{ message?: string }>();
+  const body = await c.req.json<{ message?: string; source?: RequestSource; timezone?: string }>();
 
   if (!body.message) {
     return c.json({ error: "message is required" }, 400);
   }
+
+  const ctx = extractContext(body);
 
   return streamSSE(c, async (stream) => {
     const unsubscribe = runtime.subscribe(async (event) => {
@@ -48,7 +59,7 @@ chat.post("/chat/stream", async (c) => {
     });
 
     try {
-      await runtime.sendMessageStreaming(body.message!);
+      await runtime.sendMessageStreaming(body.message!, ctx);
     } catch (err) {
       await stream.writeSSE({
         event: "error",
