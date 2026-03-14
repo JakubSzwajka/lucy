@@ -31,7 +31,7 @@ export async function handleInboundMessage(
   const start = Date.now();
 
   try {
-    const result = await deps.runtime.sendMessage(text, { context: { source: "telegram" } });
+    const result = await deps.runtime.sendMessage(text);
     const chunks = splitMessage(result.response);
     for (const chunk of chunks) {
       await deps.client.sendMessage(chatId, chunk);

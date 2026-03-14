@@ -5,8 +5,6 @@ import type {
   StreamEvent,
 } from "../types.js";
 
-import { syncPrompt } from "./prompt-sync.js";
-import type { PromptContext } from "./prompt-context.js";
 import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.js";
 
 type StreamCallback = (event: StreamEvent) => void;
@@ -139,9 +137,8 @@ export class AgentRuntime {
    * Events are emitted via subscribe(). Returns a promise that resolves
    * when the agent finishes (agent_end).
    */
-  async sendMessageStreaming(message: string, ctx?: PromptContext): Promise<void> {
+  async sendMessageStreaming(message: string): Promise<void> {
     await this.ensureConnected();
-    if (ctx) await syncPrompt(ctx);
 
     return new Promise<void>((resolve, reject) => {
       const unsubscribe = this.client.subscribe((event: RpcEvent) => {
@@ -171,12 +168,11 @@ export class AgentRuntime {
 
   async sendMessage(
     message: string,
-    options: { modelId?: string; thinkingEnabled?: boolean; context: PromptContext },
+    options?: { modelId?: string; thinkingEnabled?: boolean },
   ): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }> {
     await this.ensureConnected();
-    await syncPrompt(options.context);
 
-    if (options.modelId || options.thinkingEnabled) {
+    if (options?.modelId || options?.thinkingEnabled) {
       console.warn("[runtime] per-request modelId/thinkingEnabled not yet supported over RPC, using session defaults");
     }
 
