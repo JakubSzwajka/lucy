@@ -8,13 +8,12 @@ services:
       - "${PORT:-3080}:${PORT:-3080}"
     environment:
       - NODE_ENV=development
-      - PORT=${PORT:-3080}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - PORT=${PORT:-3080}
       - PI_BRIDGE_MODEL=${PI_BRIDGE_MODEL}
       - PI_BRIDGE_PROVIDER=${PI_BRIDGE_PROVIDER:-}
       - PI_BRIDGE_PROMPT=${PI_BRIDGE_PROMPT:-PROMPT.md}
-      - PI_CODING_AGENT_DIR=/app/.agents/pi
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - PI_CODING_AGENT_DIR=/app/.pi
       - LUCY_API_KEY=${LUCY_API_KEY:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
@@ -25,5 +24,6 @@ services:
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./PROMPT.md:/app/PROMPT.md
       - ./.agents:/app/.agents
+      - ./.pi:/app/.pi
       # Pi auth: copy ~/.pi/agent/auth.json to .agents/pi/auth.json on host
       # (picked up automatically via the .agents volume above)

@@ -79,10 +79,12 @@ storybook-static/
 .turbo/
 
 # Agent data — track extensions & skills, ignore private/runtime data
-.agents/pi/sessions/
-.agents/pi/auth.json
+.pi/sessions/
+.pi/auth.json
 .agents/memory/
 .agents/tasks/
 .agents/skills/*/node_modules/
 
 .data/
+
+research/
