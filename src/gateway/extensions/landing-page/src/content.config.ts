@@ -30,6 +30,7 @@ const docs = defineCollection({
       "src/**/README.md",
       "docs/pages/**/*.md",
       "docs/decisions/README.md",
+      "!**/node_modules/**",
     ],
     base: root,
     generateId: ({ entry }) => {
