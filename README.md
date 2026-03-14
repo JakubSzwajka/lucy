@@ -25,18 +25,42 @@ npm run dev
 
 ## Configuration
 
-Configuration is env-driven. The main runtime contract is:
+Configuration is env-driven. Copy `.env.example` to `.env` and fill in required values.
+
+**Required:**
 
 | Env var | Purpose |
 |---------|---------|
-| `PI_BRIDGE_MODEL` | Required model id for the Pi bridge |
-| `OPENROUTER_API_KEY` | Provider auth for the bridge runtime |
-| `PORT` | Gateway port, default `3080` |
-| `PI_BRIDGE_SOCKET` | Unix socket path, default `/tmp/lucy-pi.sock` |
-| `CORS_ORIGIN` | CORS allowlist, default `*` |
-| `LUCY_API_KEY` | Protects `/api/chat*` when set |
+| `OPENROUTER_API_KEY` | OpenRouter API key for LLM calls |
+| `PI_BRIDGE_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
+
+**Optional (have defaults):**
+
+| Env var | Default | Purpose |
+|---------|---------|---------|
+| `PORT` | `3080` | Gateway HTTP port |
+| `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for bridge ↔ gateway IPC |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory — set to `.agents/pi` in Docker |
+
+**Optional (enable features):**
+
+| Env var | Purpose |
+|---------|---------|
+| `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
+| `PI_BRIDGE_PROVIDER` | Pi SDK provider override (e.g. `anthropic`) |
+| `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
 | `TELEGRAM_BOT_TOKEN` | Enables Telegram webhook integration |
-| `TELEGRAM_CHAT_ID` | Optional single Telegram chat ID to allow |
+| `TELEGRAM_CHAT_ID` | Single Telegram chat ID to allow |
+
+## Docker
+
+```bash
+make up        # docker compose with hot reload
+make down      # stop containers
+```
+
+All persistent data lives under `.agents/` — mounted at `/app/.agents` in Docker. Pi SDK sessions and auth go to `.agents/pi/`. The `make up` target auto-syncs `~/.pi/agent/auth.json` into `.agents/pi/` for OAuth providers.
 
 ## Read Next
 

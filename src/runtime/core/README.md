@@ -49,7 +49,7 @@ Pi auto-compacts when context nears the model's limit. For Sonnet 4 (200k contex
 
 ```bash
 # Last assistant message's actual context size (input + cache)
-tail -20 .data/pi/sessions/--app--/*.jsonl | \
+tail -20 .agents/pi/sessions/--app--/*.jsonl | \
   jq -r 'select(.message.role=="assistant") | .message.usage | "\(.input + .cacheRead) tokens in context"' | tail -1
 ```
 

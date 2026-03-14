@@ -41,7 +41,7 @@ services:
   gateway:
     volumes:
       - ./prompt.md:/app/prompt.md:ro    # ← explicit, separate from data
-      - ~/.agents-data:/data
+      - ./.agents:/app/.agents
 ```
 
 ## Key Cases

@@ -78,6 +78,5 @@ storybook-static/
 # Turbo
 .turbo/
 
-.agents/memory/
-.agents/pi/
+.agents/
 .data/

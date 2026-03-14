@@ -103,6 +103,9 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
 | `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
 | `TELEGRAM_BOT_TOKEN` | Enables Telegram integration (also needs `TELEGRAM_CHAT_ID`) |
+| `TELEGRAM_CHAT_ID` | Single Telegram chat ID to allow |
+
+**Data directory:** All persistent data lives under `.agents/` — Pi SDK sessions in `.agents/pi/`, agent memory in `.agents/memory/`, task board in `.agents/tasks/`. In Docker this is mounted at `/app/.agents`.
 
 ## TypeScript
 

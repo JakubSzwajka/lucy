@@ -18,8 +18,10 @@ Start the gateway process with `npm run dev:gateway` or `npm run dev`. On boot i
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/chat` | API key | Send a message, get response |
+| `POST` | `/api/chat/stream` | API key | Send a message, stream SSE events |
 | `GET` | `/api/chat/history` | API key | Conversation history |
-| `GET` | `/api/models` | None | Available bridge models |
+| `GET` | `/api/session` | API key | Session info (model, tokens, cost) |
+| `GET` | `/api/tasks` | API key | Task board |
 | `GET` | `/api/health` | None | Liveness check |
 
 ## Configuration
@@ -43,7 +45,7 @@ Owns HTTP routing, auth middleware, CORS, and extension initialization. Delegate
 ## Operational Constraints
 
 - Requires the runtime bridge to be reachable during boot
-- Protects only `/api/chat` and `/api/chat/*` with API-key auth
+- Protects `/api/chat*`, `/api/session`, and `/api/tasks` with API-key auth
 - Static extensions silently skip registration when their build output is missing
 
 ## Read Next
