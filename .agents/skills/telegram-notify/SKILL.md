@@ -6,7 +6,7 @@ version: 1.0.0
 
 # Telegram Notify — Message Delivery
 
-Send messages directly to Kuba's Telegram when you need to notify him of something important.
+The primary channel to reach [[kuba]] asynchronously. Use when direct conversation isn't active but something is worth sharing — an insight, a pattern, a question that shouldn't wait.
 
 ## When to Use
 

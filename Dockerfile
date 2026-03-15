@@ -37,8 +37,6 @@ COPY src/ src/
 COPY --from=build /app/src/gateway/extensions/landing-page/dist/ src/gateway/extensions/landing-page/dist/
 COPY --from=build /app/src/gateway/extensions/webui/dist/ src/gateway/extensions/webui/dist/
 
-# Prompt file (optional)
-COPY prompt.m[d] ./
 
 # Entrypoint script
 COPY entrypoint.sh ./

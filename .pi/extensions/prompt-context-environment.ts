@@ -26,6 +26,7 @@ function buildContext(): string {
 export default function (pi: ExtensionAPI) {
   pi.on("before_agent_start", async (event) => {
     const context = buildContext();
+    console.log("==> System Prompt from env extension", event.systemPrompt);
     return {
       systemPrompt: event.systemPrompt + "\n\n" + context,
     };

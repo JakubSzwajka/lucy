@@ -13,7 +13,7 @@ services:
       - PI_BRIDGE_MODEL=${PI_BRIDGE_MODEL}
       - PI_BRIDGE_PROVIDER=${PI_BRIDGE_PROVIDER:-}
       - PI_BRIDGE_PROMPT=${PI_BRIDGE_PROMPT:-PROMPT.md}
-      - PI_CODING_AGENT_DIR=/app/.pi
+      - PI_CODING_AGENT_DIR=/root/.pi
       - LUCY_API_KEY=${LUCY_API_KEY:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
@@ -23,7 +23,5 @@ services:
       - ./docs:/app/docs
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./PROMPT.md:/app/PROMPT.md
-      - ./.agents:/app/.agents
-      - ./.pi:/app/.pi
-      # Pi auth: copy ~/.pi/agent/auth.json to .agents/pi/auth.json on host
-      # (picked up automatically via the .agents volume above)
+      - ./.agents:/root/.agents
+      - ./.pi:/root/.pi

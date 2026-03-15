@@ -44,11 +44,6 @@ help:
 ## up — start gateway + webui via docker-compose (dev mode)
 up:
 	$(check-env-KEY)
-	@mkdir -p .agents/pi
-	@if [ -f "$$HOME/.pi/agent/auth.json" ]; then \
-		cp "$$HOME/.pi/agent/auth.json" .agents/pi/auth.json; \
-		echo "Synced Pi auth to .agents/pi/auth.json"; \
-	fi
 	@echo "Starting all services..."
 	docker compose up --build
 	@echo ""

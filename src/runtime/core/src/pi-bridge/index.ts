@@ -32,7 +32,8 @@ function buildPiArgs(): string[] {
   }
 
   // Append prompt.md as system prompt if it exists
-  const promptPath = resolve(process.env.PI_BRIDGE_PROMPT ?? "prompt.md");
+  const promptPath = resolve(process.env.PI_BRIDGE_PROMPT ?? "PROMPT.md");
+  console.log("==> promptPath", promptPath);
   if (existsSync(promptPath)) {
     args.push("--append-system-prompt", promptPath);
     log(`using prompt file: ${promptPath}`);
