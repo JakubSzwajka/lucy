@@ -7,7 +7,7 @@ order: 1
 
 # agents-runtime
 
-RPC client wrapping the Pi SDK agent via the [pi-bridge](./src/pi-bridge/README.md) Unix socket.
+In-process Pi SDK adapter. Creates an agent session via `@mariozechner/pi-coding-agent`, normalizes Pi SDK events to Lucy's `StreamEvent` types, and exposes the `AgentRuntime` public API.
 
 ## Public API
 
@@ -19,13 +19,13 @@ Types: `ModelConfig`, `HistoryEntry`, `SessionInfo`, `StreamEvent`.
 
 ## Activation
 
-Construct `AgentRuntime`, call `init()`, then send requests over the bridge socket. The gateway owns process startup and shutdown.
+Construct `AgentRuntime`, call `init()`, then send messages. The gateway owns process startup and shutdown.
 
 ## Use It Like This
 
 ```ts
 const runtime = new AgentRuntime();
-await runtime.init(); // connects to pi-bridge socket
+await runtime.init(); // creates in-process Pi session
 const { response } = await runtime.sendMessage("Hello");
 ```
 
@@ -37,21 +37,18 @@ The base `PROMPT.md` stays static. The TASKS section is managed separately by th
 
 ## Configuration
 
-`AgentRuntime` is configured entirely via environment variables (see `.env.example`). The socket path defaults to `/tmp/lucy-pi.sock` and can be overridden with `PI_BRIDGE_SOCKET`.
+`AgentRuntime` is configured entirely via environment variables (see `.env.example`). Key variables:
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for bridge ↔ gateway IPC |
+| `PI_MODEL` | *(required)* | Model identifier in `provider/modelId` format |
+| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) |
+| `PI_PROMPT` | `PROMPT.md` | Path to system prompt file |
 
 ## Responsibility Boundary
 
-- **Owns**: RPC connection to pi-bridge, message/history translation
-- **Delegates**: agent execution to Pi SDK (in pi-bridge process), HTTP transport to gateway, prompt context injection to Pi extension
-
-## Operational Constraints
-
-- Requires a running pi-bridge process on `PI_BRIDGE_SOCKET`
-- Per-request `modelId` and `thinkingEnabled` are accepted but currently ignored with a warning
+- **Owns**: Pi SDK session lifecycle, event normalization to StreamEvent types
+- **Delegates**: agent execution to Pi SDK (in-process), HTTP transport to gateway, prompt context injection to Pi extension
 
 ## Context & Compaction
 
@@ -62,14 +59,12 @@ tail -20 .agents/pi/sessions/--app--/*.jsonl | \
   jq -r 'select(.message.role=="assistant") | .message.usage | "\(.input + .cacheRead) tokens in context"' | tail -1
 ```
 
-Note: `get_session_stats` RPC returns **cumulative** token totals across the whole session, not current context size. The actual context size is the `input + cacheRead` from the most recent assistant message.
+Note: `getSessionStats()` returns **cumulative** token totals across the whole session, not current context size. The actual context size is the `input + cacheRead` from the most recent assistant message.
 
 ## Known Limitations
 
-- Reconnect logic only restores bridge connectivity; it does not recreate bridge state
 - History translation only emits user and assistant messages
 
 ## Read Next
 
-- [pi-bridge](./src/pi-bridge/README.md) — separate process that spawns and manages the Pi SDK
 - [gateway/core](../../gateway/core/README.md) — HTTP gateway that wraps this runtime

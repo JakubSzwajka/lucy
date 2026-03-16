@@ -16,9 +16,9 @@ PORT        := 3080
 check-env-KEY = @test -n "$$OPENROUTER_API_KEY" || \
 	(echo "ERROR: OPENROUTER_API_KEY is not set. Export it or add to .env" && exit 1)
 
-# Fail if PI_BRIDGE_MODEL is not set
-check-env-MODEL = @test -n "$$PI_BRIDGE_MODEL" || \
-	(echo "ERROR: PI_BRIDGE_MODEL is not set. Export it or add to .env" && exit 1)
+# Fail if PI_MODEL is not set
+check-env-MODEL = @test -n "$$PI_MODEL" || \
+	(echo "ERROR: PI_MODEL is not set. Export it or add to .env" && exit 1)
 
 # Fail if a required CLI tool is missing
 # Usage: $(call require-cmd,<binary>,<install hint>)
@@ -41,7 +41,7 @@ help:
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/^## /  /'
 	@echo ""
 
-## up — start gateway + webui via docker-compose (dev mode)
+## up — start gateway via docker-compose (dev mode)
 up:
 	$(check-env-KEY)
 	@echo "Starting all services..."
@@ -60,18 +60,18 @@ docker-build:
 	@echo "Building $(IMAGE)..."
 	docker build -t $(IMAGE) .
 
-## docker-run — run lucy-gateway locally (requires OPENROUTER_API_KEY + PI_BRIDGE_MODEL)
+## docker-run — run lucy-gateway locally (requires OPENROUTER_API_KEY + PI_MODEL)
 docker-run:
 	$(check-env-KEY)
 	$(check-env-MODEL)
 	@echo "Running $(IMAGE) on port $(PORT)..."
 	docker run --rm -p $(PORT):$(PORT) \
 		-e OPENROUTER_API_KEY \
-		-e PI_BRIDGE_MODEL \
+		-e PI_MODEL \
 		-e PORT=$(PORT) \
 		$(IMAGE)
 
-## deploy — set secrets and deploy to Railway (requires railway CLI + OPENROUTER_API_KEY + PI_BRIDGE_MODEL)
+## deploy — set secrets and deploy to Railway (requires railway CLI + OPENROUTER_API_KEY + PI_MODEL)
 deploy:
 	$(call require-cmd,railway,https://docs.railway.app/guides/cli)
 	$(check-env-KEY)
@@ -79,11 +79,10 @@ deploy:
 	@echo "Setting Railway variables..."
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
-		PI_BRIDGE_MODEL=$$PI_BRIDGE_MODEL \
+		PI_MODEL=$$PI_MODEL \
 		CORS_ORIGIN=$${CORS_ORIGIN:-*} \
 		$${LUCY_API_KEY:+LUCY_API_KEY=$$LUCY_API_KEY} \
 		PI_CODING_AGENT_DIR=/data/pi \
-		$${PI_BRIDGE_PROVIDER:+PI_BRIDGE_PROVIDER=$$PI_BRIDGE_PROVIDER} \
 		$${TELEGRAM_BOT_TOKEN:+TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN} \
 		$${TELEGRAM_CHAT_ID:+TELEGRAM_CHAT_ID=$$TELEGRAM_CHAT_ID}
 	@echo "Deploying to Railway..."
@@ -97,11 +96,10 @@ deploy-secrets:
 	@echo "Setting Railway variables..."
 	railway variables set \
 		OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
-		PI_BRIDGE_MODEL=$$PI_BRIDGE_MODEL \
+		PI_MODEL=$$PI_MODEL \
 		CORS_ORIGIN=$${CORS_ORIGIN:-*} \
 		$${LUCY_API_KEY:+LUCY_API_KEY=$$LUCY_API_KEY} \
 		PI_CODING_AGENT_DIR=/data/pi \
-		$${PI_BRIDGE_PROVIDER:+PI_BRIDGE_PROVIDER=$$PI_BRIDGE_PROVIDER} \
 		$${TELEGRAM_BOT_TOKEN:+TELEGRAM_BOT_TOKEN=$$TELEGRAM_BOT_TOKEN} \
 		$${TELEGRAM_CHAT_ID:+TELEGRAM_CHAT_ID=$$TELEGRAM_CHAT_ID}
 	@echo "Variables set."

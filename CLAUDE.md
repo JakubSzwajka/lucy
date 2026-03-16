@@ -14,8 +14,9 @@ Lucy is a **single-package** agent infrastructure project. All source code lives
 │                                                         │
 │  ┌──────────────┐      ┌───────────────────────────┐    │
 │  │  core        │ ◄─── │  extensions/memory        │    │
-│  │  (agent loop)│      │  (observe/extract/synth)  │    │
-│  └──────┬───────┘      └───────────────────────────┘    │
+│  │  (Pi SDK     │      │  (observe/extract/synth)  │    │
+│  │   in-process)│      └───────────────────────────┘    │
+│  └──────┬───────┘                                       │
 │         │                                               │
 └─────────┼───────────────────────────────────────────────┘
           │
@@ -31,6 +32,8 @@ Lucy is a **single-package** agent infrastructure project. All source code lives
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
+
+Runtime core embeds the Pi SDK directly (no subprocess or socket). The agent's evolvable behavior surface lives in `.pi/extensions/` (hot-reloadable by Pi SDK).
 
 Cross-module imports use tsconfig `paths` (e.g. `"agents-runtime"` maps to `src/runtime/core/src/index.ts`). No npm workspaces — one flat dependency tree. Extensions are direct imports in `src/gateway/core/src/index.ts` — no plugin loader or manifest system.
 
@@ -84,14 +87,13 @@ All configuration is via environment variables. See `.env.example` for the full 
 | Variable | Purpose |
 |----------|---------|
 | `OPENROUTER_API_KEY` | LLM provider key for Pi SDK |
-| `PI_BRIDGE_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
+| `PI_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
 
 **Optional (have sensible defaults):**
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `3080` | Gateway HTTP port |
-| `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for bridge ↔ gateway IPC |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) — set to `.agents/pi` in Docker |
 
@@ -100,8 +102,7 @@ All configuration is via environment variables. See `.env.example` for the full 
 | Variable | Purpose |
 |----------|---------|
 | `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
-| `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
-| `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
+| `PI_PROMPT` | Path to system prompt file (default: `PROMPT.md`) |
 | `TELEGRAM_BOT_TOKEN` | Enables Telegram integration (also needs `TELEGRAM_CHAT_ID`) |
 | `TELEGRAM_CHAT_ID` | Single Telegram chat ID to allow |
 

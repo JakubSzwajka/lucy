@@ -3,16 +3,15 @@ services:
     build:
       context: .
       target: deps
-    command: sh -c "npm run build && npx -y concurrently -n bridge,gateway -c blue,green 'npx tsx src/runtime/core/src/pi-bridge/index.ts' 'npx -y nodemon --legacy-watch --watch src/gateway --ext ts,json --exec npx\\ tsx\\ src/gateway/core/src/index.ts'"
+    command: sh -c "npm run build && npx -y nodemon --legacy-watch --watch src --ext ts,json --exec npx\\ tsx\\ src/gateway/core/src/index.ts"
     ports:
       - "${PORT:-3080}:${PORT:-3080}"
     environment:
       - NODE_ENV=development
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - PORT=${PORT:-3080}
-      - PI_BRIDGE_MODEL=${PI_BRIDGE_MODEL}
-      - PI_BRIDGE_PROVIDER=${PI_BRIDGE_PROVIDER:-}
-      - PI_BRIDGE_PROMPT=${PI_BRIDGE_PROMPT:-PROMPT.md}
+      - PI_MODEL=${PI_MODEL}
+      - PI_PROMPT=${PI_PROMPT:-PROMPT.md}
       - PI_CODING_AGENT_DIR=/root/.pi
       - LUCY_API_KEY=${LUCY_API_KEY:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}

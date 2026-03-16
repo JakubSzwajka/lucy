@@ -6,7 +6,7 @@ Single-package agent infrastructure app. Runtime and gateway code live under `sr
 
 | Area | Purpose |
 |------|---------|
-| [`src/runtime/core/README.md`](./src/runtime/core/README.md) | RPC client for the Pi bridge |
+| [`src/runtime/core/README.md`](./src/runtime/core/README.md) | Pi SDK adapter (in-process agent session) |
 | [`src/runtime/extensions/memory/README.md`](./src/runtime/extensions/memory/README.md) | Pi memory extension |
 | [`src/gateway/core/README.md`](./src/gateway/core/README.md) | Hono HTTP gateway |
 | [`src/gateway/extensions/webui/README.md`](./src/gateway/extensions/webui/README.md) | React chat UI mounted by the gateway |
@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts both the Pi bridge and the HTTP gateway. Build static gateway assets with `npm run build`.
+`npm run dev` starts the gateway with Pi SDK embedded in-process. Build static gateway assets with `npm run build`.
 
 ## Configuration
 
@@ -32,14 +32,13 @@ Configuration is env-driven. Copy `.env.example` to `.env` and fill in required 
 | Env var | Purpose |
 |---------|---------|
 | `OPENROUTER_API_KEY` | OpenRouter API key for LLM calls |
-| `PI_BRIDGE_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
+| `PI_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
 
 **Optional (have defaults):**
 
 | Env var | Default | Purpose |
 |---------|---------|---------|
 | `PORT` | `3080` | Gateway HTTP port |
-| `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for bridge ↔ gateway IPC |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory — set to `.agents/pi` in Docker |
 
@@ -48,8 +47,7 @@ Configuration is env-driven. Copy `.env.example` to `.env` and fill in required 
 | Env var | Purpose |
 |---------|---------|
 | `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
-| `PI_BRIDGE_PROVIDER` | Pi SDK provider override (e.g. `anthropic`) |
-| `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
+| `PI_PROMPT` | Path to system prompt file (default: `PROMPT.md`) |
 | `TELEGRAM_BOT_TOKEN` | Enables Telegram webhook integration |
 | `TELEGRAM_CHAT_ID` | Single Telegram chat ID to allow |
 

@@ -13,14 +13,13 @@ Lucy is configured entirely via environment variables. Copy `.env.example` to `.
 | Variable | Purpose |
 |----------|---------|
 | `OPENROUTER_API_KEY` | OpenRouter API key for LLM calls (Pi SDK) |
-| `PI_BRIDGE_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
+| `PI_MODEL` | Model identifier (e.g. `openrouter/anthropic/claude-sonnet-4`) |
 
 ## Optional (have defaults)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `3080` | Gateway HTTP port |
-| `PI_BRIDGE_SOCKET` | `/tmp/lucy-pi.sock` | Unix socket for pi-bridge ↔ gateway IPC |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Pi SDK data directory (sessions, config) — set to `.agents/pi` in Docker |
 
@@ -29,8 +28,7 @@ Lucy is configured entirely via environment variables. Copy `.env.example` to `.
 | Variable | Purpose |
 |----------|---------|
 | `LUCY_API_KEY` | Protects `/api/*` routes with Bearer token auth |
-| `PI_BRIDGE_PROVIDER` | Pi SDK provider override |
-| `PI_BRIDGE_PROMPT` | Path to system prompt file (default: `prompt.md`) |
+| `PI_PROMPT` | Path to system prompt file (default: `PROMPT.md`) |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token (also needs `TELEGRAM_CHAT_ID`) |
 | `TELEGRAM_CHAT_ID` | Single Telegram chat ID to allow |
 
@@ -63,7 +61,7 @@ Docker Compose forwards all env vars from `.env`. Key overrides inside the conta
 | Variable | Container value | Why |
 |----------|----------------|-----|
 | `PI_CODING_AGENT_DIR` | `/app/.agents/pi` | Routes Pi data into the mounted volume |
-| `PI_BRIDGE_PROMPT` | `prompt.md` | Resolved relative to `/app` (WORKDIR) |
+| `PI_PROMPT` | `prompt.md` | Resolved relative to `/app` (WORKDIR) |
 
 ## Railway Deployment
 

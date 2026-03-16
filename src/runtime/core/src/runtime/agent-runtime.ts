@@ -1,11 +1,23 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+import {
+  createAgentSession,
+  DefaultResourceLoader,
+  SessionManager,
+  type AgentSession,
+  type AgentSessionEvent,
+  type SessionStats,
+} from "@mariozechner/pi-coding-agent";
+import { getModel } from "@mariozechner/pi-ai";
+import type { AssistantMessage, AssistantMessageEvent, Api, Model, ToolResultMessage } from "@mariozechner/pi-ai";
+
 import type {
   HistoryEntry,
   ModelConfig,
   SessionInfo,
   StreamEvent,
 } from "../types.js";
-
-import { SocketClient, type RpcEvent, type RpcResponse } from "./socket-client.js";
 
 type StreamCallback = (event: StreamEvent) => void;
 
@@ -14,43 +26,52 @@ type StreamCallback = (event: StreamEvent) => void;
 // ---------------------------------------------------------------------------
 
 export class AgentRuntime {
-  private client: SocketClient;
-  private sessionId: string | null = null;
-
-  constructor() {
-    this.client = new SocketClient();
-  }
+  private session: AgentSession | null = null;
 
   async init(): Promise<void> {
-    await this.client.connect();
-
-    // Verify bridge is alive and cache session id
-    const resp = await this.client.request({ type: "get_state" });
-    if (!resp.success) {
-      throw new Error(`[runtime] pi-bridge get_state failed: ${resp.error ?? "unknown error"}`);
+    const modelStr = process.env.PI_MODEL;
+    if (!modelStr) {
+      throw new Error("[runtime] PI_MODEL is required but not set");
     }
 
-    const data = resp.data as Record<string, unknown> | undefined;
-    this.sessionId = (data?.sessionId as string) ?? "unknown";
-    console.log(`[runtime] connected to pi-bridge, session ${this.sessionId}`);
-  }
-
-  private async ensureConnected(): Promise<void> {
-    if (!this.client.isConnected) {
-      console.log("[runtime] reconnecting to pi-bridge...");
-      await this.client.connect();
-      // Re-cache session info after reconnect
-      const resp = await this.client.request({ type: "get_state" });
-      if (resp.success) {
-        const data = resp.data as Record<string, unknown> | undefined;
-        this.sessionId = (data?.sessionId as string) ?? this.sessionId;
-      }
+    const slashIdx = modelStr.indexOf("/");
+    if (slashIdx === -1) {
+      throw new Error(`[runtime] PI_MODEL must be in "provider/modelId" format, got: ${modelStr}`);
     }
+    const provider = modelStr.slice(0, slashIdx);
+    const modelId = modelStr.slice(slashIdx + 1);
+
+    // getModel is typed for KnownProvider; cast needed for dynamic provider strings
+    const model = (getModel as (p: string, m: string) => Model<Api>)(provider, modelId);
+
+    const agentDir = process.env.PI_CODING_AGENT_DIR ?? undefined;
+    const promptPath = resolve(process.env.PI_PROMPT ?? "PROMPT.md");
+
+    const loader = new DefaultResourceLoader({
+      cwd: process.cwd(),
+      agentDir,
+      appendSystemPrompt: existsSync(promptPath)
+        ? readFileSync(promptPath, "utf-8")
+        : undefined,
+    });
+    await loader.reload();
+
+    const sessionManager = SessionManager.continueRecent(process.cwd());
+
+    const { session } = await createAgentSession({
+      model,
+      resourceLoader: loader,
+      sessionManager,
+      agentDir,
+    });
+
+    this.session = session;
+    console.log(`[runtime] session ${session.sessionId} created`);
   }
 
   async destroy(): Promise<void> {
-    this.client.disconnect();
-    this.sessionId = null;
+    this.session?.dispose();
+    this.session = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -79,9 +100,9 @@ export class AgentRuntime {
   }
 
   /**
-   * Translate a raw pi-bridge RPC event into normalized StreamEvents.
+   * Translate a Pi SDK session event into normalized StreamEvents.
    */
-  private handleBridgeEvent(event: RpcEvent): void {
+  private handleSessionEvent(event: AgentSessionEvent): void {
     switch (event.type) {
       case "agent_start":
         this.emitStream({ type: "agent_start" });
@@ -92,12 +113,11 @@ export class AgentRuntime {
         break;
 
       case "message_update": {
-        const ame = event.assistantMessageEvent as Record<string, unknown> | undefined;
-        if (!ame) break;
+        const ame: AssistantMessageEvent = event.assistantMessageEvent;
         if (ame.type === "text_delta") {
-          this.emitStream({ type: "text_delta", delta: ame.delta as string });
+          this.emitStream({ type: "text_delta", delta: ame.delta });
         } else if (ame.type === "thinking_delta") {
-          this.emitStream({ type: "thinking_delta", delta: ame.delta as string });
+          this.emitStream({ type: "thinking_delta", delta: ame.delta });
         }
         break;
       }
@@ -106,25 +126,25 @@ export class AgentRuntime {
         const args = (event.args as Record<string, unknown>) ?? {};
         this.emitStream({
           type: "tool_start",
-          toolCallId: event.toolCallId as string,
-          toolName: event.toolName as string,
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
           args,
         });
         break;
       }
 
       case "tool_execution_end": {
-        const result = event.result as Record<string, unknown> | undefined;
-        const content = (result?.content as Array<Record<string, unknown>>) ?? [];
+        const result = event.result as { content?: Array<{ type: string; text?: string }> } | undefined;
+        const content = result?.content ?? [];
         const outputText = content
           .filter((c) => c.type === "text")
-          .map((c) => c.text as string)
+          .map((c) => c.text ?? "")
           .join("\n");
         this.emitStream({
           type: "tool_end",
-          toolCallId: event.toolCallId as string,
-          toolName: event.toolName as string,
-          isError: (event.isError as boolean) ?? false,
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          isError: event.isError,
           output: outputText,
         });
         break;
@@ -133,95 +153,70 @@ export class AgentRuntime {
   }
 
   /**
-   * Send a message and return immediately after the prompt is accepted.
-   * Events are emitted via subscribe(). Returns a promise that resolves
-   * when the agent finishes (agent_end).
+   * Send a message and stream events via subscribe(). Returns a promise
+   * that resolves when the agent finishes (agent_end).
    */
   async sendMessageStreaming(message: string): Promise<void> {
-    await this.ensureConnected();
+    if (!this.session) throw new Error("[runtime] not initialized");
 
-    return new Promise<void>((resolve, reject) => {
-      const unsubscribe = this.client.subscribe((event: RpcEvent) => {
-        this.handleBridgeEvent(event);
-
-        if (event.type === "agent_end") {
-          unsubscribe();
-          resolve();
-        }
-      });
-
-      this.client.request({ type: "prompt", message }).then((ack: RpcResponse) => {
-        if (!ack.success) {
-          unsubscribe();
-          reject(new Error(`[runtime] prompt rejected: ${ack.error ?? "unknown error"}`));
-        }
-      }).catch((err) => {
-        unsubscribe();
-        reject(err);
-      });
+    const unsubscribe = this.session.subscribe((event: AgentSessionEvent) => {
+      this.handleSessionEvent(event);
     });
+
+    try {
+      await this.session.prompt(message);
+    } finally {
+      unsubscribe();
+    }
   }
 
   // ---------------------------------------------------------------------------
-  // Legacy non-streaming sendMessage (kept for Telegram etc.)
+  // Non-streaming sendMessage (kept for Telegram etc.)
   // ---------------------------------------------------------------------------
 
   async sendMessage(
     message: string,
     options?: { modelId?: string; thinkingEnabled?: boolean },
   ): Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }> {
-    await this.ensureConnected();
+    if (!this.session) throw new Error("[runtime] not initialized");
 
     if (options?.modelId || options?.thinkingEnabled) {
-      console.warn("[runtime] per-request modelId/thinkingEnabled not yet supported over RPC, using session defaults");
+      console.warn("[runtime] per-request modelId/thinkingEnabled not yet supported, using session defaults");
     }
 
     let responseText = "";
     let reachedMaxTurns = false;
 
-    return new Promise<{ response: string; agentId: string; reachedMaxTurns: boolean }>(
-      (resolve, reject) => {
-        // Subscribe to streaming events before sending the command
-        const unsubscribe = this.client.subscribe((event: RpcEvent) => {
-          if (
-            event.type === "message_update" &&
-            event.assistantMessageEvent &&
-            typeof event.assistantMessageEvent === "object" &&
-            (event.assistantMessageEvent as Record<string, unknown>).type === "text_delta"
-          ) {
-            responseText += (event.assistantMessageEvent as Record<string, unknown>).delta as string;
-          }
+    const unsubscribe = this.session.subscribe((event: AgentSessionEvent) => {
+      if (
+        event.type === "message_update" &&
+        event.assistantMessageEvent.type === "text_delta"
+      ) {
+        responseText += event.assistantMessageEvent.delta;
+      }
 
-          if (event.type === "agent_end") {
-            const msgs = event.messages as Array<Record<string, unknown>> | undefined;
-            if (msgs && msgs.length > 0) {
-              const last = msgs[msgs.length - 1];
-              if (last.role === "assistant" && last.stopReason === "length") {
-                reachedMaxTurns = true;
-              }
-            }
-            unsubscribe();
-            resolve({
-              response: responseText,
-              agentId: this.sessionId ?? "unknown",
-              reachedMaxTurns,
-            });
+      if (event.type === "agent_end") {
+        const msgs = event.messages;
+        if (msgs.length > 0) {
+          const last = msgs[msgs.length - 1];
+          if (last.role === "assistant" && (last as AssistantMessage).stopReason === "length") {
+            reachedMaxTurns = true;
           }
-        });
+        }
+      }
+    });
 
-        // Send the prompt command — the response is just an ack
-        this.client.request({ type: "prompt", message }).then((ack: RpcResponse) => {
-          if (!ack.success) {
-            unsubscribe();
-            reject(new Error(`[runtime] prompt rejected: ${ack.error ?? "unknown error"}`));
-          }
-          // Ack received — streaming events will follow
-        }).catch((err) => {
-          unsubscribe();
-          reject(err);
-        });
-      },
-    );
+    try {
+      await this.session.prompt(message);
+    } finally {
+      unsubscribe();
+    }
+
+    return {
+      response: responseText,
+      agentId: this.session.sessionId,
+      reachedMaxTurns,
+    };
   }
 
   async getHistory({
@@ -229,30 +224,24 @@ export class AgentRuntime {
   }: {
     hideToolCalls?: boolean;
   }): Promise<{ items: HistoryEntry[]; compactionSummary: string | null }> {
-    await this.ensureConnected();
+    if (!this.session) throw new Error("[runtime] not initialized");
 
-    const resp = await this.client.request({ type: "get_messages" });
-    if (!resp.success) {
-      throw new Error(`[runtime] get_messages failed: ${resp.error ?? "unknown error"}`);
-    }
-
-    const data = resp.data as { messages: Array<Record<string, unknown>> } | undefined;
-    const messages = data?.messages ?? [];
+    const messages = this.session.messages;
     const items: HistoryEntry[] = [];
     let sequence = 0;
-    const agentId = this.sessionId ?? "unknown";
+    const agentId = this.session.sessionId;
 
-    // Build a map of toolCallId → toolResult for pairing
-    const toolResultsByCallId = new Map<string, Record<string, unknown>>();
+    // Build a map of toolCallId -> toolResult for pairing
+    const toolResultsByCallId = new Map<string, ToolResultMessage>();
     for (const m of messages) {
       if (m.role === "toolResult") {
-        toolResultsByCallId.set(m.toolCallId as string, m);
+        toolResultsByCallId.set((m as ToolResultMessage).toolCallId, m as ToolResultMessage);
       }
     }
 
     for (const m of messages) {
       const timestamp = new Date(
-        typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+        "timestamp" in m && typeof m.timestamp === "number" ? m.timestamp : Date.now(),
       );
 
       // --- User messages ---
@@ -261,9 +250,9 @@ export class AgentRuntime {
         if (typeof m.content === "string") {
           textContent = m.content;
         } else if (Array.isArray(m.content)) {
-          for (const block of m.content as Array<Record<string, unknown>>) {
-            if (block.type === "text") {
-              textContent += block.text as string;
+          for (const block of m.content) {
+            if ("type" in block && block.type === "text" && "text" in block) {
+              textContent += (block as { text: string }).text;
             }
           }
         }
@@ -283,22 +272,17 @@ export class AgentRuntime {
 
       // --- Assistant messages ---
       if (m.role === "assistant") {
+        const am = m as AssistantMessage;
         let textContent = "";
-        const contentBlocks = Array.isArray(m.content) ? m.content as Array<Record<string, unknown>> : [];
-
-        if (typeof m.content === "string") {
-          textContent = m.content;
-        }
+        const contentBlocks = Array.isArray(am.content) ? am.content : [];
 
         for (const block of contentBlocks) {
-          // Text blocks
           if (block.type === "text") {
-            textContent += block.text as string;
+            textContent += block.text;
           }
 
-          // Thinking / reasoning blocks
           if (block.type === "thinking" && !hideToolCalls) {
-            const thinking = (block.thinking as string) ?? "";
+            const thinking = block.thinking ?? "";
             if (thinking) {
               items.push({
                 id: `reasoning-${sequence}`,
@@ -311,12 +295,10 @@ export class AgentRuntime {
             }
           }
 
-          // Tool call blocks
           if (block.type === "toolCall" && !hideToolCalls) {
-            const callId = block.id as string;
-            const toolName = block.name as string;
+            const callId = block.id;
+            const toolName = block.name;
 
-            // Parse arguments — can be string or object
             let toolArgs: Record<string, unknown> | undefined;
             if (typeof block.arguments === "string") {
               try {
@@ -328,7 +310,6 @@ export class AgentRuntime {
               toolArgs = block.arguments as Record<string, unknown>;
             }
 
-            // Determine status from paired tool result
             const result = toolResultsByCallId.get(callId);
             let toolStatus: "completed" | "failed" | "running" = "running";
             if (result) {
@@ -347,17 +328,14 @@ export class AgentRuntime {
               createdAt: timestamp,
             });
 
-            // Emit paired tool result
             if (result) {
               let toolOutput: string | undefined;
               let toolError: string | undefined;
 
-              const resultContent = Array.isArray(result.content)
-                ? (result.content as Array<Record<string, unknown>>)
-                : [];
+              const resultContent = result.content ?? [];
               const outputText = resultContent
                 .filter((c) => c.type === "text")
-                .map((c) => c.text as string)
+                .map((c) => c.type === "text" ? c.text : "")
                 .join("\n");
 
               if (result.isError) {
@@ -380,7 +358,6 @@ export class AgentRuntime {
           }
         }
 
-        // Emit text content as a message (if any)
         if (textContent) {
           items.push({
             id: `msg-${sequence}`,
@@ -403,77 +380,56 @@ export class AgentRuntime {
   }
 
   async getModels(): Promise<ModelConfig[]> {
-    await this.ensureConnected();
+    if (!this.session) throw new Error("[runtime] not initialized");
 
-    const resp = await this.client.request({ type: "get_available_models" });
-    if (!resp.success) {
-      throw new Error(`[runtime] get_available_models failed: ${resp.error ?? "unknown error"}`);
-    }
-
-    const data = resp.data as { models: Array<Record<string, unknown>> } | undefined;
-    const models = data?.models ?? [];
+    const models = this.session.modelRegistry.getAvailable();
 
     return models.map((m) => ({
-      id: m.id as string,
-      name: (m.name as string) ?? (m.id as string),
-      provider: m.provider as string,
-      modelId: m.modelId as string,
-      supportsReasoning: m.supportsReasoning as boolean | undefined,
-      supportsImages: m.supportsImages as boolean | undefined,
-      maxContextTokens: (m.maxContextTokens as number) ?? 0,
+      id: m.id,
+      name: m.name,
+      provider: m.provider,
+      modelId: m.id,
+      supportsReasoning: m.reasoning || undefined,
+      supportsImages: m.input.includes("image") || undefined,
+      maxContextTokens: m.contextWindow,
     }));
   }
 
   async getSessionInfo(): Promise<SessionInfo> {
-    await this.ensureConnected();
+    if (!this.session) throw new Error("[runtime] not initialized");
 
-    const [stateResp, statsResp] = await Promise.all([
-      this.client.request({ type: "get_state" }),
-      this.client.request({ type: "get_session_stats" }),
-    ]);
-
-    if (!stateResp.success) {
-      throw new Error(`[runtime] get_state failed: ${stateResp.error ?? "unknown error"}`);
-    }
-    if (!statsResp.success) {
-      throw new Error(`[runtime] session stats failed: ${statsResp.error ?? "unknown error"}`);
-    }
-
-    const state = stateResp.data as Record<string, unknown>;
-    const stats = statsResp.data as Record<string, unknown>;
-    const model = state.model as Record<string, unknown> | undefined;
-    const tokens = stats.tokens as Record<string, number> | undefined;
-
-    const contextWindow = (model?.contextWindow as number) ?? 0;
-    const reserveTokens = 16_384; // Pi default
+    const stats: SessionStats = this.session.getSessionStats();
+    const model = this.session.model;
+    const contextWindow = model?.contextWindow ?? 0;
+    const reserveTokens = 16_384;
     const threshold = contextWindow > 0 ? contextWindow - reserveTokens : 0;
-    const totalTokens = tokens?.total ?? 0;
+    const totalTokens = stats.tokens.total;
 
     return {
-      sessionId: (state.sessionId as string) ?? this.sessionId ?? "unknown",
-      sessionName: state.sessionName as string | undefined,
+      sessionId: this.session.sessionId,
+      sessionName: this.session.sessionName,
       model: {
-        id: (model?.id as string) ?? "unknown",
-        provider: (model?.provider as string) ?? "unknown",
+        id: model?.id ?? "unknown",
+        provider: model?.provider ?? "unknown",
         contextWindow,
       },
       tokens: {
-        input: tokens?.input ?? 0,
-        output: tokens?.output ?? 0,
-        cacheRead: tokens?.cacheRead ?? 0,
-        cacheWrite: tokens?.cacheWrite ?? 0,
+        input: stats.tokens.input,
+        output: stats.tokens.output,
+        cacheRead: stats.tokens.cacheRead,
+        cacheWrite: stats.tokens.cacheWrite,
         total: totalTokens,
       },
-      cost: (stats.cost as number) ?? 0,
+      cost: stats.cost,
       messages: {
-        user: (stats.userMessages as number) ?? 0,
-        assistant: (stats.assistantMessages as number) ?? 0,
-        toolCalls: (stats.toolCalls as number) ?? 0,
-        total: (stats.totalMessages as number) ?? 0,
+        user: stats.userMessages,
+        assistant: stats.assistantMessages,
+        toolCalls: stats.toolCalls,
+        total: stats.totalMessages,
       },
       compaction: {
-        enabled: (state.autoCompactionEnabled as boolean) ?? true,
-        isCompacting: (state.isCompacting as boolean) ?? false,
+        enabled: this.session.autoCompactionEnabled,
+        isCompacting: this.session.isCompacting,
         threshold,
         usage: threshold > 0 ? totalTokens / threshold : 0,
       },
@@ -481,7 +437,7 @@ export class AgentRuntime {
   }
 
   async abort(): Promise<void> {
-    await this.ensureConnected();
-    await this.client.request({ type: "abort" });
+    if (!this.session) return;
+    await this.session.abort();
   }
 }
