@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
-import { sendMessageStream, getHistory } from "@/api/client";
-import type { Item, StreamEvent, MessageItem, ToolCallItem, ToolResultItem, ReasoningItem } from "@/api/types";
+import { abortGeneration, getHistory, sendMessageStream } from "@/api/client";
+import type { Item, MessageItem, ReasoningItem, StreamEvent, ToolCallItem, ToolResultItem } from "@/api/types";
 
 /**
  * Hook that manages the chat items state and handles streaming updates.
@@ -16,6 +16,7 @@ export function useAgentStream(showActivity: boolean) {
   const pendingText = useRef("");
   const pendingThinking = useRef("");
   const sequenceRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch full history from server (used on mount and after stream ends)
   const fetchItems = useCallback(async () => {
@@ -49,6 +50,9 @@ export function useAgentStream(showActivity: boolean) {
     setError(null);
     pendingText.current = "";
     pendingThinking.current = "";
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     // IDs for streaming items we build up incrementally
     const streamingMsgId = `stream-msg-${Date.now()}`;
@@ -171,19 +175,32 @@ export function useAgentStream(showActivity: boolean) {
     };
 
     try {
-      await sendMessageStream(message, handleEvent);
+      await sendMessageStream(message, handleEvent, controller.signal);
       // Stream ended — fetch canonical history to ensure consistency
       await fetchItems();
     } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
       setError(err instanceof Error ? err.message : "Failed to send message");
       // Remove optimistic user message on failure
       setItems((prev) => prev.filter((i) => i.id !== userItem.id));
     } finally {
+      abortControllerRef.current = null;
       setStreaming(false);
       pendingText.current = "";
       pendingThinking.current = "";
     }
   }, [showActivity, fetchItems]);
 
-  return { items, streaming, error, send, fetchItems };
+  const cancel = useCallback(() => {
+    void abortGeneration().catch(() => undefined);
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setStreaming(false);
+    void fetchItems();
+  }, [fetchItems]);
+
+  return { items, streaming, error, send, cancel, fetchItems };
 }

@@ -1,16 +1,17 @@
 import { type KeyboardEvent, useState } from "react";
 
-import { Send } from "lucide-react";
+import { Send, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
+  onCancel: () => void;
   disabled: boolean;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, onCancel, disabled }: ChatInputProps) {
   const [text, setText] = useState("");
 
   function handleSend() {
@@ -38,13 +39,19 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         className="min-h-10 flex-1 resize-none"
         rows={1}
       />
-      <Button
-        onClick={handleSend}
-        disabled={disabled || !text.trim()}
-        size="icon"
-      >
-        <Send className="size-4" />
-      </Button>
+      {disabled ? (
+        <Button onClick={onCancel} variant="destructive" size="icon">
+          <Square className="size-4" />
+        </Button>
+      ) : (
+        <Button
+          onClick={handleSend}
+          disabled={!text.trim()}
+          size="icon"
+        >
+          <Send className="size-4" />
+        </Button>
+      )}
     </div>
   );
 }

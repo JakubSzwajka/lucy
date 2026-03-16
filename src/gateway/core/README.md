@@ -19,6 +19,7 @@ Start the gateway process with `npm run dev:gateway` or `npm run dev`. On boot i
 |--------|------|------|-------------|
 | `POST` | `/api/chat` | API key | Send a message, get response |
 | `POST` | `/api/chat/stream` | API key | Send a message, stream SSE events |
+| `POST` | `/api/chat/abort` | API key | Abort an in-flight generation |
 | `GET` | `/api/chat/history` | API key | Conversation history |
 | `GET` | `/api/session` | API key | Session info (model, tokens, cost) |
 | `GET` | `/api/tasks` | API key | Task board |

@@ -67,6 +67,12 @@ export function sendMessage(message: string): Promise<ChatResponse> {
   });
 }
 
+export function abortGeneration(): Promise<void> {
+  return request<void>("/api/chat/abort", {
+    method: "POST",
+  });
+}
+
 /**
  * Send a message via streaming SSE. Calls `onEvent` for each stream event.
  * Returns a promise that resolves when the stream ends.
@@ -74,6 +80,7 @@ export function sendMessage(message: string): Promise<ChatResponse> {
 export async function sendMessageStream(
   message: string,
   onEvent: (event: StreamEvent) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -86,6 +93,7 @@ export async function sendMessageStream(
     method: "POST",
     headers,
     body: JSON.stringify({ message }),
+    signal,
   });
 
   if (!res.ok) {

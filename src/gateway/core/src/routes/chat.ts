@@ -63,4 +63,18 @@ chat.post("/chat/stream", async (c) => {
   });
 });
 
+chat.post("/chat/abort", async (c) => {
+  const runtime = getRuntime();
+
+  try {
+    await runtime.abort();
+    console.log("[gateway] Chat abort requested");
+    return c.json({ success: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error(`[gateway] Chat abort failed: ${message}`);
+    return c.json({ error: message }, 500);
+  }
+});
+
 export default chat;

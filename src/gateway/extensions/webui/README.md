@@ -29,8 +29,9 @@ npm run build:webui
 
 ```
 src/
-  api/          # API client and response types
-  components/   # Layout, SessionList, ChatPanel, MessageList, ChatInput
+  api/          # API client and response types (including stream abort support)
+  components/   # Layout, SessionList, ChatPanel, MessageList, ChatInput (send/stop control)
+  hooks/        # Streaming state + cancellation (`useAgentStream`)
   App.tsx       # Root component (session list + chat panel)
 ```
 
