@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "a2a5080717cc824a",
+        "id": "a5c358b16903f6ae",
         "type": "tabs",
         "children": [
           {
-            "id": "fb724c2df8af41c8",
+            "id": "306962890c4f83df",
             "type": "leaf",
             "state": {
-              "type": "empty",
+              "type": "graph",
               "state": {},
-              "icon": "lucide-file",
-              "title": "New tab"
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
             }
           }
         ]
@@ -176,14 +176,46 @@
       "bases:Create new base": false
     }
   },
-  "active": "fb724c2df8af41c8",
+  "active": "ee301ec55fc6b0f1",
   "lastOpenFiles": [
-    "docs/v3-LIMITS.md",
-    "docs",
-    "kuba/SKILL.md",
-    "knowledge/kuba-profile.md",
-    "knowledge/lucy-memory.md",
-    "knowledge/lucy-architecture.md",
-    "knowledge/lucy-project.md"
+    "browse/node_modules/playwright-core/lib/vite/traceViewer/manifest.webmanifest",
+    "browse/node_modules/playwright-core/ThirdPartyNotices.txt",
+    "browse/node_modules/playwright-core/lib/vite/traceViewer/codicon.DCmgc-ay.ttf",
+    "browse/node_modules/playwright-core/lib/vite/recorder/assets/codicon-DCmgc-ay.ttf",
+    "browse/node_modules/playwright-core/types/structs.d.ts",
+    "browse/node_modules/playwright-core/types/types.d.ts",
+    "browse/node_modules/playwright-core/index.d.ts",
+    "browse/node_modules/playwright-core/lib/vite/traceViewer/playwright-logo.svg",
+    "browse/node_modules/playwright-core/types/protocol.d.ts",
+    "browse/node_modules/playwright-core/types",
+    "browse/node_modules/playwright-core/lib/vite/recorder/playwright-logo.svg",
+    "browse/node_modules/playwright-core/bin/reinstall_msedge_stable_mac.sh",
+    "browse/node_modules/playwright-core/bin/reinstall_msedge_stable_linux.sh",
+    "browse/node_modules/playwright-core/lib/server/chromium/appIcon.png",
+    "browse/node_modules/playwright-core/README.md",
+    "browse/node_modules/js-tiktoken/README.md",
+    "browse/node_modules/axios/README.md",
+    "browse/node_modules/axios/lib/helpers/README.md",
+    "browse/node_modules/axios/lib/env/README.md",
+    "browse/node_modules/axios/lib/core/README.md",
+    "browse/node_modules/axios/lib/adapters/README.md",
+    "browse/node_modules/axios/MIGRATION_GUIDE.md",
+    "browse/node_modules/axios/CHANGELOG.md",
+    "browse/node_modules/@tavily/core/README.md",
+    "browse/node_modules/has-tostringtag/README.md",
+    "browse/node_modules/math-intrinsics/README.md",
+    "browse/node_modules/has-tostringtag/CHANGELOG.md",
+    "browse/node_modules/math-intrinsics/CHANGELOG.md",
+    "browse/node_modules/has-symbols/README.md",
+    "browse/node_modules/form-data/README.md",
+    "browse/node_modules/has-symbols/CHANGELOG.md",
+    "browse/node_modules/get-intrinsic/README.md",
+    "browse/node_modules/es-errors/README.md",
+    "browse/node_modules/es-errors/CHANGELOG.md",
+    "browse/node_modules/gopd/README.md",
+    "browse/node_modules/get-intrinsic/CHANGELOG.md",
+    "browse/node_modules/gopd/CHANGELOG.md",
+    "browse/node_modules/form-data/CHANGELOG.md",
+    "browse/node_modules/dunder-proto/README.md"
   ]
 }

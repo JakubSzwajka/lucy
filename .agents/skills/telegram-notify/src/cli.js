@@ -75,7 +75,6 @@ async function sendTelegramMessage(botToken, chatId, message, options = {}) {
   };
 
   try {
-    const fetch = (await import('node-fetch')).default;
     const response = await fetch(url, {
       method: 'POST',
       headers: {

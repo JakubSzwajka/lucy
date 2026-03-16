@@ -83,6 +83,8 @@ function handlePiStdout(chunk: Buffer): void {
 
   for (const line of lines) {
     if (line.length === 0) continue;
+    // Only forward valid JSON lines — pi emits non-JSON output (system prompt, etc.) on startup
+    if (line[0] !== "{") continue;
     activeClient.write(line + "\n");
   }
 }

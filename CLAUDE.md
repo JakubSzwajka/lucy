@@ -139,6 +139,10 @@ All configuration is via environment variables. See `.env.example` for the full 
 - Keep modules small; extract logic into focused utilities
 - Write self-documenting code; add comments only for non-obvious logic
 
+## Skills (`.agents/skills/`)
+
+Skills are small CLI scripts in `.agents/skills/<name>/` that extend agent capabilities. Each skill directory should contain only a `SKILL.md` (frontmatter + usage docs) and a `src/` directory with the script code. **Never create a `package.json` or `node_modules` inside a skill directory.** If a skill needs npm dependencies, add them to the project root `package.json` instead — Node's module resolution walks up the directory tree automatically, so imports resolve from the project's `node_modules/`. For built-in Node APIs (like `fetch` in Node 18+), use them directly instead of installing polyfill packages. This keeps skill directories clean and avoids duplicated dependency trees.
+
 ---
 
 ## Legacy App Reference (`.legacy/`)

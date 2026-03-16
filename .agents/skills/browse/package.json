@@ -1,0 +1,9 @@
+{
+  "name": "browse",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@tavily/core": "^0.0.1",
+    "playwright-core": "^1.58.2"
+  }
+}
