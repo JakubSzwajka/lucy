@@ -55,10 +55,10 @@ export function SessionBar({ showActivity, onShowActivityChange, streaming, onNe
       <button
         onClick={handleNewSession}
         disabled={streaming}
-        className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-3 py-0.5 rounded bg-primary text-primary-foreground font-semibold text-xs hover:opacity-85 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="New session"
       >
-        +
+        New Session
       </button>
       <span className="truncate max-w-[200px]" title={info.model.id}>
         {info.model.id}
