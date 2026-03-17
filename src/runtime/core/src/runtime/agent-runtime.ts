@@ -27,6 +27,10 @@ type StreamCallback = (event: StreamEvent) => void;
 
 export class AgentRuntime {
   private session: AgentSession | null = null;
+  private sessionManager: SessionManager | null = null;
+  private model: Model<Api> | null = null;
+  private resourceLoader: DefaultResourceLoader | null = null;
+  private agentDir: string | undefined;
 
   async init(): Promise<void> {
     const modelStr = process.env.PI_MODEL;
@@ -42,31 +46,52 @@ export class AgentRuntime {
     const modelId = modelStr.slice(slashIdx + 1);
 
     // getModel is typed for KnownProvider; cast needed for dynamic provider strings
-    const model = (getModel as (p: string, m: string) => Model<Api>)(provider, modelId);
+    this.model = (getModel as (p: string, m: string) => Model<Api>)(provider, modelId);
 
-    const agentDir = process.env.PI_CODING_AGENT_DIR ?? undefined;
+    this.agentDir = process.env.PI_CODING_AGENT_DIR ?? undefined;
     const promptPath = resolve(process.env.PI_PROMPT ?? "PROMPT.md");
 
-    const loader = new DefaultResourceLoader({
+    this.resourceLoader = new DefaultResourceLoader({
       cwd: process.cwd(),
-      agentDir,
+      agentDir: this.agentDir,
       appendSystemPrompt: existsSync(promptPath)
         ? readFileSync(promptPath, "utf-8")
         : undefined,
     });
-    await loader.reload();
+    await this.resourceLoader.reload();
 
-    const sessionManager = SessionManager.continueRecent(process.cwd());
+    this.sessionManager = SessionManager.continueRecent(process.cwd());
 
     const { session } = await createAgentSession({
-      model,
-      resourceLoader: loader,
-      sessionManager,
-      agentDir,
+      model: this.model,
+      resourceLoader: this.resourceLoader,
+      sessionManager: this.sessionManager,
+      agentDir: this.agentDir,
     });
 
     this.session = session;
     console.log(`[runtime] session ${session.sessionId} created`);
+  }
+
+  async newSession(): Promise<SessionInfo> {
+    if (!this.sessionManager || !this.model || !this.resourceLoader) {
+      throw new Error("[runtime] not initialized");
+    }
+
+    await this.abort();
+    this.session?.dispose();
+    this.sessionManager.newSession();
+
+    const { session } = await createAgentSession({
+      model: this.model,
+      resourceLoader: this.resourceLoader,
+      sessionManager: this.sessionManager,
+      agentDir: this.agentDir,
+    });
+
+    this.session = session;
+    console.log(`[runtime] new session ${session.sessionId} created`);
+    return this.getSessionInfo();
   }
 
   async destroy(): Promise<void> {

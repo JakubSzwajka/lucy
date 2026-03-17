@@ -10,4 +10,10 @@ session.get("/session", async (c) => {
   return c.json(info);
 });
 
+session.post("/session/new", async (c) => {
+  const runtime = getRuntime();
+  const info = await runtime.newSession();
+  return c.json(info);
+});
+
 export default session;

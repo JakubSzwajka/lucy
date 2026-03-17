@@ -194,6 +194,14 @@ export function useAgentStream(showActivity: boolean) {
     }
   }, [showActivity, fetchItems]);
 
+  const reset = useCallback(() => {
+    setItems([]);
+    setError(null);
+    sequenceRef.current = 0;
+    pendingText.current = "";
+    pendingThinking.current = "";
+  }, []);
+
   const cancel = useCallback(() => {
     void abortGeneration().catch(() => undefined);
     abortControllerRef.current?.abort();
@@ -202,5 +210,5 @@ export function useAgentStream(showActivity: boolean) {
     void fetchItems();
   }, [fetchItems]);
 
-  return { items, streaming, error, send, cancel, fetchItems };
+  return { items, streaming, error, send, cancel, fetchItems, reset };
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getSessionInfo } from "@/api/client";
+import { getSessionInfo, newSession } from "@/api/client";
 import type { SessionInfo } from "@/api/types";
 
 function formatTokens(n: number): string {
@@ -17,9 +17,11 @@ function formatCost(n: number): string {
 interface SessionBarProps {
   showActivity: boolean;
   onShowActivityChange: (value: boolean) => void;
+  streaming: boolean;
+  onNewSession: () => void;
 }
 
-export function SessionBar({ showActivity, onShowActivityChange }: SessionBarProps) {
+export function SessionBar({ showActivity, onShowActivityChange, streaming, onNewSession }: SessionBarProps) {
   const [info, setInfo] = useState<SessionInfo | null>(null);
 
   const refresh = useCallback(async () => {
@@ -29,6 +31,16 @@ export function SessionBar({ showActivity, onShowActivityChange }: SessionBarPro
       // silently ignore — bar just stays stale
     }
   }, []);
+
+  const handleNewSession = useCallback(async () => {
+    try {
+      await newSession();
+      onNewSession();
+      refresh();
+    } catch (err) {
+      console.error("[session] failed to create new session:", err);
+    }
+  }, [onNewSession, refresh]);
 
   useEffect(() => {
     refresh();
@@ -40,6 +52,14 @@ export function SessionBar({ showActivity, onShowActivityChange }: SessionBarPro
 
   return (
     <div className="flex items-center gap-4 border-b border-border/50 px-4 py-1.5 font-mono text-[11px] text-muted-foreground">
+      <button
+        onClick={handleNewSession}
+        disabled={streaming}
+        className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        title="New session"
+      >
+        +
+      </button>
       <span className="truncate max-w-[200px]" title={info.model.id}>
         {info.model.id}
       </span>

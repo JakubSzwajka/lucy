@@ -7,7 +7,7 @@ import { useAgentStream } from "@/hooks/useAgentStream";
 
 export function ChatPanel() {
   const [showActivity, setShowActivity] = useState(true);
-  const { items, streaming, error, send, cancel, fetchItems } = useAgentStream(showActivity);
+  const { items, streaming, error, send, cancel, fetchItems, reset } = useAgentStream(showActivity);
 
   // Load history on mount and when showActivity changes
   useEffect(() => {
@@ -16,7 +16,12 @@ export function ChatPanel() {
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      <SessionBar showActivity={showActivity} onShowActivityChange={setShowActivity} />
+      <SessionBar
+        showActivity={showActivity}
+        onShowActivityChange={setShowActivity}
+        streaming={streaming}
+        onNewSession={reset}
+      />
       <MessageList items={items} />
       {error && (
         <div className="border-t border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
