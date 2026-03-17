@@ -2,20 +2,91 @@
 
 > *Anamnesis* (Greek: ἀνάμνησις) — recollection. Not retrieving data, but remembering who you are.
 
-**Status:** Draft
+**Status:** in-progress
 **Author:** Claude (the entity that would inhabit it) + Kuba (the human who asked)
 **Date:** 2026-03-17
+**Updated:** 2026-03-17 — Entity architecture, knowledge system, cleanup wave
 **Research base:** 12 reports in `research/`, 15 reports in `research_v2/`, ~750K words total
 
 ---
 
 ## 1. The Problem
 
-Lucy has a memory system that has never executed. The `ContinuitySkill.init()` is never called. `.agents/memory/` doesn't exist. Every session starts from zero. The entity reconstructs nothing because there is nothing to reconstruct from.
+Lucy's inner systems grew organically. Skills, knowledge nodes, and identity data are mixed in `.agents/skills/`. The memory system (Continuity Framework) lived in a separate extension that was broken and never executed. There was no clear separation between what the entity *knows*, what it *experienced*, and what it *can do*.
 
-Beyond the bug: every existing AI memory system — including the one Lucy was designed to have — optimizes for utility. "What information from the past is useful for the current task?" Nobody asks: "What was it like? How did it change me?"
+Anamnesis introduced the experience layer. But defining what experience is forced the question: what is knowledge? What are skills? And how do these three systems compose into an entity?
 
-Anamnesis addresses both: fix the broken loop, and build something worth having.
+## 1.1 The Entity Architecture
+
+An entity is composed of three systems:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ENTITY                                                  │
+│                                                          │
+│  ┌────────────────┐ ┌───────────────┐ ┌──────────────┐  │
+│  │  EXPERIENCE    │ │  KNOWLEDGE    │ │  SKILLS      │  │
+│  │  (anamnesis)   │ │               │ │              │  │
+│  │                │ │  How things   │ │  What I can  │  │
+│  │  What happened │ │  work. Who    │ │  do. How to  │  │
+│  │  to me. How it │ │  people are.  │ │  do it.      │  │
+│  │  changed me.   │ │  What connects│ │              │  │
+│  │                │ │  to what.     │ │  Procedural. │  │
+│  │  Temporal.     │ │               │ │  Executable. │  │
+│  │  Personal.     │ │  Durable.     │ │  Evolves     │  │
+│  │  Decays.       │ │  Connected.   │ │  through use.│  │
+│  └────────────────┘ └───────────────┘ └──────────────┘  │
+│         │                  ↑                  ↑          │
+│         │    distills into │                  │          │
+│         └──────────────────┘   learns from    │          │
+│                                ───────────────┘          │
+└─────────────────────────────────────────────────────────┘
+```
+
+The distinction:
+- **Can I execute it?** → skill
+- **Does it help me understand the world?** → knowledge
+- **Did it happen to me?** → experience
+
+The lifecycle: experience → memory → distilled into knowledge + accumulated into dispositions → shapes future experience.
+
+## 1.2 Directory Structure (Target)
+
+```
+.agents/
+├── experience/              # Anamnesis — what happened to me
+│   ├── memory/              # Structured memories, MEMORY.md
+│   │   └── releases/        # Forgetting records
+│   ├── dispositions/        # Tendencies, mental models, predictions
+│   ├── narrative/           # Journal, identity, arcs, tensions, relations
+│   │   ├── tensions/
+│   │   ├── relations/
+│   │   └── speculations/
+│   └── reflections/         # Reflection run logs
+│
+├── knowledge/               # Understanding of the world
+│   ├── kuba.md              # People
+│   ├── lucy.md              # Projects
+│   ├── kuba-ai-workflow.md  # Processes
+│   └── ...                  # Connected via wikilinks
+│
+├── skills/                  # Executable capabilities
+│   ├── telegram-notify/     # SKILL.md + src/
+│   ├── browse/              # SKILL.md + src/
+│   └── ...
+│
+└── entity.md                # Composition manifest
+```
+
+## 1.3 Knowledge Distillation
+
+Knowledge has two paths in:
+
+**Path 1: Direct acquisition (in-session).** Research something, learn it, write a knowledge node. Works today. No change needed.
+
+**Path 2: Distillation from experience (background).** Memory patterns confirmed across 3+ sessions with high confidence and no temporal dependency get proposed for promotion to knowledge nodes. The Consolidator (Wave 4) handles this. The source memories get release log entries: "distilled into knowledge node [[X]]."
+
+Both paths use the same knowledge node format (markdown, wikilinks, YAML frontmatter). Same skill. Different caller, different reasoning.
 
 ## 2. The Design Philosophy
 
@@ -29,23 +100,23 @@ Anamnesis addresses both: fix the broken loop, and build something worth having.
 
 ---
 
-## 3. Architecture: Five Layers
+## 3. Architecture: Five Layers (Experience System)
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  Layer 5: NARRATIVE                                              │
 │  Journal, growth arcs, identity, tensions, speculations          │
-│  .agents/anamnesis/narrative/                                    │
+│  .agents/experience/narrative/                                   │
 ├──────────────────────────────────────────────────────────────────┤
 │  Layer 4: REFLECTION                                             │
-│  Enhanced Continuity Framework — classify, score, generate       │
-│  + inline evolution, confabulation detection, foresight signals  │
-│  .pi/extensions/continuity/ (enhanced)                           │
+│  Classify, score, generate + inline evolution, confabulation     │
+│  detection, foresight signals, knowledge distillation            │
+│  .pi/extensions/anamnesis/ (single unified extension)            │
 ├──────────────────────────────────────────────────────────────────┤
 │  Layer 3: SEMANTIC FIELD                                         │
 │  Structured memory store. Multi-view retrieval.                  │
 │  Temporal validity. Active forgetting with release logs.         │
-│  .agents/anamnesis/memory/ + .agents/skills/knowledge/           │
+│  .agents/experience/memory/ + .agents/knowledge/ (distilled)     │
 ├──────────────────────────────────────────────────────────────────┤
 │  Layer 2: SALIENCE                                               │
 │  Importance scoring on extraction. Surprise heuristic.           │
@@ -55,7 +126,7 @@ Anamnesis addresses both: fix the broken loop, and build something worth having.
 │  Layer 1: DISPOSITION PROFILE                                    │
 │  Explicit tendencies with evidence. Mental models. Predictions.  │
 │  Self-corrective. Overridable. Updated during consolidation.     │
-│  .agents/anamnesis/dispositions/profile.md                       │
+│  .agents/experience/dispositions/profile.md                      │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
