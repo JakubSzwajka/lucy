@@ -5,6 +5,7 @@ import {
   createAgentSession,
   DefaultResourceLoader,
   SessionManager,
+  SettingsManager,
   type AgentSession,
   type AgentSessionEvent,
   type SessionStats,
@@ -30,6 +31,7 @@ export class AgentRuntime {
   private sessionManager: SessionManager | null = null;
   private model: Model<Api> | null = null;
   private resourceLoader: DefaultResourceLoader | null = null;
+  private settingsManager: SettingsManager | null = null;
   private agentDir: string | undefined;
 
   async init(): Promise<void> {
@@ -51,9 +53,20 @@ export class AgentRuntime {
     this.agentDir = process.env.PI_CODING_AGENT_DIR ?? undefined;
     const promptPath = resolve(process.env.PI_PROMPT ?? "PROMPT.md");
 
+    this.settingsManager = SettingsManager.create(process.cwd(), this.agentDir);
+    const compactionThreshold = parseInt(process.env.PI_COMPACTION_THRESHOLD ?? "50000", 10);
+    const contextWindow = this.model.contextWindow ?? 200_000;
+    this.settingsManager.applyOverrides({
+      compaction: {
+        enabled: true,
+        reserveTokens: Math.max(contextWindow - compactionThreshold, 16_384),
+      },
+    });
+
     this.resourceLoader = new DefaultResourceLoader({
       cwd: process.cwd(),
       agentDir: this.agentDir,
+      settingsManager: this.settingsManager,
       appendSystemPrompt: existsSync(promptPath)
         ? readFileSync(promptPath, "utf-8")
         : undefined,
@@ -66,6 +79,7 @@ export class AgentRuntime {
       model: this.model,
       resourceLoader: this.resourceLoader,
       sessionManager: this.sessionManager,
+      settingsManager: this.settingsManager,
       agentDir: this.agentDir,
     });
 
@@ -86,6 +100,7 @@ export class AgentRuntime {
       model: this.model,
       resourceLoader: this.resourceLoader,
       sessionManager: this.sessionManager,
+      settingsManager: this.settingsManager ?? undefined,
       agentDir: this.agentDir,
     });
 
@@ -426,9 +441,9 @@ export class AgentRuntime {
     const stats: SessionStats = this.session.getSessionStats();
     const model = this.session.model;
     const contextWindow = model?.contextWindow ?? 0;
-    const reserveTokens = 16_384;
+    const reserveTokens = this.settingsManager?.getCompactionReserveTokens() ?? 16_384;
     const threshold = contextWindow > 0 ? contextWindow - reserveTokens : 0;
-    const totalTokens = stats.tokens.total;
+    const ctxUsage = this.session.getContextUsage();
 
     return {
       sessionId: this.session.sessionId,
@@ -443,7 +458,7 @@ export class AgentRuntime {
         output: stats.tokens.output,
         cacheRead: stats.tokens.cacheRead,
         cacheWrite: stats.tokens.cacheWrite,
-        total: totalTokens,
+        total: stats.tokens.total,
       },
       cost: stats.cost,
       messages: {
@@ -452,11 +467,15 @@ export class AgentRuntime {
         toolCalls: stats.toolCalls,
         total: stats.totalMessages,
       },
+      context: {
+        tokens: ctxUsage?.tokens ?? null,
+        contextWindow: ctxUsage?.contextWindow ?? contextWindow,
+        percent: ctxUsage?.percent ?? null,
+      },
       compaction: {
         enabled: this.session.autoCompactionEnabled,
         isCompacting: this.session.isCompacting,
         threshold,
-        usage: threshold > 0 ? totalTokens / threshold : 0,
       },
     };
   }

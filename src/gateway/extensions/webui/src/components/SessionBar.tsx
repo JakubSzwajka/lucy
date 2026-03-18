@@ -67,6 +67,32 @@ export function SessionBar({ showActivity, onShowActivityChange, streaming, onNe
       <span title="Total messages">{info.messages.total} msgs</span>
       <span title="Session API cost">{formatCost(info.cost)}</span>
 
+      {info.context.tokens !== null && info.compaction.threshold > 0 && (() => {
+        const ratio = info.context.tokens / info.compaction.threshold;
+        return (
+          <span className="flex items-center gap-1.5" title={`Context: ${formatTokens(info.context.tokens)} / ${formatTokens(info.compaction.threshold)} tokens (compaction at 100%)`}>
+            <span className="text-muted-foreground/70">{formatTokens(info.context.tokens)}</span>
+            <span className="relative h-1.5 w-20 rounded-full bg-border/60 overflow-hidden">
+              <span
+                className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(ratio * 100, 100)}%`,
+                  backgroundColor: ratio > 0.85
+                    ? 'hsl(0, 70%, 55%)'
+                    : ratio > 0.6
+                      ? 'hsl(40, 80%, 55%)'
+                      : 'hsl(var(--primary))',
+                }}
+              />
+            </span>
+            <span className="text-muted-foreground/70">{formatTokens(info.compaction.threshold)}</span>
+            {info.compaction.isCompacting && (
+              <span className="text-[10px] text-yellow-500 animate-pulse">compacting…</span>
+            )}
+          </span>
+        );
+      })()}
+
       <label className="ml-auto flex items-center gap-1.5 cursor-pointer select-none">
         <input
           type="checkbox"

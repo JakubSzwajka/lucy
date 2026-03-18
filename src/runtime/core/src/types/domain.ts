@@ -70,10 +70,14 @@ export interface SessionInfo {
     toolCalls: number;
     total: number;
   };
+  context: {
+    tokens: number | null;
+    contextWindow: number;
+    percent: number | null;
+  };
   compaction: {
     enabled: boolean;
     isCompacting: boolean;
     threshold: number;
-    usage: number;
   };
 }
