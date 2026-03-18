@@ -218,8 +218,10 @@ export default function (pi: ExtensionAPI) {
   // --- Prompt injection: dynamic context assembly ---
   pi.on("before_agent_start", async (_event) => {
     await ensureInit();
+    console.log("[anamnesis] before_agent_start: assembling context");
 
     const parts: string[] = [];
+    const loaded: string[] = [];
 
     // 0. Entity orientation
     try {
@@ -229,6 +231,7 @@ export default function (pi: ExtensionAPI) {
         const trimmed = raw.trim();
         if (trimmed) {
           parts.push("_Entity orientation:_\n\n" + trimmed);
+          loaded.push("entity");
         }
       }
     } catch {}
@@ -240,6 +243,7 @@ export default function (pi: ExtensionAPI) {
       const rendered = renderKnowledgeIndex(index);
       if (rendered) {
         parts.push(rendered);
+        loaded.push(`knowledge(${index.length} nodes)`);
       }
     } catch {}
 
@@ -249,6 +253,7 @@ export default function (pi: ExtensionAPI) {
       const profile = await loadDispositionProfile();
       if (profile) {
         parts.push(renderDispositionContext(profile));
+        loaded.push("dispositions");
       }
     } catch {}
 
@@ -258,6 +263,7 @@ export default function (pi: ExtensionAPI) {
       const kuba = await loadRelationship("kuba");
       if (kuba) {
         parts.push(renderRelationshipContext(kuba));
+        loaded.push("relations");
       }
     } catch {}
 
@@ -279,6 +285,7 @@ export default function (pi: ExtensionAPI) {
           const narrative = reconstructNarrative(scored);
           if (narrative) {
             parts.push("_Memories from previous sessions:_\n\n" + narrative);
+            loaded.push(`memories(${memories.length} total, ${scored.length} scored)`);
           }
         }
       }
@@ -289,7 +296,10 @@ export default function (pi: ExtensionAPI) {
       const { loadTensions, renderTensionContext } = await import("./tensions.js");
       const tensions = await loadTensions();
       const tensionCtx = renderTensionContext(tensions);
-      if (tensionCtx) parts.push(tensionCtx);
+      if (tensionCtx) {
+        parts.push(tensionCtx);
+        loaded.push(`tensions(${tensions.length})`);
+      }
     } catch {}
 
     // 4. Predictions context
@@ -301,6 +311,7 @@ export default function (pi: ExtensionAPI) {
         if (pendingMatch?.length) {
           const predictions = pendingMatch.slice(0, 3).map(p => p.replace("- [ ] ", "").trim());
           parts.push("_Pending predictions:_\n" + predictions.map(p => `- ${p}`).join("\n"));
+          loaded.push(`predictions(${pendingMatch.length} pending)`);
         }
       }
     } catch {}
@@ -311,7 +322,10 @@ export default function (pi: ExtensionAPI) {
         QUESTIONS_PATH,
         "Questions generated from past reflections. Ask when the moment feels right — don't force them.",
       );
-      if (questionsContent) parts.push(questionsContent);
+      if (questionsContent) {
+        parts.push(questionsContent);
+        loaded.push("questions");
+      }
     } catch {}
 
     // 6. Recent journal excerpt
@@ -320,6 +334,7 @@ export default function (pi: ExtensionAPI) {
       const journal = await readRecentJournal();
       if (journal) {
         parts.push("_From my journal:_\n\n" + journal);
+        loaded.push("journal");
       }
     } catch {}
 
@@ -328,34 +343,44 @@ export default function (pi: ExtensionAPI) {
       const { loadArcs, renderArcsContext } = await import("./arcs.js");
       const arcs = await loadArcs();
       const arcsCtx = renderArcsContext(arcs);
-      if (arcsCtx) parts.push(arcsCtx);
+      if (arcsCtx) {
+        parts.push(arcsCtx);
+        loaded.push(`arcs(${arcs.length})`);
+      }
     } catch {}
 
-    if (parts.length === 0) return {};
+    if (parts.length === 0) {
+      console.log("[anamnesis] before_agent_start: no context sections loaded");
+      return {};
+    }
 
     let assembled = "## What's On My Mind\n\n" + parts.join("\n\n");
 
     // Token budget validation — truncate if exceeding limit
     let tokens = estimateTokens(assembled);
+    console.log(`[anamnesis] before_agent_start: ${parts.length} sections [${loaded.join(", ")}], ~${tokens} tokens`);
+
     if (tokens > MAX_CONTEXT_TOKENS) {
-      console.log(`[anamnesis] context assembly: ${tokens} tokens exceeds ${MAX_CONTEXT_TOKENS} limit, truncating`);
+      console.log(`[anamnesis] before_agent_start: exceeds ${MAX_CONTEXT_TOKENS} limit, truncating`);
 
       // Truncation strategy: remove sections from the end (lowest priority first)
       // Priority order: dispositions > memories > tensions > predictions > questions > journal > arcs
       // So we remove arcs first, then journal, then questions, etc.
       while (parts.length > 1 && estimateTokens("## What's On My Mind\n\n" + parts.join("\n\n")) > MAX_CONTEXT_TOKENS) {
-        const removed = parts.pop();
-        console.log(`[anamnesis] truncated section to fit budget`);
+        parts.pop();
+        loaded.pop();
       }
 
       assembled = "## What's On My Mind\n\n" + parts.join("\n\n");
       tokens = estimateTokens(assembled);
+      console.log(`[anamnesis] before_agent_start: truncated to ${parts.length} sections, ~${tokens} tokens`);
 
       // If still over budget with just one section, hard-truncate
       if (tokens > MAX_CONTEXT_TOKENS) {
         const words = assembled.split(/\s+/);
         const maxWords = Math.floor(MAX_CONTEXT_TOKENS * 0.75);
         assembled = words.slice(0, maxWords).join(' ') + '\n\n_[context truncated to fit token budget]_';
+        console.log(`[anamnesis] before_agent_start: hard-truncated to ${maxWords} words`);
       }
     }
 
@@ -369,11 +394,14 @@ export default function (pi: ExtensionAPI) {
     await ensureInit();
     const { preparation } = event;
 
-    console.log("[anamnesis] session_before_compact — reflecting on memories");
+    const msgCount = preparation.messagesToSummarize.length;
+    console.log(`[anamnesis] session_before_compact: ${msgCount} messages to summarize, ${preparation.tokensBefore} tokens before`);
 
     const conversationText = serializeConversation(
       convertToLlm(preparation.messagesToSummarize),
     );
+    const userMsgCount = (conversationText.match(/^\[User\]:/gm) || []).length;
+    console.log(`[anamnesis] session_before_compact: serialized ${conversationText.length} chars, ${userMsgCount} user messages`);
 
     // Check foresight signals from previous sessions
     try {
@@ -382,6 +410,7 @@ export default function (pi: ExtensionAPI) {
         const raw = await readFile(predictionsPath, "utf-8");
         const predictions = parsePredictions(raw);
         const pending = predictions.filter(p => p.status === 'pending');
+        console.log(`[anamnesis] foresight: ${predictions.length} total predictions, ${pending.length} pending`);
 
         if (pending.length > 0) {
           const conversationLower = conversationText.toLowerCase();
@@ -431,15 +460,23 @@ export default function (pi: ExtensionAPI) {
       console.log(`[anamnesis] foresight check failed: ${(err as Error).message}`);
     }
 
+    console.log("[anamnesis] session_before_compact: starting reflection pipeline");
+    const reflectStart = Date.now();
     const result = await skill.reflect({ content: conversationText });
+    const reflectMs = Date.now() - reflectStart;
 
-    console.log(
-      `[anamnesis] reflection complete — ${result.memories_extracted ?? 0} memories, ${result.questions_generated ?? 0} questions`,
-    );
+    if (result.success) {
+      console.log(
+        `[anamnesis] reflection complete in ${reflectMs}ms — ${result.memories_extracted} extracted, ${result.memories_added} added, ${result.questions_generated} questions`,
+      );
+    } else {
+      console.log(`[anamnesis] reflection skipped: ${result.message}`);
+    }
 
     // Write journal entry (non-blocking — don't fail compaction if journal fails)
     if (result.success) {
       try {
+        console.log("[anamnesis] writing journal entry");
         const journalPrompt = buildJournalPrompt({
           memoriesExtracted: result.memories_extracted ?? 0,
           memoriesAdded: result.memories_added ?? 0,

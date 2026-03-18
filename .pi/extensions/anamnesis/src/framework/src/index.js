@@ -70,25 +70,32 @@ export class ContinuityFramework {
 
     // Load existing memories for context
     const existingMemories = await this.store.loadMemories();
+    console.log(`[anamnesis] framework: loaded ${existingMemories.length} existing memories`);
 
     // Run the reflection workflow
+    console.log('[anamnesis] framework: running orchestrator');
     const result = await this.orchestrator.runReflection(conversation, {
       session_id: options.session_id,
       existing_memories: existingMemories
     });
+    console.log(`[anamnesis] framework: orchestrator returned ${result.memories.length} memories, ${result.questions.length} questions`);
 
     // Evolve memories (compare, supersede, reinforce, or add)
+    console.log('[anamnesis] framework: evolving memories');
     const evolution = await this.store.evolveMemories(result.memories);
     const added = evolution.added;
+    console.log(`[anamnesis] framework: evolution — ${added.length} added, ${evolution.superseded.length} superseded, ${evolution.reinforced.length} reinforced`);
 
     // Store new questions
     for (const question of result.questions) {
       await this.store.addQuestion(question);
     }
+    console.log(`[anamnesis] framework: stored ${result.questions.length} questions`);
 
     // Store predictions (if any)
     if (result.predictions?.length > 0) {
       await this.store.addPredictions(result.predictions);
+      console.log(`[anamnesis] framework: stored ${result.predictions.length} predictions`);
     }
 
     // Save reflection log

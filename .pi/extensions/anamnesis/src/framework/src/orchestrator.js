@@ -93,44 +93,56 @@ export class Orchestrator {
       output: {}
     };
 
+    const convLines = conversation.split('\n').length;
+    const existingCount = context.existing_memories?.length || 0;
+    console.log(`[anamnesis] orchestrator: starting job ${jobId}, ${convLines} lines, ${existingCount} existing memories`);
+
     try {
       // Phase 1: Classification
       job.status = 'classifying';
       job.phases.classification = { started_at: new Date().toISOString() };
+      const classifyMode = this.sendMessage ? 'llm' : 'local';
+      console.log(`[anamnesis] orchestrator: phase 1/3 classify (${classifyMode})`);
 
       const classified = await this._runClassifier(conversation, context);
 
       job.phases.classification.completed_at = new Date().toISOString();
       job.phases.classification.items_processed = classified.memories.length;
+      console.log(`[anamnesis] orchestrator: classify done — ${classified.memories.length} memories extracted`);
 
       // Phase 1.5: Confabulation check
       const checkedMemories = this._checkConfabulation(classified.memories, conversation);
       const confabulated = checkedMemories.filter(m => m.confabulation_risk);
-      if (confabulated.length > 0) {
-        console.log(`[anamnesis] confabulation check: ${confabulated.length} flagged`);
-      }
+      const grounded = checkedMemories.length - confabulated.length;
+      console.log(`[anamnesis] orchestrator: confabulation check — ${grounded} grounded, ${confabulated.length} flagged`);
 
       // Phase 2: Scoring
       job.status = 'scoring';
       job.phases.scoring = { started_at: new Date().toISOString() };
+      console.log(`[anamnesis] orchestrator: phase 2/3 score (${checkedMemories.length} memories)`);
 
       const scored = await this._runScorer(checkedMemories, conversation);
 
       job.phases.scoring.completed_at = new Date().toISOString();
       job.phases.scoring.items_processed = scored.scored_memories.length;
+      console.log(`[anamnesis] orchestrator: score done — avg confidence ${scored.scoring_metadata.average_confidence.toFixed(2)}`);
 
       // Phase 3: Question Generation
       job.status = 'generating';
       job.phases.generation = { started_at: new Date().toISOString() };
+      console.log(`[anamnesis] orchestrator: phase 3/3 generate (${scored.scored_memories.length} scored memories)`);
 
       const questions = await this._runGenerator(scored.scored_memories, context);
 
       job.phases.generation.completed_at = new Date().toISOString();
       job.phases.generation.items_processed = questions.questions.length;
+      console.log(`[anamnesis] orchestrator: generate done — ${questions.questions.length} questions`);
 
       // Complete
       job.status = 'complete';
       job.completed_at = new Date().toISOString();
+      const totalMs = Date.now() - startTime;
+      console.log(`[anamnesis] orchestrator: job ${jobId} complete in ${totalMs}ms`);
       job.output = {
         memories_extracted: classified.extraction_metadata.memories_extracted,
         memories_integrated: scored.scored_memories.length,
@@ -151,6 +163,7 @@ export class Orchestrator {
       };
 
     } catch (error) {
+      console.log(`[anamnesis] orchestrator: job ${jobId} failed in phase '${job.status}': ${error.message}`);
       job.status = 'failed';
       job.error = {
         phase: job.status,
@@ -355,13 +368,13 @@ export class Orchestrator {
       const trimmed = line.trim();
 
       // Skip empty lines and AI responses
-      if (!trimmed || trimmed.startsWith('Assistant:') || trimmed.startsWith('Claude:')) {
+      if (!trimmed || trimmed.startsWith('[Assistant')) {
         continue;
       }
 
       // Look for user statements
-      if (trimmed.startsWith('User:') || trimmed.startsWith('Human:')) {
-        const content = trimmed.replace(/^(User|Human):/, '').trim();
+      if (trimmed.startsWith('[User]:')) {
+        const content = trimmed.replace(/^\[User\]:/, '').trim();
 
         // Skip short responses
         if (content.length < 10) continue;

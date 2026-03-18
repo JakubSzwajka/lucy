@@ -73,6 +73,8 @@ export class ContinuitySkill {
     this._ensureInit();
 
     let conversation;
+    const source = options.session ? 'file' : options.sessionId ? 'session-log' : options.content ? 'content' : 'none';
+    console.log(`[anamnesis] reflect: source=${source}`);
 
     // Load conversation from file if provided
     if (options.session) {
@@ -87,6 +89,7 @@ export class ContinuitySkill {
       conversation = options.content;
     }
     else {
+      console.log('[anamnesis] reflect: no conversation provided, aborting');
       return {
         success: false,
         message: 'No session content provided. Use --session <file> or provide content.'
@@ -94,8 +97,11 @@ export class ContinuitySkill {
     }
 
     // Check minimum message threshold
-    const messageCount = (conversation.match(/^(User|Human):/gm) || []).length;
+    const messageCount = (conversation.match(/^\[User\]:/gm) || []).length;
+    const charCount = conversation.length;
+    console.log(`[anamnesis] reflect: ${messageCount} user messages, ${charCount} chars`);
     if (messageCount < this.config.minMessages) {
+      console.log(`[anamnesis] reflect: below threshold (${this.config.minMessages}), skipping`);
       return {
         success: false,
         message: `Session has ${messageCount} messages, minimum is ${this.config.minMessages}.`
@@ -103,10 +109,12 @@ export class ContinuitySkill {
     }
 
     // Run reflection
+    console.log('[anamnesis] reflect: starting framework reflection');
     const result = await this.framework.reflect(conversation, {
       session_id: options.sessionId
     });
 
+    console.log(`[anamnesis] reflect: done — ${result.memories.length} extracted, ${result.memories_added} added, ${result.questions.length} questions`);
     return {
       success: true,
       memories_extracted: result.memories.length,
