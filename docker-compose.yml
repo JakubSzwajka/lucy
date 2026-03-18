@@ -23,5 +23,5 @@ services:
       - ./docs:/app/docs
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./PROMPT.md:/app/PROMPT.md
-      - ./.agents:/root/.agents
+      - ./.agents:/app/.agents
       - ./.pi:/root/.pi

@@ -158,21 +158,20 @@ export default function (pi: ExtensionAPI) {
       query: Type.String({ description: "Search query — a topic, person name, project, or concept to find in the knowledge graph" }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const results = await knowledgeSearch(params.query);
-      if (results.length === 0) {
-        return {
-          type: "text" as const,
-          text: `No knowledge nodes found for "${params.query}". The knowledge graph has no entry for this topic yet. If you've learned something durable about it, consider creating a node with knowledge_create.`,
-        };
+      const mkResult = (text: string) => ({ content: [{ type: "text" as const, text }], details: undefined });
+      try {
+        const results = await knowledgeSearch(params?.query || "");
+        if (results.length === 0) {
+          return mkResult(`No knowledge nodes found for "${params?.query || ""}". The knowledge graph has no entry for this topic yet. If you've learned something durable about it, consider creating a node with knowledge_create.`);
+        }
+        const formatted = results.map(r => {
+          const links = r.wikilinks.length > 0 ? `\nConnects to: ${r.wikilinks.map(l => `[[${l}]]`).join(", ")}` : "";
+          return `## [[${r.name}]]\n${r.description}\n\n${r.content}${links}`;
+        }).join("\n\n---\n\n");
+        return mkResult(`Found ${results.length} knowledge node(s):\n\n${formatted}`);
+      } catch (err) {
+        return mkResult(`knowledge_search failed: ${(err as Error).message}`);
       }
-      const formatted = results.map(r => {
-        const links = r.wikilinks.length > 0 ? `\nConnects to: ${r.wikilinks.map(l => `[[${l}]]`).join(", ")}` : "";
-        return `## [[${r.name}]]\n${r.description}\n\n${r.content}${links}`;
-      }).join("\n\n---\n\n");
-      return {
-        type: "text" as const,
-        text: `Found ${results.length} knowledge node(s):\n\n${formatted}`,
-      };
     },
   });
 
@@ -194,26 +193,25 @@ export default function (pi: ExtensionAPI) {
       content: Type.String({ description: "Markdown content of the node. Must include at least one [[wikilink]] in prose. Do NOT include frontmatter (---) — it's added automatically from name/description." }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const result = await knowledgeCreate({
-        name: params.name,
-        description: params.description,
-        content: params.content,
-      });
+      const mkResult = (text: string) => ({ content: [{ type: "text" as const, text }], details: undefined });
+      try {
+        const result = await knowledgeCreate({
+          name: params?.name || "",
+          description: params?.description || "",
+          content: params?.content || "",
+        });
 
-      if (!result.success) {
-        const errMsg = result.errors.join("\n- ");
+        if (!result.success) {
+          const errMsg = result.errors.join("\n- ");
+          const warnMsg = result.warnings.length > 0 ? `\n\nWarnings:\n- ${result.warnings.join("\n- ")}` : "";
+          return mkResult(`Failed to create knowledge node:\n- ${errMsg}${warnMsg}`);
+        }
+
         const warnMsg = result.warnings.length > 0 ? `\n\nWarnings:\n- ${result.warnings.join("\n- ")}` : "";
-        return {
-          type: "text" as const,
-          text: `Failed to create knowledge node:\n- ${errMsg}${warnMsg}`,
-        };
+        return mkResult(`Knowledge node created: ${result.path}${warnMsg}`);
+      } catch (err) {
+        return mkResult(`knowledge_create failed: ${(err as Error).message}`);
       }
-
-      const warnMsg = result.warnings.length > 0 ? `\n\nWarnings:\n- ${result.warnings.join("\n- ")}` : "";
-      return {
-        type: "text" as const,
-        text: `Knowledge node created: ${result.path}${warnMsg}`,
-      };
     },
   });
 

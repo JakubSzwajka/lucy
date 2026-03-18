@@ -10,7 +10,8 @@ import { readFile, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-const KNOWLEDGE_DIR = ".agents/knowledge";
+const AGENTS_DIR = process.env.LUCY_AGENTS_DIR || ".agents";
+const KNOWLEDGE_DIR = join(AGENTS_DIR, "knowledge");
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,9 +90,15 @@ export function renderKnowledgeIndex(index: KnowledgeIndex): string | null {
 // ---------------------------------------------------------------------------
 
 export async function knowledgeSearch(query: string): Promise<KnowledgeNode[]> {
+  if (!query) return [];
   if (!existsSync(KNOWLEDGE_DIR)) return [];
 
-  const files = await readdir(KNOWLEDGE_DIR);
+  let files: string[];
+  try {
+    files = await readdir(KNOWLEDGE_DIR);
+  } catch {
+    return [];
+  }
   const mdFiles = files.filter(f => f.endsWith(".md"));
   const results: KnowledgeNode[] = [];
   const queryLower = query.toLowerCase();
@@ -142,35 +149,40 @@ export async function knowledgeCreate(options: CreateNodeOptions): Promise<Creat
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  // Guard against undefined options
+  const name = options?.name || "";
+  const description = options?.description || "";
+  const content = options?.content || "";
+
   // --- Validate name ---
-  if (!options.name || options.name.trim().length === 0) {
+  if (!name || name.trim().length === 0) {
     errors.push("Name is required.");
   }
-  const slug = options.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   if (!slug) {
     errors.push(`Invalid name "${options.name}" — must produce a valid filename slug.`);
   }
 
   // --- Validate description ---
-  if (!options.description || options.description.trim().length === 0) {
+  if (!description || description.trim().length === 0) {
     errors.push("Description is required (one line explaining what this node contains).");
   }
-  if (options.description && options.description.length > 200) {
+  if (description && description.length > 200) {
     warnings.push("Description is long (>200 chars). Keep it to one line for index scanning.");
   }
 
   // --- Validate content ---
-  if (!options.content || options.content.trim().length === 0) {
+  if (!content || content.trim().length === 0) {
     errors.push("Content is required.");
   }
 
-  const lines = (options.content || "").split("\n").length;
+  const lines = content.split("\n").length;
   if (lines > 100) {
     warnings.push(`Content is ${lines} lines (max recommended: 100). Consider extracting sub-nodes.`);
   }
 
   // --- Check for wikilinks (no orphans rule) ---
-  const wikilinks = extractWikilinks(options.content || "");
+  const wikilinks = extractWikilinks(content);
   if (wikilinks.length === 0) {
     errors.push("No wikilinks found. Every knowledge node must connect to the existing graph (No Orphans rule). Add at least one [[wikilink]] in prose.");
   }
@@ -178,7 +190,7 @@ export async function knowledgeCreate(options: CreateNodeOptions): Promise<Creat
   // --- Check wikilinks resolve ---
   for (const link of wikilinks) {
     const linkSlug = link.toLowerCase().replace(/\s+/g, "-");
-    const skillPath = join(".agents/skills", linkSlug, "SKILL.md");
+    const skillPath = join(AGENTS_DIR, "skills", linkSlug, "SKILL.md");
     const knowledgePath = join(KNOWLEDGE_DIR, `${linkSlug}.md`);
 
     if (!existsSync(skillPath) && !existsSync(knowledgePath)) {
@@ -193,7 +205,7 @@ export async function knowledgeCreate(options: CreateNodeOptions): Promise<Creat
   }
 
   // --- Validate frontmatter is NOT in content (we add it) ---
-  if (options.content.trimStart().startsWith("---")) {
+  if (content.trimStart().startsWith("---")) {
     warnings.push("Content starts with '---' — looks like frontmatter is included in content. Frontmatter is added automatically from name/description fields.");
   }
 
@@ -203,8 +215,8 @@ export async function knowledgeCreate(options: CreateNodeOptions): Promise<Creat
   }
 
   // --- Build the file ---
-  const frontmatter = `---\nname: ${options.name}\ndescription: ${options.description}\n---\n\n`;
-  const fullContent = frontmatter + options.content.trim() + "\n";
+  const frontmatter = `---\nname: ${name}\ndescription: ${description}\n---\n\n`;
+  const fullContent = frontmatter + content.trim() + "\n";
 
   await writeFile(targetPath, fullContent, "utf-8");
   console.log(`[knowledge] created node: ${slug}.md (${wikilinks.length} wikilinks)`);

@@ -83,6 +83,7 @@ storybook-static/
 .pi/auth.json
 .agents/memory/
 .agents/anamnesis/
+.agents/knowledge/
 .agents/skills/knowledge/
 .agents/tasks/
 .agents/skills/*/node_modules/
