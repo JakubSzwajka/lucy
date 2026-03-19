@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-
-const RELATIONS_DIR = ".agents/experience/narrative/relations";
+import { RELATIONS_DIR } from "./paths.js";
 
 interface Relationship {
   name: string;

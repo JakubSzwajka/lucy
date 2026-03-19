@@ -9,9 +9,7 @@
 import { readFile, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-
-const AGENTS_DIR = process.env.LUCY_AGENTS_DIR || ".agents";
-const KNOWLEDGE_DIR = join(AGENTS_DIR, "knowledge");
+import { KNOWLEDGE_DIR } from "./paths.js";
 
 // ---------------------------------------------------------------------------
 // Types

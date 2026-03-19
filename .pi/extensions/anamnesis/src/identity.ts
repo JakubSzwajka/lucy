@@ -1,8 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-
-const IDENTITY_PATH = resolve(".agents/experience/narrative/identity.md");
+import { IDENTITY_PATH } from "./paths.js";
 
 interface IdentityItem {
   text: string;

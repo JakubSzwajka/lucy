@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-
-const TENSIONS_PATH = ".agents/experience/narrative/tensions/active.md";
+import { TENSIONS_PATH } from "./paths.js";
 const MAX_ACTIVE = 5;
 const MAX_DAYS = 30;
 const MAX_SESSIONS = 5;

@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-
-const PROFILE_PATH = ".agents/experience/dispositions/profile.md";
+import { DISPOSITION_PROFILE_PATH as PROFILE_PATH } from "./paths.js";
 
 export interface Tendency {
   name: string;

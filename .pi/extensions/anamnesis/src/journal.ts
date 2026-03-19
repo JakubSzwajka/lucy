@@ -1,8 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-
-const JOURNAL_PATH = ".agents/experience/narrative/journal.md";
-const JOURNAL_ARCHIVE_PREFIX = ".agents/experience/narrative/journal-archive-";
+import { JOURNAL_PATH, JOURNAL_ARCHIVE_PREFIX } from "./paths.js";
 const MAX_JOURNAL_WORDS = 5000;
 
 export interface ReflectionSummary {

@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-
-const RELEASE_LOG_PATH = ".agents/experience/memory/releases/log.md";
+import { RELEASE_LOG_PATH } from "./paths.js";
 
 /**
  * Half-life in days per memory type.
