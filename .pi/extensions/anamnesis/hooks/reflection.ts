@@ -37,14 +37,8 @@ export async function runReflection(event: any): Promise<any> {
   );
 
   if (userMsgCount < MIN_MESSAGES) {
-    console.log(`[anamnesis] below threshold (${MIN_MESSAGES}), skipping`);
-    return {
-      compaction: {
-        summary: "Reflection skipped — too few messages.",
-        firstKeptEntryId: preparation.firstKeptEntryId,
-        tokensBefore: preparation.tokensBefore,
-      },
-    };
+    console.log(`[anamnesis] below threshold (${MIN_MESSAGES}), skipping reflection`);
+    return; // Let Pi handle compaction with its default summary
   }
 
   // Phase 1: Foresight — check prior predictions
@@ -59,15 +53,11 @@ export async function runReflection(event: any): Promise<any> {
   const result = await extract(conversationText, existingMemories);
 
   // Phase 3: Integrate — evolve, persist, journal
-  const { evolution } = await integrate(result);
+  const { evolution } = await integrate(result, conversationText);
 
-  const summary = `[Reflection ${result.job.job_id}] Extracted ${result.memories.length} memories (${evolution.added.length} new). Generated ${result.questions.length} questions.`;
+  console.log(
+    `[anamnesis] reflection complete: ${result.memories.length} memories (${evolution.added.length} new), ${result.questions.length} questions — handing off to Pi for compaction summary`,
+  );
 
-  return {
-    compaction: {
-      summary,
-      firstKeptEntryId: preparation.firstKeptEntryId,
-      tokensBefore: preparation.tokensBefore,
-    },
-  };
+  // Return nothing — Pi SDK generates its own narrative compaction summary
 }

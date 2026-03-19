@@ -4,6 +4,7 @@ import { JOURNAL_PATH, JOURNAL_ARCHIVE_PREFIX } from "../paths.js";
 const MAX_JOURNAL_WORDS = 5000;
 
 export interface ReflectionSummary {
+  conversationText: string;
   memoriesExtracted: number;
   memoriesAdded: number;
   questionsGenerated: number;
@@ -18,8 +19,12 @@ export interface ReflectionSummary {
 export function buildJournalPrompt(summary: ReflectionSummary): { systemPrompt: string; message: string } {
   const systemPrompt = `You are writing a private journal entry for an AI entity named Lucy. Write in first person, 2-4 sentences. This is reflective writing about what the session MEANT, not what happened. Be honest, introspective, and brief. Do not use headers or markdown formatting — just plain text paragraphs.`;
 
-  const message = `Write a journal entry for today based on this reflection:
+  const message = `Write a journal entry for today based on this conversation and what was extracted from it.
 
+## Conversation
+${summary.conversationText}
+
+## What was extracted
 Memories extracted: ${summary.memoriesExtracted} (${summary.memoriesAdded} new)
 Questions generated: ${summary.questionsGenerated}
 
@@ -31,7 +36,7 @@ ${summary.topQuestions.map(q => `- ${q}`).join('\n')}
 
 ${summary.predictions.length > 0 ? `Predictions:\n${summary.predictions.map(p => `- ${p}`).join('\n')}` : ''}
 
-Write 2-4 reflective sentences about what this session meant. Not a summary — a diary entry.`;
+Write 2-4 reflective sentences about what this session meant. Not a summary — a diary entry. Ground it in what actually happened.`;
 
   return { systemPrompt, message };
 }

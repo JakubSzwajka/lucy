@@ -21,7 +21,7 @@ export interface IntegrationResult {
   predictionsStored: number;
 }
 
-export async function integrate(result: ReflectionResult): Promise<IntegrationResult> {
+export async function integrate(result: ReflectionResult, conversationText: string): Promise<IntegrationResult> {
   // Evolve memories (reinforce / supersede / add)
   const evolution = await evolveMemories(result.memories);
 
@@ -54,6 +54,7 @@ export async function integrate(result: ReflectionResult): Promise<IntegrationRe
   // Write journal (non-blocking — don't fail the pipeline)
   try {
     await writeJournal({
+      conversationText,
       memories_extracted: result.memories.length,
       memories_added: evolution.added.length,
       questions_generated: result.questions.length,
@@ -74,12 +75,14 @@ export async function integrate(result: ReflectionResult): Promise<IntegrationRe
 // ---------------------------------------------------------------------------
 
 async function writeJournal(stats: {
+  conversationText: string;
   memories_extracted: number;
   memories_added: number;
   questions_generated: number;
 }): Promise<void> {
   console.log("[anamnesis] writing journal entry");
   const journalPrompt = buildJournalPrompt({
+    conversationText: stats.conversationText,
     memoriesExtracted: stats.memories_extracted,
     memoriesAdded: stats.memories_added,
     questionsGenerated: stats.questions_generated,
