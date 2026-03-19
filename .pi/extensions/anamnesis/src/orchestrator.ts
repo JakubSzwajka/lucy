@@ -74,13 +74,30 @@ async function callAgent(systemPrompt: string, message: string): Promise<unknown
 }
 
 function parseJson(response: string): unknown {
-  const jsonMatch = response.match(/```json\n?([\s\S]*?)\n?```/);
-  const raw = jsonMatch ? jsonMatch[1] : response;
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    throw new Error(`[orchestrator] failed to parse JSON: ${(e as Error).message}`);
+  // Try to extract JSON from markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = response.match(/```(?:json)?\s*\n([\s\S]*?)\n\s*```/);
+  if (fenceMatch) {
+    return JSON.parse(fenceMatch[1].trim());
   }
+
+  // Try to find a raw JSON object or array in the response
+  const jsonStart = response.search(/[\[{]/);
+  if (jsonStart >= 0) {
+    const candidate = response.slice(jsonStart);
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Try trimming trailing non-JSON content
+      const lastBrace = candidate.lastIndexOf("}");
+      const lastBracket = candidate.lastIndexOf("]");
+      const end = Math.max(lastBrace, lastBracket);
+      if (end > 0) {
+        return JSON.parse(candidate.slice(0, end + 1));
+      }
+    }
+  }
+
+  throw new Error(`[orchestrator] no valid JSON found in response (${response.length} chars)`);
 }
 
 // ---------------------------------------------------------------------------
