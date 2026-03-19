@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { DISPOSITION_PROFILE_PATH as PROFILE_PATH } from "./paths.js";
+import { DISPOSITION_PROFILE_PATH as PROFILE_PATH } from "../paths.js";
 
 export interface Tendency {
   name: string;

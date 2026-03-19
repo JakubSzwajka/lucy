@@ -22,25 +22,32 @@ Two entry points, registered with Pi SDK in `index.ts`:
 
 ## Internals (`src/`)
 
-### Core pipeline
+### Reflection phases
+
+| File | Phase | Purpose |
+|------|-------|---------|
+| `foresight.ts` | 1. Foresight | Check prior predictions against current conversation. Keyword overlap ≥ 40% confirms a prediction. |
+| `orchestrator.ts` | 2. Extract | 3-phase LLM pipeline: classify → confabulation check → score → generate. Loads sub-agent prompts from `prompts/`. |
+| `integrate.ts` | 3. Integrate | Evolve memories (A-MEM), persist questions/predictions, save reflection log, write journal entry. |
+
+### Utilities
 
 | File | Purpose |
 |------|---------|
-| `orchestrator.ts` | 3-phase LLM pipeline: classify → confabulation check → score → generate. Loads sub-agent prompts from `prompts/`, calls OpenRouter, falls back to local heuristics. |
-| `store.ts` | Memory/question/prediction I/O. Markdown serialization with JSON metadata in HTML comments. Includes the A-MEM evolution pattern (reinforce, supersede, add). |
+| `store.ts` | Memory/question/prediction I/O. Markdown serialization with JSON metadata in HTML comments. A-MEM evolution (reinforce, supersede, add). |
 | `llm.ts` | Thin OpenRouter wrapper. Single function, no session overhead. |
 | `types.ts` | All interfaces, constants, helpers (`generateId`, `validateMemory`, `getConfidenceLevel`). |
 | `paths.ts` | Centralized `.agents/` path constants. Respects `LUCY_AGENTS_DIR` env var. |
 
-### Context loaders
+### Context loaders (`src/context/`)
 
-Each module loads one section of Lucy's experience from disk for context assembly:
+Each module loads one section of Lucy's experience from disk for context assembly (`hooks/context.ts`):
 
 | File | Loads | Source path |
 |------|-------|-------------|
 | `salience.ts` | Ranked memories (top-K by weighted score) | `.agents/experience/memory/MEMORY.md` |
 | `narrative-reconstruct.ts` | First-person prose from scored memories | (in-memory, from salience output) |
-| `knowledge.ts` | Wikilink graph index | `.agents/knowledge/*.md` |
+| `knowledge.ts` | Wikilink graph index + tools | `.agents/knowledge/*.md` |
 | `identity.ts` | Self-model (capabilities, biases, uncertainties) | `.agents/experience/narrative/identity.md` |
 | `dispositions.ts` | Personality profile (tendencies, mental models) | `.agents/experience/dispositions/profile.md` |
 | `relations.ts` | Relationship dynamics | `.agents/experience/narrative/relations/*.md` |
@@ -61,76 +68,70 @@ Three specialized LLM roles, each with a SOUL.md (role definition) and a prompt 
 
 ## Reflection flow
 
-Data flow through `session_before_compact` (`hooks/reflection.ts` → `src/orchestrator.ts` → `src/store.ts`).
+Three phases, orchestrated by `hooks/reflection.ts`:
 
 ### Pipeline overview
 
 ```mermaid
 flowchart TD
     SDK["Pi SDK fires\nsession_before_compact"]
-    SER["1. Serialize\n<i>hooks/reflection</i>"]
+    SER["Serialize conversation\n<i>hooks/reflection</i>"]
     GATE{{"userMsgCount >= 2?"}}
-    SKIP["Return early\n(skip reflection)"]
-    FORE["2. Foresight Check\n<i>hooks/reflection</i>"]
-    LOAD["3. Load Existing Memories\n<i>hooks/reflection → store</i>"]
-    ORCH["4. Orchestrate\n<i>src/orchestrator</i>"]
-    EVOLVE["5. Evolve Memories\n<i>hooks/reflection → store</i>"]
-    PERSIST["6. Persist\n<i>hooks/reflection → store</i>"]
-    JOURNAL["7. Journal\n<i>hooks/reflection → llm</i>"]
+    SKIP["Return early"]
+
+    subgraph P1["Phase 1: Foresight — src/foresight.ts"]
+        FORE["Check prior predictions\nagainst conversation\n(keyword overlap ≥ 40%)"]
+        FORE_OUT["Side effect:\npredictions.md updated\nprofile.md annotated"]
+        FORE --> FORE_OUT
+    end
+
+    subgraph P2["Phase 2: Extract — src/orchestrator.ts"]
+        LOAD["Load existing memories\nfrom MEMORY.md"]
+        CLS["Classify\n<i>LLM: classifier agent</i>\n→ Memory[]"]
+        CONFAB["Confabulation check\n<i>local</i>\nflag + penalize ungrounded"]
+        SCR["Score\n<i>LLM: scorer agent</i>\n→ Memory[] + confidence"]
+        GEN["Generate\n<i>LLM: generator agent</i>\n→ Question[] + Prediction[]"]
+        LOAD --> CLS --> CONFAB --> SCR --> GEN
+    end
+
+    subgraph P3["Phase 3: Integrate — src/integrate.ts"]
+        EVOLVE["Evolve memories\n<i>store.ts</i>\nreinforce / supersede / add"]
+        PERSIST["Persist\nquestions.md\npredictions.md\nreflections/*.json"]
+        JOURNAL["Journal entry\n<i>LLM → journal.md</i>\n(non-blocking)"]
+        EVOLVE --> PERSIST --> JOURNAL
+    end
+
     RET["Return compaction\nsummary to Pi SDK"]
 
-    SDK --> SER
-    SER --> GATE
+    SDK --> SER --> GATE
     GATE -- No --> SKIP
-    GATE -- Yes --> FORE
-    FORE --> LOAD
-    LOAD --> ORCH
-    ORCH --> EVOLVE
-    EVOLVE --> PERSIST
-    PERSIST --> JOURNAL
-    JOURNAL --> RET
+    GATE -- Yes --> P1 --> P2 --> P3 --> RET
 ```
 
-### Orchestrator detail (step 4)
+### Extract detail (phase 2)
 
 ```mermaid
 flowchart TD
-    IN["conversationText: string\nexistingMemories: Memory[]"]
+    IN["conversationText + existingMemories"]
 
-    CLS["Phase 1: Classify\n<i>LLM — classifier agent</i>"]
-    CLS_IN["IN: conversation + existing memories\ntemplated into classify.md"]
-    CLS_OUT["OUT: Memory[]\nid, type, content, source_quote,\ntags, salience"]
+    CLS["Classify\n<i>LLM: classifier agent</i>"]
+    CLS_OUT["Memory[]\nid, type, content, source_quote,\ntags, salience"]
 
-    CONFAB["Phase 1.5: Confabulation Check\n<i>local — no LLM</i>"]
-    CONFAB_IN["IN: Memory[] + conversationText"]
-    CONFAB_OUT["OUT: Memory[]\nflagged → confabulation_risk: true\nconfidence.score × 0.5\nCheck: source_quote first 50 chars\nmust appear in conversation"]
+    CONFAB["Confabulation Check\n<i>local</i>"]
+    CONFAB_OUT["Memory[]\nungrounded → risk: true,\nconfidence × 0.5"]
 
-    SCR["Phase 2: Score\n<i>LLM — scorer agent</i>"]
-    SCR_IN["IN: checked Memory[] + conversation\ntemplated into score.md"]
-    SCR_OUT["OUT: Memory[] + confidence\nscore 0-1, level, source,\nevidence[], decay_rate"]
+    SCR["Score\n<i>LLM: scorer agent</i>"]
+    SCR_OUT["Memory[] + confidence\nscore, level, source,\nevidence[], decay_rate"]
 
-    GEN["Phase 3: Generate\n<i>LLM — generator agent</i>"]
-    GEN_IN["IN: scored Memory[] + existing memories\ntemplated into generate.md"]
-    GEN_OUT["OUT: CuriosityQuestion[]\nquestion, context, curiosity_type,\ncuriosity_score, timing, sensitivity\n+ Prediction[]\ncontent, confidence"]
+    GEN["Generate\n<i>LLM: generator agent</i>"]
+    GEN_OUT["CuriosityQuestion[]\n+ Prediction[]"]
 
-    OUT["ReflectionResult\njob, memories, questions,\npredictions, metadata"]
+    OUT["ReflectionResult"]
 
-    IN --> CLS
-    CLS_IN -.-> CLS
-    CLS --> CLS_OUT
-    CLS_OUT --> CONFAB
-    CONFAB_IN -.-> CONFAB
-    CONFAB --> CONFAB_OUT
-    CONFAB_OUT --> SCR
-    SCR_IN -.-> SCR
-    SCR --> SCR_OUT
-    SCR_OUT --> GEN
-    GEN_IN -.-> GEN
-    GEN --> GEN_OUT
-    GEN_OUT --> OUT
+    IN --> CLS --> CLS_OUT --> CONFAB --> CONFAB_OUT --> SCR --> SCR_OUT --> GEN --> GEN_OUT --> OUT
 ```
 
-### Evolution detail (step 5)
+### Integrate detail (phase 3)
 
 ```mermaid
 flowchart TD
@@ -165,17 +166,14 @@ flowchart TD
     SAVE --> OUT
 ```
 
-### Step-by-step data shapes
+### Data shapes per phase
 
-| Step | IN | OUT | File |
-|------|----|-----|------|
-| 1. Serialize | `event.preparation.messagesToSummarize` (Pi message array) | `conversationText: string` (`[User]:...\n[Assistant]:...`) | `hooks/reflection` |
-| 2. Foresight | `conversationText` + `predictions.md` | Side effect: confirmed predictions written to disk | `hooks/reflection` |
-| 3. Load | `MEMORY.md` on disk | `existingMemories: Memory[]` | `hooks/reflection → store` |
-| 4. Orchestrate | `conversationText` + `existingMemories` | `ReflectionResult { memories, questions, predictions, job, metadata }` | `src/orchestrator` |
-| 5. Evolve | `result.memories` + existing `MEMORY.md` | `EvolutionResult { added, superseded, reinforced }` → updated `MEMORY.md` | `hooks/reflection → store` |
-| 6. Persist | `questions`, `predictions`, reflection stats | Written to `questions.md`, `predictions.md`, `reflections/*.json` | `hooks/reflection → store` |
-| 7. Journal | `{ memories_extracted, memories_added, questions_generated }` | LLM → 2-4 sentences appended to `journal.md` (non-blocking) | `hooks/reflection → llm` |
+| Phase | IN | OUT | File |
+|-------|----|-----|------|
+| Serialize | `event.preparation.messagesToSummarize` | `conversationText: string` | `hooks/reflection` |
+| **1. Foresight** | `conversationText` + `predictions.md` | Side effect: confirmed predictions written to disk | `src/foresight` |
+| **2. Extract** | `conversationText` + `existingMemories: Memory[]` | `ReflectionResult { memories, questions, predictions, job, metadata }` | `src/orchestrator` |
+| **3. Integrate** | `ReflectionResult` | `IntegrationResult { evolution, questionsStored, predictionsStored }` + disk writes | `src/integrate` |
 | Return | — | `{ compaction: { summary, firstKeptEntryId, tokensBefore } }` | `hooks/reflection` |
 
 ## Key concepts

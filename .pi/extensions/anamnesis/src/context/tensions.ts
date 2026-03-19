@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { TENSIONS_PATH } from "./paths.js";
+import { TENSIONS_PATH } from "../paths.js";
 const MAX_ACTIVE = 5;
 const MAX_DAYS = 30;
 const MAX_SESSIONS = 5;

@@ -9,7 +9,7 @@
 import { readFile, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { KNOWLEDGE_DIR } from "./paths.js";
+import { KNOWLEDGE_DIR } from "../paths.js";
 
 // ---------------------------------------------------------------------------
 // Types

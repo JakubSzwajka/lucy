@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { JOURNAL_PATH, JOURNAL_ARCHIVE_PREFIX } from "./paths.js";
+import { JOURNAL_PATH, JOURNAL_ARCHIVE_PREFIX } from "../paths.js";
 const MAX_JOURNAL_WORDS = 5000;
 
 export interface ReflectionSummary {

@@ -6,7 +6,7 @@
 
 import { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { knowledgeSearch, knowledgeCreate } from "../src/knowledge.js";
+import { knowledgeSearch, knowledgeCreate } from "../src/context/knowledge.js";
 
 export function registerTools(pi: ExtensionAPI) {
   pi.registerTool({

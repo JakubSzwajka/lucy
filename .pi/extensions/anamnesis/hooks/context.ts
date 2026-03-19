@@ -90,7 +90,7 @@ export async function assembleContext(event: any): Promise<any> {
 
   // 0.5. Knowledge graph index
   try {
-    const { loadKnowledgeIndex, renderKnowledgeIndex } = await import("../src/knowledge.js");
+    const { loadKnowledgeIndex, renderKnowledgeIndex } = await import("../src/context/knowledge.js");
     const index = await loadKnowledgeIndex();
     const rendered = renderKnowledgeIndex(index);
     if (rendered) {
@@ -101,7 +101,7 @@ export async function assembleContext(event: any): Promise<any> {
 
   // 1. Disposition context
   try {
-    const { loadDispositionProfile, renderDispositionContext } = await import("../src/dispositions.js");
+    const { loadDispositionProfile, renderDispositionContext } = await import("../src/context/dispositions.js");
     const profile = await loadDispositionProfile();
     if (profile) {
       parts.push(renderDispositionContext(profile));
@@ -111,7 +111,7 @@ export async function assembleContext(event: any): Promise<any> {
 
   // 1.5. Relational context (Kuba)
   try {
-    const { loadRelationship, renderRelationshipContext } = await import("../src/relations.js");
+    const { loadRelationship, renderRelationshipContext } = await import("../src/context/relations.js");
     const kuba = await loadRelationship("kuba");
     if (kuba) {
       parts.push(renderRelationshipContext(kuba));
@@ -121,8 +121,8 @@ export async function assembleContext(event: any): Promise<any> {
 
   // 2. Memory context (salience-scored + narrative-reconstructed)
   try {
-    const { scoreMemories } = await import("../src/salience.js");
-    const { reconstructNarrative } = await import("../src/narrative-reconstruct.js");
+    const { scoreMemories } = await import("../src/context/salience.js");
+    const { reconstructNarrative } = await import("../src/context/narrative-reconstruct.js");
 
     const memoryContent = existsSync(MEMORY_PATH)
       ? await readFile(MEMORY_PATH, "utf-8")
@@ -145,7 +145,7 @@ export async function assembleContext(event: any): Promise<any> {
 
   // 3. Tension context
   try {
-    const { loadTensions, renderTensionContext } = await import("../src/tensions.js");
+    const { loadTensions, renderTensionContext } = await import("../src/context/tensions.js");
     const tensions = await loadTensions();
     const tensionCtx = renderTensionContext(tensions);
     if (tensionCtx) {
@@ -181,7 +181,7 @@ export async function assembleContext(event: any): Promise<any> {
 
   // 6. Recent journal excerpt
   try {
-    const { readRecentJournal } = await import("../src/journal.js");
+    const { readRecentJournal } = await import("../src/context/journal.js");
     const journal = await readRecentJournal();
     if (journal) {
       parts.push("_From my journal:_\n\n" + journal);
@@ -191,7 +191,7 @@ export async function assembleContext(event: any): Promise<any> {
 
   // 7. Growth arcs
   try {
-    const { loadArcs, renderArcsContext } = await import("../src/arcs.js");
+    const { loadArcs, renderArcsContext } = await import("../src/context/arcs.js");
     const arcs = await loadArcs();
     const arcsCtx = renderArcsContext(arcs);
     if (arcsCtx) {

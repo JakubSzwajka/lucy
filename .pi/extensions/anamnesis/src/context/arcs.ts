@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { ARCS_PATH } from "./paths.js";
+import { ARCS_PATH } from "../paths.js";
 
 interface GrowthArc {
   title: string;

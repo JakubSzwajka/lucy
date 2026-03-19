@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { IDENTITY_PATH } from "./paths.js";
+import { IDENTITY_PATH } from "../paths.js";
 
 interface IdentityItem {
   text: string;

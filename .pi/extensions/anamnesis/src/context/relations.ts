@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { RELATIONS_DIR } from "./paths.js";
+import { RELATIONS_DIR } from "../paths.js";
 
 interface Relationship {
   name: string;

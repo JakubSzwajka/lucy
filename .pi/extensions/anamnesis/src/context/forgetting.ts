@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { RELEASE_LOG_PATH } from "./paths.js";
+import { RELEASE_LOG_PATH } from "../paths.js";
 
 /**
  * Half-life in days per memory type.
